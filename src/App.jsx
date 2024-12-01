@@ -4,7 +4,8 @@ import './App.css';
 import ReText from './components/reText';
 import SeText from './components/seText';
 
-const socket = io('http://localhost:3001');
+const socket = io('https://chat-tuah-backend.vercel.app/');
+
 
 function App() {
   const [messages, setMessages] = useState([]);
