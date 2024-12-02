@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const ReText = ({ socket }) => {
+const ReText = ({ sendMessage }) => {
   const [text, setText] = useState('');
 
   const handleChange = (event) => {
@@ -10,7 +10,7 @@ const ReText = ({ socket }) => {
   const handleSubmit = (event) => {
     event.preventDefault();
     if (text) {
-      socket.emit('chat message', text);
+      sendMessage(text);
       setText('');
     }
   };
