@@ -5,6 +5,8 @@ import './App.css';
 import ReText from './components/reText';
 import SeText from './components/seText';
 
+import Logo from './components/canLogo/logo';
+
 const socket = io('https://chattuah-backend.onrender.com');
 const secretKey = 'xrTcxoWDqztoar40ePgiBdzif1wuIADYbdeJ3QVIooneAHPNhpvo5XgHAK/zlv5j';
 
@@ -59,9 +61,14 @@ function App() {
   };
 
   return (
-    <div>
-      <ReText sendMessage={sendMessage} /> {/* Fix prop name */}
-      <SeText messages={messages} />
+    <div className="app-container">
+      <div className="logo-container">
+        <Logo />
+      </div>
+      <div className="chat-container">
+        <ReText sendMessage={sendMessage} /> 
+        <SeText messages={messages} />
+      </div>
     </div>
   );
 }
