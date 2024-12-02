@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js'; 
 import './App.css';
-import ReText from './components/ReText';
-import SeText from './components/SeText';
+import ReText from './components/reText';
+import SeText from './components/reText';
 
 const socket = io('https://chattuah-backend.onrender.com');
 const secretKey = 'xrTcxoWDqztoar40ePgiBdzif1wuIADYbdeJ3QVIooneAHPNhpvo5XgHAK/zlv5j';
