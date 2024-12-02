@@ -1,6 +1,6 @@
 import React from 'react';
 import sodaCan from './sodaCan.svg'; 
-import './Logo.css';
+import './logo.css';
 
 const Logo = () => {
   return (
