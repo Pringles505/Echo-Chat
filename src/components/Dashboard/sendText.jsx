@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-const ReText = ({ sendMessage }) => {
+const sendText = ({ sendMessage }) => {
   const [text, setText] = useState('');
 
   const handleChange = (event) => {
@@ -23,4 +23,4 @@ const ReText = ({ sendMessage }) => {
   );
 };
 
-export default ReText;
+export default sendText;

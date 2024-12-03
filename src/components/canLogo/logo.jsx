@@ -1,4 +1,3 @@
-import React from 'react';
 import sodaCan from './sodaCan.svg'; 
 import './logo.css';
 
