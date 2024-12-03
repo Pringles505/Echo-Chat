@@ -15,6 +15,12 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleLogin = (e) => {
+
+    if (!username || !password) {
+      console.error('Username and password cannot be empty');
+      return;
+    }
+    
     e.preventDefault();
     const hashedPassword = CryptoJS.SHA256(password).toString();
 
