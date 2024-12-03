@@ -5,9 +5,9 @@ import io from 'socket.io-client';
 import CryptoJS from 'crypto-js'; 
 
 // IMPORTANTE CAMBIAR PARA DEPLOY
-const socket = io('https://chattuah-backend.onrender.com');
+// const socket = io('https://chattuah-backend.onrender.com');
 
-// const socket = io('localhost:3001');
+const socket = io('localhost:3001');
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -20,7 +20,7 @@ const Login = () => {
       console.error('Username and password cannot be empty');
       return;
     }
-    
+
     e.preventDefault();
     const hashedPassword = CryptoJS.SHA256(password).toString();
 
@@ -34,8 +34,11 @@ const Login = () => {
         console.error('Login failed:', response.error);
       }
     })
-
     navigate('/chat');
+  };
+
+  const handleNavigateToRegister = () => {
+    navigate('/register');
   };
 
   return (
@@ -55,7 +58,9 @@ const Login = () => {
           onChange={(e) => setPassword(e.target.value)}
         />
         <button type="submit">Login</button>
-        <button type="submit">Register</button>
+
+        <button onClick={handleNavigateToRegister}>
+          Register</button>
       </form>
     </div>
   );
