@@ -5,11 +5,8 @@ import io from 'socket.io-client';
 import CryptoJS from 'crypto-js'; 
 
 
-// IMPORTANTE CAMBIAR PARA DEPLOY
+const socket = io(import.meta.env.VITE_SOCKET_URL);
 
-const socket = io('https://chattuah-backend.onrender.com');
-
-// const socket = io('localhost:3001');
 
 const Register = () => {
   const [username, setUsername] = useState('');
