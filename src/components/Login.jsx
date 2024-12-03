@@ -5,9 +5,9 @@ import io from 'socket.io-client';
 import CryptoJS from 'crypto-js'; 
 
 // IMPORTANTE CAMBIAR PARA DEPLOY
-// const socket = io('https://chattuah-backend.onrender.com');
+const socket = io('https://chattuah-backend.onrender.com');
 
-const socket = io('localhost:3001');
+// const socket = io('localhost:3001');
 
 const Login = () => {
   const [username, setUsername] = useState('');
