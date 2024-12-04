@@ -1,16 +1,29 @@
+import { jwtDecode } from 'jwt-decode';
 import React, { useState } from 'react';
+import io from 'socket.io-client';
 
-const Friends = () => {
+const Friends = ({token}) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeConversations, setActiveConversations] = useState([
-    // Example data, replace with actual data
-    { id: 1, name: 'John Doe' },
-    { id: 2, name: 'Jane Smith' },
-  ]);
 
   const handleSearch = () => {
-    // Implement search logic here
+    const user = token ? jwtDecode(token) : ''; 
     console.log('Searching for:', searchTerm);
+    const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
+
+    tempSocket.on('connect', () => {
+      console.log('TempSocket connected');
+    });
+    if (!searchTerm || searchTerm == user.username) {
+      console.log('Search term is empty or the same as the user');
+      tempSocket.disconnect();
+      return;
+    }
+    tempSocket.emit('searchUser', { searchTerm }, (response) => {
+      console.log('Search response:', response);
+      const targetUser = response.user.id;
+      tempSocket.emit('startChat', { userId: user.id, targetUserId: targetUser });
+      tempSocket.disconnect();
+    });
   };
 
   return (
@@ -26,11 +39,6 @@ const Friends = () => {
       </div>
       <div className="conversations-container">
         <h3>Active Conversations</h3>
-        <ul>
-          {activeConversations.map((conversation) => (
-            <li key={conversation.id}>{conversation.name}</li>
-          ))}
-        </ul>
       </div>
     </div>
   );

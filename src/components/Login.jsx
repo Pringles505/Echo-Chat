@@ -21,8 +21,7 @@ const Login = () => {
     }
 
     // Connect to the server temporarily to handle login
-    console.log(import.meta.env.VITE_SOCKET_URL);
-    const tempSocket = io(import.meta.env.VITE_SOCKET_URL); // No auth for login
+    const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
 
     tempSocket.on('connect', () => {
       console.log('TempSocket connected');
