@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const sendText = ({ sendMessage }) => {
+const SendText = ({ sendMessage }) => {
   const [text, setText] = useState('');
 
   const handleChange = (event) => {
@@ -23,4 +23,4 @@ const sendText = ({ sendMessage }) => {
   );
 };
 
-export default sendText;
+export default SendText;
