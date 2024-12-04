@@ -21,10 +21,9 @@ const Register = () => {
       return;
     }
 
-    const hashedPassword = CryptoJS.SHA256(password).toString();
-    console.log('Registering with', username, hashedPassword);
+    console.log('Registering with', username, password);
 
-    socket.emit('register', {username, hashedPassword}, (response) => {
+    socket.emit('register', {username, password}, (response) => {
       if (response.success){
         navigate('/login');
       }else {

@@ -5,6 +5,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Chat from './components/Dashboard/Chat';
 import Dashboard from './components/Dashboard/Dashboard';
+import PrivateRoute from './components/Dashboard/PrivateRoute';
 
 function App() {
 
@@ -14,7 +15,7 @@ function App() {
       <Route path="/login" element={<Login/>} />
         <Route path="/register" element={<Register />} />
         <Route path="/chat" element={<Chat />} />
-        <Route path="/dashboard" element={<Dashboard/>} />
+        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/" element={<Login/>} /> 
       </Routes>
     </Router>

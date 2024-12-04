@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
-import CryptoJS from 'crypto-js';
 
-const socket = io(import.meta.env.VITE_SOCKET_URL);
+let socket;
 
 const Login = () => {
+  console.log('Login component rendered');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,17 +20,37 @@ const Login = () => {
       return;
     }
 
-    const hashedPassword = CryptoJS.SHA256(password).toString();
-    console.log('Logging in with', username, password);
-    console.log('HashedPassword', hashedPassword);
+    // Connect to the server temporarily to handle login
+    console.log(import.meta.env.VITE_SOCKET_URL);
+    const tempSocket = io(import.meta.env.VITE_SOCKET_URL); // No auth for login
 
-    socket.emit('login', { username, hashedPassword }, (response) => {
+    tempSocket.on('connect', () => {
+      console.log('TempSocket connected');
+    });
+
+    tempSocket.on('connect_error', (err) => {
+      console.error('TempSocket connection error:', err);
+    });
+
+    // Handle login response
+    tempSocket.emit('login', { username, password }, (response) => {
       if (response.success) {
+        // Save token to local storage
+        localStorage.setItem('token', response.token);
+        console.log('Login successful:', response.token);
+
+        // Establish persistent socket connection with authentication
+        socket = io(import.meta.env.VITE_SOCKET_URL, {
+          auth: { token: localStorage.getItem('token') },
+        });
+
         navigate('/dashboard');
       } else {
         setError('Login failed: ' + response.error);
+        console.error('Error Token:', response.token);
         console.error('Login failed:', response.error);
       }
+      tempSocket.disconnect();
     });
   };
 
