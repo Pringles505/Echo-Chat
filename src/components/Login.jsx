@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 
-let socket;
-
 const Login = () => {
   console.log('Login component rendered');
   const [username, setUsername] = useState('');

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
 import io from 'socket.io-client';
-import CryptoJS from 'crypto-js'; 
+import CryptoJS from 'crypto-js';
 
 import SendText from './sendText';
 import DisplayText from './displayText';
+import Logo from '../canLogo/logo';
 
 import PropTypes from 'prop-types';
 
@@ -16,31 +17,37 @@ const socket = io(import.meta.env.VITE_SOCKET_URL);
 //Currently Static
 const secretKey = 'xrTcxoWDqztoar40ePgiBdzif1wuIADYbdeJ3QVIooneAHPNhpvo5XgHAK/zlv5j';
 
-import Logo from '../canLogo/logo';
-
-
+// Functions to encrypt and decrypt incoming/outgoing messages
+// Currently only using AES with secret key, IMPLEMENT rest of the encryption
 const encrypt = (text) => {
-    return CryptoJS.AES.encrypt(text, secretKey).toString();
+  return CryptoJS.AES.encrypt(text, secretKey).toString();
 };
-  
 const decrypt = (text) => {
-  const bytes = CryptoJS.AES.decrypt(text, secretKey);
-  return bytes.toString(CryptoJS.enc.Utf8);
-}
-  
-function Chat({token}) {
+  try {
+    const bytes = CryptoJS.AES.decrypt(text, secretKey);
+    return bytes.toString(CryptoJS.enc.Utf8);
+  } catch (error) {
+    console.error('Error decrypting message:', text, error);
+    return 'Error decrypting message';
+  }
+};
+
+function Chat({ token }) {
   const userId = token ? jwtDecode(token).id : '';
   const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Decrypt and set the messages when received
     const handleInitMessages = (messages) => {
       console.log('Received init messages:', messages);
-      const decryptedMessages = messages.map((message) => ({
-        ...message,
-        text: decrypt(message.text),
-      }));
+      const decryptedMessages = messages.map((message) => {
+        return {
+          ...message,
+          text: decrypt(message.text),
+        };
+      });
       setMessages(decryptedMessages);
+      setLoading(false); // Done loading
     };
 
     const handleChatMessage = (message) => {
@@ -52,6 +59,11 @@ function Chat({token}) {
       setMessages((prevMessages) => [...prevMessages, decryptedMessage]);
     };
 
+    socket.on('connect', () => {
+      console.log('Socket connected, emitting ready...');
+      socket.emit('ready');
+    });
+
     socket.on('init', handleInitMessages);
     socket.on('chat message', handleChatMessage);
 
@@ -62,13 +74,7 @@ function Chat({token}) {
   }, []);
 
   const sendMessage = (text) => {
-    console.log('Sending message:', text);
     const encryptedText = encrypt(text);
-    const decryptedText = decrypt(encryptedText);
-
-    console.log('Decrypted text:', decryptedText);
-    console.log('user ID:', userId);
-    
     socket.emit('chat message', { text: encryptedText, userId });
   };
 
@@ -78,12 +84,18 @@ function Chat({token}) {
         <Logo />
       </div>
       <div className="chat-container">
-        <SendText sendMessage={sendMessage} /> 
-        <DisplayText messages={messages} />
+        {loading ? (
+          <p>Loading messages...</p>
+        ) : (
+          <>
+            <SendText sendMessage={sendMessage} />
+            <DisplayText messages={messages} />
+          </>
+        )}
       </div>
     </div>
   );
-};
+}
 
 Chat.propTypes = {
   token: PropTypes.string.isRequired,
