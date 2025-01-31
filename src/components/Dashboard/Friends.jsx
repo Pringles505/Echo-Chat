@@ -27,7 +27,8 @@ const Friends = ({ token, onActiveChatChange }) => {
 
     tempSocket.emit('searchUser', { searchTerm }, (response) => {
       console.log('Search response:', response);
-      setSearchList((prevChatList) => [...prevChatList, response.user.username]); 
+      const targetUser = response.user;
+      setSearchList((prevChatList) => [...prevChatList, targetUser]); 
     });
   };
 
@@ -41,9 +42,9 @@ const Friends = ({ token, onActiveChatChange }) => {
       />
       <button onClick={handleSearch}>Search</button>
       <ul>
-        {chatList.map((chat, index) => (
-          <li key={index} onClick={() => onActiveChatChange(chat)}>
-            {chat}
+        {chatList.map((targetUser, index) => (
+          <li key={index} onClick={() => onActiveChatChange(targetUser.id)}>
+            {targetUser.username}
           </li>
         ))}
       </ul>

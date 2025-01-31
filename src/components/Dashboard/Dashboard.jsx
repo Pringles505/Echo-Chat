@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Chat from './Chat';
 import Friends from './Friends';
 import UserInfo from './UserInfo';
+import UserChat from './UserChat';
 
 //Always keep in braces
 import {jwtDecode} from 'jwt-decode';
@@ -19,9 +20,9 @@ const Dashboard = () => {
 
   const [activeChat, setActiveChat] = useState('');
 
-  const handleActiveChatChange = (chat) => {
-    setActiveChat(chat);
-    console.log('Active chat in Dashboard:', chat);
+  const handleActiveChatChange = (targetUser) => {
+    setActiveChat(targetUser);
+    console.log('Active chat in Dashboard:', targetUser);
   };
 
   return (
@@ -34,12 +35,16 @@ const Dashboard = () => {
 
       {/* Main Content Area with Chat */}
       <div className="dashboard-content">
-        <Chat token={token} activeChat={activeChat} />
+        {activeChat ? (
+          <UserChat token={token} activeChat={activeChat}/>
+        ) : (
+          <UserChat token={token} />
+        )}
       </div>
 
       {/* User Info */}
       <div className="user-info">
-        <UserInfo username={username} userId={userId}/>
+        <UserInfo username={username} userId={userId} />
       </div>
     </div>
   );

@@ -35,51 +35,40 @@ const Login = () => {
         // Save token to local storage
         localStorage.setItem('token', response.token);
         console.log('Login successful:', response.token);
-
-        // Establish persistent socket connection with authentication
-        socket = io(import.meta.env.VITE_SOCKET_URL, {
-          auth: { token: localStorage.getItem('token') },
-        });
-
-        navigate('/dashboard');
+        navigate('/dashboard'); // Navigate to the dashboard after successful login
       } else {
-        setError('Login failed: ' + response.error);
-        console.error('Error Token:', response.token);
+        setError(response.error || 'Login failed');
         console.error('Login failed:', response.error);
       }
-      tempSocket.disconnect();
+      tempSocket.disconnect(); // Disconnect the temporary socket after handling login
     });
-  };
-
-  const handleNavigateToRegister = () => {
-    navigate('/register');
   };
 
   return (
     <div className="login-container">
       <h2>Login</h2>
-      {error && <p className="error">{error}</p>}
       <form onSubmit={handleLogin}>
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div>
+          <label htmlFor="username">Username:</label>
+          <input
+            type="text"
+            id="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="password">Password:</label>
+          <input
+            type="password"
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        {error && <p className="error">{error}</p>}
         <button type="submit">Login</button>
       </form>
-      <p>
-        Don't have an account?{' '}
-        <button onClick={handleNavigateToRegister} className="register-link">
-          Register
-        </button>
-      </p>
     </div>
   );
 };

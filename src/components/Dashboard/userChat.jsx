@@ -1,105 +1,118 @@
 import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
-
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
 import SendText from './sendText';
 import DisplayText from './displayText';
+import PropTypes from 'prop-types';
 import Logo from '../canLogo/logo';
 
-import PropTypes from 'prop-types';
-
-//Make sure to use env var SO IT DOESNT CONNECT TO PROD DURING DEV
 const socket = io(import.meta.env.VITE_SOCKET_URL);
 
-// Secret key for encryption/decryption. Replace with future mechanic to change key 
-//Currently Static
 const secretKey = 'xrTcxoWDqztoar40ePgiBdzif1wuIADYbdeJ3QVIooneAHPNhpvo5XgHAK/zlv5j';
 
-// Functions to encrypt and decrypt incoming/outgoing messages
-// Currently only using AES with secret key, IMPLEMENT rest of the encryption
 const encrypt = (text) => {
-  return CryptoJS.AES.encrypt(text, secretKey).toString();
+    return CryptoJS.AES.encrypt(text, secretKey).toString();
 };
+
 const decrypt = (text) => {
-  try {
     const bytes = CryptoJS.AES.decrypt(text, secretKey);
     return bytes.toString(CryptoJS.enc.Utf8);
-  } catch (error) {
-    console.error('Error decrypting message:', text, error);
-    return 'Error decrypting message';
-  }
 };
 
-function Chat({ token }) {
-  const userId = token ? jwtDecode(token).id : '';
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
+function Chat({ token, activeChat }) {
+    const userId = token ? jwtDecode(token).id : '';
+    const targetUserId = activeChat;
+    const [messages, setMessages] = useState([]);
 
-  useEffect(() => {
-    const handleInitMessages = (messages) => {
-      console.log('Received init messages:', messages);
-      const decryptedMessages = messages.map((message) => {
-        return {
-          ...message,
-          text: decrypt(message.text),
-        };
-      });
-      setMessages(decryptedMessages);
-      setLoading(false); // Done loading
-    };
-
-    const handleChatMessage = (message) => {
-      console.log('Received chat message:', message);
-      const decryptedMessage = {
-        ...message,
-        text: decrypt(message.text),
+    useEffect(() => {
+      if (!userId || !targetUserId) return;
+  
+      console.log(`🔄 Fetching messages for chat: User ${userId} ↔ Target ${targetUserId}`);
+  
+      // Reset messages when switching chats
+      setMessages([]);
+  
+      const handleInitMessages = (messages) => {
+          console.log('✅ Received init messages:', messages);
+  
+          const decryptedMessages = messages.map((message) => ({
+              ...message,
+              text: decrypt(message.text),
+          }));
+  
+          console.log('✅ Decrypted messages:', decryptedMessages);
+          setMessages(decryptedMessages);
       };
-      setMessages((prevMessages) => [...prevMessages, decryptedMessage]);
-    };
-
-    socket.on('connect', () => {
-      console.log('Socket connected, emitting ready...');
-      socket.emit('ready');
-    });
-
-    socket.on('init', handleInitMessages);
-    socket.on('chat message', handleChatMessage);
-
-    return () => {
-      socket.off('init', handleInitMessages);
-      socket.off('chat message', handleChatMessage);
-    };
-  }, []);
-
-  const sendMessage = (text) => {
-    const encryptedText = encrypt(text);
-    socket.emit('chat message', { text: encryptedText, userId });
+  
+      const handleChatMessage = (message) => {
+          console.log('📩 Received real-time message:', message);
+  
+          // Only update messages if they belong to the current chat
+          if (
+              (message.userId === userId && message.targetUserId === targetUserId) ||
+              (message.userId === targetUserId && message.targetUserId === userId)
+          ) {
+              setMessages((prevMessages) => [
+                  ...prevMessages,
+                  { ...message, text: decrypt(message.text) },
+              ]);
+          }
+      };
+  
+      // Emit `ready` to fetch messages when opening a chat
+      socket.emit('ready', { userId, targetUserId });
+  
+      // Listen for real-time messages
+      socket.on('init', handleInitMessages);
+      socket.on('chat message', handleChatMessage);
+  
+      return () => {
+          console.log(`🧹 Cleaning up listeners for chat: User ${userId} ↔ Target ${targetUserId}`);
+          socket.off('init', handleInitMessages);
+          socket.off('chat message', handleChatMessage);
+      };
+  }, [userId, targetUserId]); // Runs whenever activeChat changes  
+  
+    const sendMessage = (text) => {
+      if (!text.trim()) return; // Prevent empty messages
+  
+      console.log('Sending message:', text);
+      const encryptedText = encrypt(text);
+  
+      const newMessage = {
+          _id: Date.now(), // Temporary ID for React rendering
+          text, // Display decrypted text instantly
+          userId,
+          targetUserId,
+          createdAt: new Date().toISOString(),
+      };
+  
+      // Add message instantly to the chat UI
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+  
+      // Emit message to the server
+      socket.emit('chat message', { text: encryptedText, userId, targetUserId });
   };
+  
 
-  return (
-    <div className="app-container">
-      <div className="logo-container">
-        <Logo />
-      </div>
-      <div className="chat-container">
-        {loading ? (
-          <p>Loading messages...</p>
-        ) : (
-          <>
-            <SendText sendMessage={sendMessage} />
-            <DisplayText messages={messages} />
-          </>
-        )}
-      </div>
-    </div>
-  );
+    return (
+        <div className="app-container">
+            <div className="logo-container">
+                <Logo />
+            </div>
+            <div className="chat-container">
+                <SendText sendMessage={sendMessage} />
+                <DisplayText messages={messages} />
+            </div>
+        </div>
+    );
 }
 
 Chat.propTypes = {
-  token: PropTypes.string.isRequired,
-  chatId: PropTypes.string.isRequired,
+    token: PropTypes.string.isRequired,
+    activeChat: PropTypes.string.isRequired,
 };
 
 export default Chat;
