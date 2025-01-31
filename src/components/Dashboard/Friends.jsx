@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import io from 'socket.io-client';
 import PropTypes from 'prop-types';
+import './Friends.css';
 
 //Always keep in braces
 import {jwtDecode} from 'jwt-decode';
@@ -41,7 +42,7 @@ const Friends = ({ token, onActiveChatChange }) => {
         placeholder="Search for friends..."
       />
       <button onClick={handleSearch}>Search</button>
-      <ul>
+      <ul className='chat-list'>
         {chatList.map((targetUser, index) => (
           <li key={index} onClick={() => onActiveChatChange(targetUser.id)}>
             {targetUser.username}

@@ -41,7 +41,7 @@ const Dashboard = () => {
           <UserChat token={token} />
         )}
       </div>
-
+        
       {/* User Info */}
       <div className="user-info">
         <UserInfo username={username} userId={userId} />

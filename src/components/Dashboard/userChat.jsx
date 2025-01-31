@@ -24,6 +24,7 @@ const decrypt = (text) => {
 function Chat({ token, activeChat }) {
     const userId = token ? jwtDecode(token).id : '';
     const targetUserId = activeChat;
+    const username = token ? jwtDecode(token).username : '';
     const [messages, setMessages] = useState([]);
 
     useEffect(() => {
@@ -33,7 +34,7 @@ function Chat({ token, activeChat }) {
   
       // Reset messages when switching chats
       setMessages([]);
-  
+
       const handleInitMessages = (messages) => {
           console.log('✅ Received init messages:', messages);
   
@@ -61,7 +62,7 @@ function Chat({ token, activeChat }) {
           }
       };
   
-      // Emit `ready` to fetch messages when opening a chat
+      // Emit ready to fetch messages when opening a chat
       socket.emit('ready', { userId, targetUserId });
   
       // Listen for real-time messages
@@ -76,26 +77,27 @@ function Chat({ token, activeChat }) {
   }, [userId, targetUserId]); // Runs whenever activeChat changes  
   
     const sendMessage = (text) => {
-      if (!text.trim()) return; // Prevent empty messages
-  
-      console.log('Sending message:', text);
+      if (!text.trim()) return; 
       const encryptedText = encrypt(text);
-  
+      
+       // Temporary ID for React rendering and Display decrypted text instantly
       const newMessage = {
-          _id: Date.now(), // Temporary ID for React rendering
-          text, // Display decrypted text instantly
+          _id: Date.now(), 
+          text, 
           userId,
           targetUserId,
+          username,
           createdAt: new Date().toISOString(),
       };
+      
+      console.log('Sending message:', newMessage);
   
       // Add message instantly to the chat UI
       setMessages((prevMessages) => [...prevMessages, newMessage]);
   
       // Emit message to the server
-      socket.emit('chat message', { text: encryptedText, userId, targetUserId });
+      socket.emit('chat message', { text: encryptedText, userId, targetUserId, username });
   };
-  
 
     return (
         <div className="app-container">
@@ -104,7 +106,7 @@ function Chat({ token, activeChat }) {
             </div>
             <div className="chat-container">
                 <SendText sendMessage={sendMessage} />
-                <DisplayText messages={messages} />
+                <DisplayText messages={messages}/>
             </div>
         </div>
     );

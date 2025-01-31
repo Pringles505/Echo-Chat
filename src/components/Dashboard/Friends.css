@@ -1,0 +1,8 @@
+.chat-list {
+    list-style-type: none; 
+    padding: 0; 
+  }
+  
+  .chat-messages li {
+    margin-bottom: 10px; 
+  }

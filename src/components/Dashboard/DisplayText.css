@@ -1,0 +1,34 @@
+.chat-messages {
+  list-style-type: none; /* Remove bullet points */
+  padding: 0; /* Remove default padding */
+  margin: 0; /* Remove default margin */
+}
+
+.chat-message {
+  background-color: #f1f1f1; /* Light grey background */
+  border-radius: 10px; /* Rounded corners */
+  padding: 10px; /* Padding inside the message box */
+  margin-bottom: 10px; /* Space between messages */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+.message-header {
+  display: flex; /* Align items horizontally */
+  justify-content: space-between; /* Space between username and timestamp */
+  margin-bottom: 5px; /* Space between header and text */
+}
+
+.message-username {
+  font-weight: bold; /* Bold username */
+  color: #333; /* Dark grey color */
+}
+
+.message-timestamp {
+  font-size: 0.8em; /* Smaller font size for timestamp */
+  color: #999; /* Light grey color */
+}
+
+.message-text {
+  font-size: 1em; /* Normal font size for message text */
+  color: #333; /* Dark grey color */
+}
