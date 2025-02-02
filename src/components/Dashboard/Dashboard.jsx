@@ -5,11 +5,12 @@ import UserChat from './UserChat';
 
 //Always keep in braces
 import {jwtDecode} from 'jwt-decode';
-
 const Dashboard = () => {
   const token = localStorage.getItem('token');
+  console.log('Token in Dashboard:', token);
   let username = '';
   let userId = '';
+  
 
   if (token) {
     const decodedToken = jwtDecode(token);

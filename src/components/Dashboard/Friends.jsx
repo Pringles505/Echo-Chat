@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import PropTypes from 'prop-types';
 import './Friends.css';
@@ -6,10 +6,34 @@ import './Friends.css';
 //Always keep in braces
 import {jwtDecode} from 'jwt-decode';
 
-const Friends = ({ token, onActiveChatChange }) => {
+const Friends = ({ token, onActiveChatChange}) => {
   console.log('Rendering Friends component');
   const [searchTerm, setSearchTerm] = useState('');
   const [chatList, setSearchList] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    const socket = io(import.meta.env.VITE_SOCKET_URL, {
+      auth: { token },
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket connected');
+    });
+
+    socket.on('notification', (notification) => {
+      console.log('Received notification:', notification);
+      setNotifications((prevNotifications) => [...prevNotifications, notification]);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket disconnected');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token]);
 
   const handleSearch = () => {
     const user = token ? jwtDecode(token) : '';
@@ -42,10 +66,15 @@ const Friends = ({ token, onActiveChatChange }) => {
         placeholder="Search for friends..."
       />
       <button onClick={handleSearch}>Search</button>
-      <ul className='chat-list'>
+      <ul className="chat-list">
         {chatList.map((targetUser, index) => (
           <li key={index} onClick={() => onActiveChatChange(targetUser.id)}>
             {targetUser.username}
+          </li>
+        ))}
+        {notifications.map((notification, index) => (
+          <li key={index} className="notification-item" onClick={() => onActiveChatChange(notification.messageData.userId)}>
+            <strong>{notification.message}</strong>{notification.messageData.username}
           </li>
         ))}
       </ul>
@@ -56,6 +85,7 @@ const Friends = ({ token, onActiveChatChange }) => {
 Friends.propTypes = {
   token: PropTypes.string.isRequired,
   onActiveChatChange: PropTypes.func.isRequired,
+  notifications: PropTypes.array,
 };
 
 export default Friends;
