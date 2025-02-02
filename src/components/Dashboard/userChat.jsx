@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
@@ -7,6 +7,8 @@ import SendText from './sendText';
 import DisplayText from './displayText';
 import PropTypes from 'prop-types';
 import Logo from '../canLogo/logo';
+
+import './UserChat.css'; 
 
 const socket = io(import.meta.env.VITE_SOCKET_URL);
 
@@ -26,6 +28,8 @@ function Chat({ token, activeChat }) {
     const targetUserId = activeChat;
     const username = token ? jwtDecode(token).username : '';
     const [messages, setMessages] = useState([]);
+
+    const messagesEndRef = useRef(null);
 
     useEffect(() => {
       if (!userId || !targetUserId) return;
@@ -75,6 +79,13 @@ function Chat({ token, activeChat }) {
           socket.off('chat message', handleChatMessage);
       };
   }, [userId, targetUserId]); // Runs whenever activeChat changes  
+
+  useEffect(() => {
+    const container = document.querySelector(".messages-container");
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [messages]);
   
     const sendMessage = (text) => {
       if (!text.trim()) return; 
@@ -105,8 +116,11 @@ function Chat({ token, activeChat }) {
                 <Logo />
             </div>
             <div className="chat-container">
+                <div className="messages-container">
+                    <DisplayText messages={messages} />
+                    <div ref={messagesEndRef} />
+                    </div>
                 <SendText sendMessage={sendMessage} />
-                <DisplayText messages={messages}/>
             </div>
         </div>
     );

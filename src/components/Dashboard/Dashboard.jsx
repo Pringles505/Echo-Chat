@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Chat from './Chat';
 import Friends from './Friends';
 import UserInfo from './UserInfo';
 import UserChat from './UserChat';
