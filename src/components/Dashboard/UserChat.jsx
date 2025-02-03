@@ -48,11 +48,21 @@ function Chat({ token, activeChat }) {
           }));
   
           console.log('✅ Decrypted messages:', decryptedMessages);
+          markMessagesAsSeen(decryptedMessages);
           setMessages(decryptedMessages);
       };
   
       const handleChatMessage = (message) => {
           console.log('📩 Received real-time message:', message);
+          const sender = String(message.userId);
+
+          if (activeChat === sender) {
+            console.log('👁️👁️ Message seen:', message);
+            socket.emit('messageSeen', { userId, targetUserId });
+          }else{
+            console.log("NOT SEEN 👁️👁️ RecievedMessageId", message.userId, 'Active:', activeChat)
+            
+          }
   
           // Only update messages if they belong to the current chat
           if (
@@ -65,6 +75,8 @@ function Chat({ token, activeChat }) {
               ]);
           }
       };
+
+
   
       // Emit ready to fetch messages when opening a chat
       socket.emit('ready', { userId, targetUserId });
@@ -86,6 +98,15 @@ function Chat({ token, activeChat }) {
       container.scrollTop = container.scrollHeight;
     }
   }, [messages]);
+
+    const markMessagesAsSeen = (messages) => {
+        const unseenMessages = messages.filter(msg => msg.userId !== userId);
+        if (unseenMessages.length > 0) {
+            socket.emit('messageSeen', { userId, targetUserId });
+            console.log('👀 Marking all messages as seen');
+        }
+    };
+
   
     const sendMessage = (text) => {
       if (!text.trim()) return; 
