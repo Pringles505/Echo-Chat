@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import './DisplayText.css';
 
-const DisplayText = ({ messages = [] }) => {
+const DisplayText = ({ messages = [], userId}) => {
   console.log('display messages:', messages);
 
   return (
@@ -13,7 +13,7 @@ const DisplayText = ({ messages = [] }) => {
             <span className="message-timestamp">{new Date(message.createdAt).toLocaleString()}</span>
           </div>
           <div className="message-text">{message.text}</div>
-          {message.seenStatus && (
+          {userId === message.userId && message.seenStatus && (
             <div className="message-seen-status">✅ Seen</div>
           )}
         </li>
