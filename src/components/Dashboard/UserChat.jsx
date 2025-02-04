@@ -10,8 +10,6 @@ import Logo from '../canLogo/logo';
 
 import './UserChat.css'; 
 
-const socket = io(import.meta.env.VITE_SOCKET_URL);
-
 const secretKey = 'xrTcxoWDqztoar40ePgiBdzif1wuIADYbdeJ3QVIooneAHPNhpvo5XgHAK/zlv5j';
 
 const encrypt = (text) => {
@@ -24,6 +22,11 @@ const decrypt = (text) => {
 };
 
 function Chat({ token, activeChat }) {
+
+    const socket = io(import.meta.env.VITE_SOCKET_URL, {
+        auth: { token },
+    });
+
     const userId = token ? jwtDecode(token).id : '';
     const targetUserId = activeChat;
     const username = token ? jwtDecode(token).username : '';
@@ -93,6 +96,28 @@ function Chat({ token, activeChat }) {
   }, [userId, targetUserId]); // Runs whenever activeChat changes  
 
   useEffect(() => {
+    if (socket) {
+      socket.on('messageSeenUpdate', ({ userId: seenBy, targetUserId }) => {
+        console.log(`📩👁️ Real-time update: messages seen by User ${seenBy}`);
+  
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            (msg.userId === seenBy && msg.targetUserId === targetUserId) || 
+            (msg.userId === targetUserId && msg.targetUserId === seenBy)
+              ? { ...msg, seenStatus: true }
+              : msg
+          )
+        );
+      });
+  
+      return () => {
+        socket.off('messageSeenUpdate');
+      };
+    }
+  }, [socket]);
+  
+
+  useEffect(() => {
     const container = document.querySelector(".messages-container");
     if (container) {
       container.scrollTop = container.scrollHeight;
@@ -123,9 +148,7 @@ function Chat({ token, activeChat }) {
       };
       
       console.log('Sending message:', newMessage);
-  
-      // Add message instantly to the chat UI
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
+
   
       // Emit message to the server
       socket.emit('chat message', { text: encryptedText, userId, targetUserId, username });
@@ -138,7 +161,7 @@ function Chat({ token, activeChat }) {
             </div>
             <div className="chat-container">
                 <div className="messages-container">
-                    <DisplayText messages={messages} />
+                    <DisplayText messages={messages} userId={userId}/>
                     <div ref={messagesEndRef} />
                     </div>
                 <SendText sendMessage={sendMessage} />

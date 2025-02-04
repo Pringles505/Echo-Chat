@@ -1,6 +1,7 @@
+import PropTypes from 'prop-types';
 import './DisplayText.css';
 
-const displayText = ({ messages = [] }) => {
+const DisplayText = ({ messages = [] }) => {
   console.log('display messages:', messages);
 
   return (
@@ -12,10 +13,17 @@ const displayText = ({ messages = [] }) => {
             <span className="message-timestamp">{new Date(message.createdAt).toLocaleString()}</span>
           </div>
           <div className="message-text">{message.text}</div>
+          {message.seenStatus && (
+            <div className="message-seen-status">✅ Seen</div>
+          )}
         </li>
       ))}
     </ul>
   );
 };
 
-export default displayText;
+DisplayText.propTypes = {
+  messages: PropTypes.array.isRequired,
+};
+
+export default DisplayText;
