@@ -95,18 +95,6 @@ function Chat({ token, activeChat }) {
       };
   }, [userId, targetUserId]); // Runs whenever activeChat changes  
 
-  socket.on('messageSeenUpdate', ({ userId: seenBy }) => {
-    console.log('👀 Message seen by:', seenBy);
-    setMessages((prevMessages) =>
-      prevMessages.map((msg) =>
-        (msg.userId === seenBy && msg.targetUserId === targetUserId) || 
-        (msg.userId === targetUserId && msg.targetUserId === seenBy)
-          ? { ...msg, seenStatus: true }
-          : msg
-      )
-    );
-  });
-  
   useEffect(() => {
     const container = document.querySelector(".messages-container");
     if (container) {
@@ -144,20 +132,30 @@ function Chat({ token, activeChat }) {
       socket.emit('chat message', { text: encryptedText, userId, targetUserId, username });
   };
 
-    return (
-        <div className="app-container">
-            <div className="logo-container">
-                <Logo />
-            </div>
-            <div className="chat-container">
-                <div className="messages-container">
-                    <DisplayText messages={messages} userId={userId}/>
-                    <div ref={messagesEndRef} />
-                    </div>
-                <SendText sendMessage={sendMessage} />
-            </div>
-        </div>
+  // Listen for messageSeenUpdate
+  socket.on('messageSeenUpdate', ({ userId, targetUserId }) => {
+    console.log('👀',  targetUserId, 'Message seen by:', userId);
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) => {
+          return { ...msg, seenStatus: true };
+      })
     );
+  });
+
+  return (
+    <div className="app-container">
+      <div className="logo-container">
+        <Logo />
+      </div>
+      <div className="chat-container">
+        <div className="messages-container">
+          <DisplayText messages={messages} currentUserId={userId} />
+          <div ref={messagesEndRef} />
+        </div>
+        <SendText sendMessage={sendMessage} />
+      </div>
+    </div>
+  );
 }
 
 Chat.propTypes = {

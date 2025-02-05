@@ -1,19 +1,20 @@
 import PropTypes from 'prop-types';
 import './DisplayText.css';
 
-const DisplayText = ({ messages = [], userId}) => {
-  console.log('display messages:', messages);
-
+const DisplayText = ({ messages = [], userId }) => {
+  console.log('DisplayText re-rendered with messages:', messages);
   return (
     <ul className="chat-messages">
       {messages.map((message) => (
         <li key={message._id} className="chat-message">
           <div className="message-header">
             <strong className="message-username">{message.username}</strong>
-            <span className="message-timestamp">{new Date(message.createdAt).toLocaleString()}</span>
+            <span className="message-timestamp">
+              {new Date(message.createdAt).toLocaleString()}
+            </span>
           </div>
           <div className="message-text">{message.text}</div>
-          {userId === message.userId && message.seenStatus && (
+          {message.seenStatus && (
             <div className="message-seen-status">✅ Seen</div>
           )}
         </li>
