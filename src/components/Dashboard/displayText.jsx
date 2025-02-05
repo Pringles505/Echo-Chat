@@ -24,6 +24,7 @@ const DisplayText = ({ messages = [], userId}) => {
 
 DisplayText.propTypes = {
   messages: PropTypes.array.isRequired,
+  userId: PropTypes.string.isRequired,
 };
 
 export default DisplayText;

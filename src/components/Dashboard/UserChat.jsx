@@ -25,6 +25,7 @@ function Chat({ token, activeChat }) {
 
     const socket = io(import.meta.env.VITE_SOCKET_URL, {
         auth: { token },
+        transport: ['websocket'],
     });
 
     const userId = token ? jwtDecode(token).id : '';
