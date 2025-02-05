@@ -95,36 +95,18 @@ function Chat({ token, activeChat }) {
       };
   }, [userId, targetUserId]); // Runs whenever activeChat changes  
 
-  useEffect(() => {
-    if (socket) {
-      console.log("🔍 Listening for messageSeenUpdate...");
-      console.log("🔍🔍 Socket instance:", socket);
-      console.log("🔍🔍 Socket connected:", socket.connected);
+  socket.on('messageSeenUpdate', ({ userId: seenBy }) => {
+    console.log('👀 Message seen by:', seenBy);
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        (msg.userId === seenBy && msg.targetUserId === targetUserId) || 
+        (msg.userId === targetUserId && msg.targetUserId === seenBy)
+          ? { ...msg, seenStatus: true }
+          : msg
+      )
+    );
+  });
   
-      socket.on('messageSeenUpdate', ({ userId: seenBy, targetUserId }) => {
-        console.log(`📩👁️ Real-time update: messages seen by User ${seenBy}`);
-  
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            (msg.userId === seenBy && msg.targetUserId === targetUserId) || 
-            (msg.userId === targetUserId && msg.targetUserId === seenBy)
-              ? { ...msg, seenStatus: true }
-              : msg
-          )
-        );
-      });
-  
-      return () => {
-        console.log("🛑 Unsubscribing from messageSeenUpdate...");
-        socket.off('messageSeenUpdate');  
-      };
-    } else {
-      console.log("⚠️ Socket is undefined!");
-    }
-  }, [socket]);
-  
-  
-
   useEffect(() => {
     const container = document.querySelector(".messages-container");
     if (container) {
