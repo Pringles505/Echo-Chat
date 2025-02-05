@@ -97,27 +97,34 @@ function Chat({ token, activeChat }) {
   }, [userId, targetUserId]); // Runs whenever activeChat changes  
 
   useEffect(() => {
-    if (socket) {
-      console.log("🔍 Listening for messageSeenUpdate...");
-      
-      socket.on('messageSeenUpdate', ({ userId: seenBy, targetUserId }) => {
-        console.log(`📩👁️ Real-time update: messages seen by User ${seenBy}`);
-  
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            (msg.userId === seenBy && msg.targetUserId === targetUserId) || 
-            (msg.userId === targetUserId && msg.targetUserId === seenBy)
-              ? { ...msg, seenStatus: true }
-              : msg
-          )
-        );
-      });
-  
-      return () => {
-        socket.off('messageSeenUpdate');
-      };
+    if (!socket) {
+      console.warn("⚠️ Socket is undefined, cannot attach event listeners.");
+      return;
     }
+  
+    console.log("🔍 Attaching messageSeenUpdate listener...");
+  
+    const handleMessageSeenUpdate = ({ userId: seenBy, targetUserId }) => {
+      console.log(`📩👁️ Real-time update received: messages seen by User ${seenBy}`);
+  
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          (msg.userId === seenBy && msg.targetUserId === targetUserId) ||
+          (msg.userId === targetUserId && msg.targetUserId === seenBy)
+            ? { ...msg, seenStatus: true }
+            : msg
+        )
+      );
+    };
+  
+    socket.on("messageSeenUpdate", handleMessageSeenUpdate);
+  
+    return () => {
+      console.log("🧹 Cleaning up messageSeenUpdate listener...");
+      socket.off("messageSeenUpdate", handleMessageSeenUpdate);
+    };
   }, [socket]);
+  
   
 
   useEffect(() => {
