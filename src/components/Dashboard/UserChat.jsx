@@ -98,6 +98,8 @@ function Chat({ token, activeChat }) {
 
   useEffect(() => {
     if (socket) {
+      console.log("🔍 Listening for messageSeenUpdate...");
+      
       socket.on('messageSeenUpdate', ({ userId: seenBy, targetUserId }) => {
         console.log(`📩👁️ Real-time update: messages seen by User ${seenBy}`);
   
