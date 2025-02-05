@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import './DisplayText.css';
 
-const DisplayText = ({ messages = [], userId }) => {
+const DisplayText = ({ messages = [], currentUserId }) => {
   console.log('DisplayText re-rendered with messages:', messages);
   return (
     <ul className="chat-messages">
@@ -14,7 +14,7 @@ const DisplayText = ({ messages = [], userId }) => {
             </span>
           </div>
           <div className="message-text">{message.text}</div>
-          {message.seenStatus && (
+          {currentUserId === message.userId && message.seenStatus && (
             <div className="message-seen-status">✅ Seen</div>
           )}
         </li>
@@ -25,7 +25,7 @@ const DisplayText = ({ messages = [], userId }) => {
 
 DisplayText.propTypes = {
   messages: PropTypes.array.isRequired,
-  userId: PropTypes.string.isRequired,
+  currentUserId: PropTypes.string.isRequired,
 };
 
 export default DisplayText;
