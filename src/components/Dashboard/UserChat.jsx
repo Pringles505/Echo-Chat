@@ -99,8 +99,9 @@ function Chat({ token, activeChat }) {
   useEffect(() => {
     if (socket) {
       console.log("🔍 Listening for messageSeenUpdate...");
-      console.log("🔍🔍", socket);
-      
+      console.log("🔍🔍 Socket instance:", socket);
+      console.log("🔍🔍 Socket connected:", socket.connected);
+  
       socket.on('messageSeenUpdate', ({ userId: seenBy, targetUserId }) => {
         console.log(`📩👁️ Real-time update: messages seen by User ${seenBy}`);
   
@@ -115,10 +116,14 @@ function Chat({ token, activeChat }) {
       });
   
       return () => {
-        socket.off('messageSeenUpdate');
+        console.log("🛑 Unsubscribing from messageSeenUpdate...");
+        socket.off('messageSeenUpdate');  
       };
+    } else {
+      console.log("⚠️ Socket is undefined!");
     }
   }, [socket]);
+  
   
 
   useEffect(() => {
