@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:wasm": "wasm-pack build ./aes-wasm --target web --out-dir /pkg --release",
+    "build": "npm run build:wasm && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
