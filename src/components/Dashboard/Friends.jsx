@@ -21,6 +21,7 @@ const Friends = ({ token, onActiveChatChange}) => {
       console.log('Socket connected');
     });
 
+    // When the user receives a notification
     socket.on('notification', (notification) => {
       console.log('Received notification:', notification);
       setNotifications((prevNotifications) => [...prevNotifications, notification]);
@@ -35,6 +36,7 @@ const Friends = ({ token, onActiveChatChange}) => {
     };
   }, [token]);
 
+  // Search for a user when adding a friend
   const handleSearch = () => {
     const user = token ? jwtDecode(token) : '';
     console.log('Searching for:', searchTerm);
@@ -44,12 +46,14 @@ const Friends = ({ token, onActiveChatChange}) => {
       console.log('TempSocket connected');
     });
 
+    // Disconnect if the search term is empty or the same as the user
     if (!searchTerm || searchTerm === user.username) {
       console.log('Search term is empty or the same as the user');
       tempSocket.disconnect();
       return;
     }
 
+    // Search for the user in the db and add to the chat list
     tempSocket.emit('searchUser', { searchTerm }, (response) => {
       console.log('Search response:', response);
       const targetUser = response.user;

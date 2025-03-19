@@ -11,7 +11,7 @@ const Dashboard = () => {
   let username = '';
   let userId = '';
   
-
+  // Token authentication and decoding
   if (token) {
     const decodedToken = jwtDecode(token);
     username = decodedToken.username;
