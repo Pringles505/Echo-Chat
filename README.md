@@ -2,6 +2,16 @@
 
 Echo is a secure chat app with a security protocol based on the [**Signal Protocol**](https://signal.org/docs/). Built with minimum external library use, all **Diffie Hellman Operations** including **Scalar Multiplication** are powered by our own Rust modules compiled with **WebAssembly** for the WebApp.
 
+#### Outsourced Cryptographic Functions
+For the time being, the following cryptographic functionalities are handled by external crates:
+
+Hash Key Derivation Function (HKDF)
+→ hkdf
+
+Montgomery Point and Scalar operations
+→ curve25519-dalek
+
+
 ## Setup
 
 Clone the proyect
