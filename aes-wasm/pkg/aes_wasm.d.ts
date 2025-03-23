@@ -1,7 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
-export function encrypt(text: string, key: string, nonce: string): string;
-export function decrypt(text: string, key: string, nonce: string): string;
+export function encrypt(text: string, key: Uint8Array, nonce: Uint8Array): string;
+export function decrypt(text: string, key: Uint8Array, nonce: Uint8Array): string;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 

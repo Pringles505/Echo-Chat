@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
+import { Buffer } from 'buffer';
 
-import init, { generate_private_key as testFunc } from '/dh-wasm/pkg';
+import init, { generate_private_key, generate_public_key } from '/dh-wasm/pkg';
 
 
 const socket = io(import.meta.env.VITE_SOCKET_URL);
@@ -26,15 +27,25 @@ const Register = () => {
     await init();
 
     // Generate the identity pair
-    const randomBytes = new Uint8Array(32);
-    crypto.getRandomValues(randomBytes);
+    const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+    const privateKey = generate_private_key(randomBytes);
+    const publicKey = generate_public_key(privateKey);
 
-    const privateKey = testFunc(randomBytes);
 
-    console.log('Identity:', new Uint8Array(privateKey));
+    console.log("Private Key:", new Uint8Array(privateKey));
+    console.log("Public Key:", new Uint8Array(publicKey));
+
 
     // Emit the registration event
-    socket.emit('register', { username, password }, (response) => {
+    const publicKeyString = Buffer.from(publicKey).toString('base64');
+    const arrayBufferToBase64 = (buffer) => {
+      return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    };
+    
+    const privateKeyBase64 = arrayBufferToBase64(privateKey);
+    localStorage.setItem("privateKey", privateKeyBase64);
+
+    socket.emit('register', { username, password, publicKeyString }, (response) => {
       if (response.success) {
         navigate('/login');
       } else {

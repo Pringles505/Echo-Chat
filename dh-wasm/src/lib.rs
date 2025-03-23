@@ -1,22 +1,80 @@
 use wasm_bindgen::prelude::*;
+use hkdf::Hkdf;
+use sha2::Sha256;
+use curve25519_dalek::montgomery::MontgomeryPoint;
+use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::constants::X25519_BASEPOINT;
+
+#[wasm_bindgen]
+pub fn derive_symmetric_key(shared_secret: &[u8]) -> Vec<u8> {
+    if shared_secret.len() != 32 {
+        return vec![];
+    }
+
+    let hk = Hkdf::<Sha256>::new(None, shared_secret);
+    let mut okm = [0u8; 32]; // Output Keying Material — you can use 16 bytes for AES-128, 32 for AES-256
+    hk.expand(b"message-encryption", &mut okm).unwrap();
+
+    okm.to_vec()
+}
+
+#[wasm_bindgen]
+pub fn diffie_hellman(my_private_key_bytes: &[u8], their_public_key_bytes: &[u8]) -> Vec<u8> {
+    if my_private_key_bytes.len() != 32 || their_public_key_bytes.len() != 32 {
+        return vec![];
+    }
+
+    let mut private_key = [0u8; 32];
+    private_key.copy_from_slice(&my_private_key_bytes[..32]);
+
+    // Clamp private key as per X25519 spec
+    private_key[0] &= 248;
+    private_key[31] &= 127;
+    private_key[31] |= 64;
+
+    // ec scalar for multiplication
+    let scalar = Scalar::from_bytes_mod_order(private_key);
+
+    // Converts into ec point and performs scalar multiplication
+    let their_public_point = MontgomeryPoint(their_public_key_bytes.try_into().unwrap());
+    let shared_point = scalar * their_public_point;
+
+    // Converts to bytes
+    shared_point.to_bytes().to_vec()
+}
+
+#[wasm_bindgen]
+pub fn generate_public_key(private_key_bytes: &[u8]) -> Vec<u8> {
+    if private_key_bytes.len() != 32 {
+        return vec![];
+    }
+
+    let mut private_key = [0u8; 32];
+    private_key.copy_from_slice(&private_key_bytes[..32]);
+
+    // Clamp manually (as per X25519 spec)
+    private_key[0] &= 248;
+    private_key[31] &= 127;
+    private_key[31] |= 64;
+
+    let scalar = Scalar::from_bytes_mod_order(private_key);
+    let public_point: MontgomeryPoint = scalar * X25519_BASEPOINT;
+
+    public_point.to_bytes().to_vec()
+}
 
 #[wasm_bindgen]
 pub fn generate_private_key(js_random_bytes: &[u8]) -> Vec<u8> {
     let mut private_key = [0u8; 32];
 
-    // Ensure we received enough randomness
-    if js_random_bytes.len() >= 32 {
-        private_key.copy_from_slice(&js_random_bytes[..32]);
-    } else {
-        return vec![]; // Return empty if not enough randomness
+    if js_random_bytes.len() < 32 {
+        return vec![];
     }
+    private_key.copy_from_slice(&js_random_bytes[..32]);
 
-    // Apply required bit manipulations for Curve25519 (Ed25519 private keys)
-    // https://en.wikipedia.org/wiki/Curve25519 this is how 25519 is defined
-
-    private_key[0] &= 248; 
-    private_key[31] &= 127; 
-    private_key[31] |= 64; 
+    private_key[0] &= 248;
+    private_key[31] &= 127;
+    private_key[31] |= 64;
 
     private_key.to_vec()
 }

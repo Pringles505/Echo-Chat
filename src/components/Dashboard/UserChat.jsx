@@ -7,26 +7,48 @@ import './UserChat.css';
 import SendText from './sendText';
 import DisplayText from './displayText';
 import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt } from './../../../aes-wasm/pkg';
+import init_dh, { derive_symmetric_key, diffie_hellman  } from '/dh-wasm/pkg';
 
 // Secret key and nonce for encryption
-const secretKey = '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f';
 const nonce = '000102030405060708090a0b'; 
+const hexToUint8Array = (hex) => {
+  const bytes = [];
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes.push(parseInt(hex.substr(i, 2), 16));
+  }
+  return new Uint8Array(bytes);
+};
+
+const nonceArray = hexToUint8Array(nonce);
 
 // Encrypt and decrypt functions from WebAssembly module
-const encrypt = async (text) => {
+const encrypt = async (text, derivedKey) => {
   await init();
+  console.log('derivedKey:', derivedKey);
+
   try {
-    return  wasmEncrypt(text, secretKey, nonce);
+    // Ensure derivedKey is a Uint8Array
+    if (!(derivedKey instanceof Uint8Array)) {
+      derivedKey = new Uint8Array(derivedKey);
+    }
+    // Call the WebAssembly encrypt function
+    const encryptedText = await wasmEncrypt(text, derivedKey, nonceArray);
+    return encryptedText;
   } catch (error) {
+    console.log('Text:', text, typeof text);
+    console.log('Derived Key:', derivedKey, typeof derivedKey);
+    console.log('Nonce:', nonce, typeof nonce);
     console.error('Encryption error:', error);
     throw error;
   }
 };
 
-const decrypt = async (text) => {
+const decrypt = async (text, derivedKey) => {
   await init();
+  console.log('derivedKey:', derivedKey);
+  console.log('nonce:', nonce);
   try {
-    return wasmDecrypt(text, secretKey, nonce);
+    return wasmDecrypt(text, derivedKey, nonceArray);
   } catch (error) {
     console.error('Decryption error:', error);
     throw error;
@@ -38,12 +60,65 @@ function Chat({ token, activeChat }) {
     auth: { token },
   });
 
+  // Convert the Base64 string into a Uint8Array
+  const base64ToArrayBuffer = (base64String) => {
+    const binaryString = atob(base64String);
+    const byteArray = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      byteArray[i] = binaryString.charCodeAt(i);
+    }
+    return byteArray;
+  };
+
+  const storedPrivateKey = localStorage.getItem('privateKey');
+  const privateKeyArray = base64ToArrayBuffer(storedPrivateKey);
+
+  const fetchPublicIdentityKey = async (targetUserId) => {
+    return new Promise((resolve, reject) => {
+      socket.emit('getPublicIdentityKey', { targetUserId }, (response) => {
+        if (response.success) {
+          console.log('✅ Fetched publicIdentityKey:', response.publicIdentityKey);
+          resolve(response.publicIdentityKey);
+        } else {
+          console.error('❌ Failed to fetch publicIdentityKey:', response.error);
+          reject(new Error(response.error));
+        }
+      });
+    });
+  };
+
   const userId = token ? jwtDecode(token).id : '';
   const targetUserId = activeChat;
   const username = token ? jwtDecode(token).username : '';
   const [messages, setMessages] = useState([]);
+  const [targetPublicIdentityKey, setTargetPublicIdentityKey] = useState('');
+  const [globalDerivedKey, setDerivedKey] = useState('');
 
   const messagesEndRef = useRef(null);
+
+  const convert64ToArrayBuffer = (base64String) => {
+    const binaryString = atob(base64String);
+    const byteArray = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      byteArray[i] = binaryString.charCodeAt(i);
+    }
+    return byteArray;
+  };
+
+  const computeDerivedKey = async () => {
+    const targetPublicKey = await fetchPublicIdentityKey(targetUserId);
+
+    const targetPublicIdentityKey = convert64ToArrayBuffer(targetPublicKey);
+    setTargetPublicIdentityKey(targetPublicIdentityKey);
+    console.log('🖥️Computing Derived Key');
+    console.log('privateKeyArray:', privateKeyArray);
+    console.log('targetPublicIdentityKey:', targetPublicIdentityKey);
+
+    const sharedSecret = await diffie_hellman(privateKeyArray, targetPublicIdentityKey);
+    const derivedKey = await derive_symmetric_key(sharedSecret);
+    console.log('🖥️Derived key:', derivedKey);
+    setDerivedKey(derivedKey);
+  };
 
   useEffect(() => {
     if (!userId || !targetUserId) return;
@@ -55,11 +130,13 @@ function Chat({ token, activeChat }) {
 
     const handleInitMessages = async (messages) => {
       console.log('✅ Received init messages:', messages);
+      init_dh();
+      computeDerivedKey();
 
       const decryptedMessages = await Promise.all(
         messages.map(async (message) => ({
           ...message,
-          text: await decrypt(message.text),
+          text: await decrypt(message.text, globalDerivedKey),
         }))
       );
 
@@ -71,6 +148,9 @@ function Chat({ token, activeChat }) {
     const handleChatMessage = async (message) => {
       console.log('📩 Received real-time message:', message);
       const sender = String(message.userId);
+      init_dh();
+      computeDerivedKey();
+      console.log('privateKeyArray:', privateKeyArray);
 
       if (activeChat === sender) {
         console.log('👁️👁️ Message seen:', message);
@@ -86,7 +166,7 @@ function Chat({ token, activeChat }) {
       ) {
         const decryptedMessage = {
           ...message,
-          text: await decrypt(message.text),
+          text: await decrypt(message.text, globalDerivedKey),
         };
         setMessages((prevMessages) => [...prevMessages, decryptedMessage]);
       }
@@ -122,9 +202,11 @@ function Chat({ token, activeChat }) {
   };
 
   const sendMessage = async (text) => {
+    init_dh();
+    computeDerivedKey();
     if (!text.trim()) return;
     try {
-      const encryptedText = await encrypt(text);
+      const encryptedText = await encrypt(text, globalDerivedKey);
 
       // Temporary ID for React rendering and Display decrypted text instantly
       const newMessage = {

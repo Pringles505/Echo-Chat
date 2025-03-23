@@ -74,6 +74,13 @@ function passStringToWasm0(arg, malloc, realloc) {
     return ptr;
 }
 
+function passArray8ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 1, 1) >>> 0;
+    getUint8ArrayMemory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
 function takeFromExternrefTable0(idx) {
     const value = wasm.__wbindgen_export_0.get(idx);
     wasm.__externref_table_dealloc(idx);
@@ -81,8 +88,8 @@ function takeFromExternrefTable0(idx) {
 }
 /**
  * @param {string} text
- * @param {string} key
- * @param {string} nonce
+ * @param {Uint8Array} key
+ * @param {Uint8Array} nonce
  * @returns {string}
  */
 export function encrypt(text, key, nonce) {
@@ -91,9 +98,9 @@ export function encrypt(text, key, nonce) {
     try {
         const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr1 = passArray8ToWasm0(key, wasm.__wbindgen_malloc);
         const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(nonce, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr2 = passArray8ToWasm0(nonce, wasm.__wbindgen_malloc);
         const len2 = WASM_VECTOR_LEN;
         const ret = wasm.encrypt(ptr0, len0, ptr1, len1, ptr2, len2);
         var ptr4 = ret[0];
@@ -112,8 +119,8 @@ export function encrypt(text, key, nonce) {
 
 /**
  * @param {string} text
- * @param {string} key
- * @param {string} nonce
+ * @param {Uint8Array} key
+ * @param {Uint8Array} nonce
  * @returns {string}
  */
 export function decrypt(text, key, nonce) {
@@ -122,9 +129,9 @@ export function decrypt(text, key, nonce) {
     try {
         const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr1 = passArray8ToWasm0(key, wasm.__wbindgen_malloc);
         const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(nonce, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr2 = passArray8ToWasm0(nonce, wasm.__wbindgen_malloc);
         const len2 = WASM_VECTOR_LEN;
         const ret = wasm.decrypt(ptr0, len0, ptr1, len1, ptr2, len2);
         var ptr4 = ret[0];
