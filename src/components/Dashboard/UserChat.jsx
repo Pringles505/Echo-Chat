@@ -11,6 +11,7 @@ import init_dh, { derive_symmetric_key, diffie_hellman  } from '/dh-wasm/pkg';
 
 // Secret key and nonce for encryption
 const nonce = '000102030405060708090a0b'; 
+
 const hexToUint8Array = (hex) => {
   const bytes = [];
   for (let i = 0; i < hex.length; i += 2) {
@@ -45,8 +46,14 @@ const encrypt = async (text, derivedKey) => {
 
 const decrypt = async (text, derivedKey) => {
   await init();
-  console.log('derivedKey:', derivedKey);
-  console.log('nonce:', nonce);
+
+  // Ensure the derived key is computed before decryption
+  if (!derivedKey) {
+    console.error('Derived key is missing');
+  }
+  
+  console.log('🍔derivedKey:', derivedKey);
+  console.log('🍔nonce:', nonce);
   try {
     return wasmDecrypt(text, derivedKey, nonceArray);
   } catch (error) {
@@ -92,7 +99,7 @@ function Chat({ token, activeChat }) {
   const username = token ? jwtDecode(token).username : '';
   const [messages, setMessages] = useState([]);
   const [targetPublicIdentityKey, setTargetPublicIdentityKey] = useState('');
-  const [globalDerivedKey, setDerivedKey] = useState('');
+  const [globalDerivedKey, setDerivedKey] = useState();
 
   const messagesEndRef = useRef(null);
 
@@ -106,6 +113,7 @@ function Chat({ token, activeChat }) {
   };
 
   const computeDerivedKey = async () => {
+    await init_dh();
     const targetPublicKey = await fetchPublicIdentityKey(targetUserId);
 
     const targetPublicIdentityKey = convert64ToArrayBuffer(targetPublicKey);
@@ -118,6 +126,7 @@ function Chat({ token, activeChat }) {
     const derivedKey = await derive_symmetric_key(sharedSecret);
     console.log('🖥️Derived key:', derivedKey);
     setDerivedKey(derivedKey);
+    return derivedKey;
   };
 
   useEffect(() => {
@@ -130,13 +139,15 @@ function Chat({ token, activeChat }) {
 
     const handleInitMessages = async (messages) => {
       console.log('✅ Received init messages:', messages);
-      init_dh();
-      computeDerivedKey();
+      await init_dh();
+      const derivedKey = await computeDerivedKey();
+      console.log('⭐handleinit⭐ Derived key:', globalDerivedKey);
+      console.log('😭handleinit😭 Derived key:', derivedKey);
 
       const decryptedMessages = await Promise.all(
         messages.map(async (message) => ({
           ...message,
-          text: await decrypt(message.text, globalDerivedKey),
+          text: await decrypt(message.text, derivedKey),
         }))
       );
 
@@ -148,8 +159,9 @@ function Chat({ token, activeChat }) {
     const handleChatMessage = async (message) => {
       console.log('📩 Received real-time message:', message);
       const sender = String(message.userId);
-      init_dh();
-      computeDerivedKey();
+      await init_dh();
+      const derivedKey = await computeDerivedKey();
+      console.log('✨handleChat✨ Derived key:', derivedKey);
       console.log('privateKeyArray:', privateKeyArray);
 
       if (activeChat === sender) {
@@ -166,7 +178,7 @@ function Chat({ token, activeChat }) {
       ) {
         const decryptedMessage = {
           ...message,
-          text: await decrypt(message.text, globalDerivedKey),
+          text: await decrypt(message.text, derivedKey),
         };
         setMessages((prevMessages) => [...prevMessages, decryptedMessage]);
       }
@@ -202,7 +214,7 @@ function Chat({ token, activeChat }) {
   };
 
   const sendMessage = async (text) => {
-    init_dh();
+    await init_dh();
     computeDerivedKey();
     if (!text.trim()) return;
     try {

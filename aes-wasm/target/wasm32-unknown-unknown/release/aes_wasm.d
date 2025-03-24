@@ -1,1 +1,1 @@
-C:\Users\masca\Desktop\Clase\FinalProject\Frontend\ChatTuah-frontend\aes-wasm\target\wasm32-unknown-unknown\release\aes_wasm.wasm: C:\Users\masca\Desktop\Clase\FinalProject\Frontend\ChatTuah-frontend\aes-wasm\src\lib.rs
+C:\Users\masca\Desktop\Clase\FinalProject\Frontend\Echo-frontend\aes-wasm\target\wasm32-unknown-unknown\release\aes_wasm.wasm: C:\Users\masca\Desktop\Clase\FinalProject\Frontend\Echo-frontend\aes-wasm\src\lib.rs
