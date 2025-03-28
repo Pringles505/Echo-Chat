@@ -1,4 +1,4 @@
-# <img src="logo.png" alt="Echo Logo" width="30" height="30" align="center"/> Echo Chat App
+# <img src="logo.png" alt="Echo Logo" width="70" height="60" align="center"/> Echo Chat App
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Built_with-Rust-orange.svg)](https://www.rust-lang.org/)
