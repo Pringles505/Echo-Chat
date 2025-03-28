@@ -4,6 +4,9 @@ import io from 'socket.io-client';
 import { Buffer } from 'buffer';
 
 import init, { generate_private_key, generate_public_key } from '/dh-wasm/pkg';
+import init_xeddsa, { convert_x25519_to_xeddsa, compute_determenistic_nonce, 
+  compute_nonce_point, derive_ed25519_keypair_from_x25519, compute_challenge_hash, 
+  compute_signature_scaler, compute_signature} from '/xeddsa-wasm/pkg';
 
 const socket = io(import.meta.env.VITE_SOCKET_URL);
 
@@ -24,6 +27,7 @@ const Register = () => {
 
     // Initialize the WASM module
     await init();
+    await init_xeddsa();
 
     // Generate the identity pair
     const randomBytes = crypto.getRandomValues(new Uint8Array(32));
@@ -37,6 +41,26 @@ const Register = () => {
     console.log("Public Key:", new Uint8Array(publicKey));
     console.log("Private Pre Key:", new Uint8Array(privatePreKey));
     console.log("Public Pre Key:", new Uint8Array(publicPreKey));
+
+
+    const xeddsaKey = convert_x25519_to_xeddsa(publicKey);
+    const edPrivScaler = xeddsaKey.slice(0, 32);
+    const prefix = xeddsaKey.slice(32, 64);
+    const deterministicNonce = compute_determenistic_nonce(prefix, publicPreKey);
+    const noncePoint = compute_nonce_point(deterministicNonce);
+    const publicEdKey = derive_ed25519_keypair_from_x25519(publicPreKey);
+    const challenge_hash = compute_challenge_hash(noncePoint,publicEdKey, publicPreKey);
+    const signature_scaler = compute_signature_scaler(deterministicNonce, challenge_hash, edPrivScaler);
+    const signature = compute_signature(noncePoint, signature_scaler);
+    
+    console.log('Xeddsa Public Key:', convert_x25519_to_xeddsa(publicKey));
+    console.log('Deterministic nonce:', deterministicNonce);
+    console.log('Nonce Point:', noncePoint);
+    console.log('publicEdKey:', publicEdKey);
+    console.log('Challenge Hash:', challenge_hash);
+    console.log('Signature Scaler:', signature_scaler);
+    console.log('Signature:', signature);
+
 
     // Emit the registration event
     const publicKeyString = Buffer.from(publicKey).toString('base64');
@@ -55,6 +79,7 @@ const Register = () => {
     const keyBundle = {
       publicIdentityKey: publicKeyString,
       publicPreKey: publicPreKeyString,
+      signature: signature,
     }
 
     console.log('Key bundle:', keyBundle);

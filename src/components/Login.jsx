@@ -4,9 +4,7 @@ import io from 'socket.io-client';
 
 import { Buffer } from 'buffer';
 
-import init, { generate_private_key, generate_public_key,
-                generate_private_prekey, generate_public_prekey
- } from '/dh-wasm/pkg';
+import init, { generate_private_key, generate_public_key} from '/dh-wasm/pkg';
 
 
 const Login = () => {

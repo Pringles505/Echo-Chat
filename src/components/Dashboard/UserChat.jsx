@@ -6,6 +6,7 @@ import Logo from '../canLogo/logo';
 import './UserChat.css';
 import SendText from './sendText';
 import DisplayText from './displayText';
+
 import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt } from './../../../aes-wasm/pkg';
 import init_dh, { derive_symmetric_key, diffie_hellman  } from '/dh-wasm/pkg';
 
