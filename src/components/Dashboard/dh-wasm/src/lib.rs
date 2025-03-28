@@ -78,3 +78,39 @@ pub fn generate_private_key(js_random_bytes: &[u8]) -> Vec<u8> {
 
     private_key.to_vec()
 }
+
+#[wasm_bindgen]
+pub fn generate_public_prekey(private_prekey_bytes: &[u8]) -> Vec<u8> {
+    if private_prekey_bytes.len() != 32 {
+        return vec![];
+    }
+
+    let mut private_prekey = [0u8; 32];
+    private_prekey.copy_from_slice(&private_prekey_bytes[..32]);
+
+    // Clamp manually (as per X25519 spec)
+    private_prekey[0] &= 248;
+    private_prekey[31] &= 127;
+    private_prekey[31] |= 64;
+
+    let scalar = Scalar::from_bytes_mod_order(private_prekey);
+    let public_point: MontgomeryPoint = scalar * X25519_BASEPOINT;
+
+    public_point.to_bytes().to_vec()
+}
+
+#[wasm_bindgen]
+pub fn generate_private_prekey(js_random_bytes: &[u8]) -> Vec<u8> {
+    let mut private_prekey = [0u8; 32];
+
+    if js_random_bytes.len() < 32 {
+        return vec![];
+    }
+    private_prekey.copy_from_slice(&js_random_bytes[..32]);
+
+    private_prekey[0] &= 248;
+    private_prekey[31] &= 127;
+    private_prekey[31] |= 64;
+
+    private_prekey.to_vec()
+}

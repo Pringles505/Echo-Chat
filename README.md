@@ -16,6 +16,11 @@ Montgomery Point and Scalar operations
 
 Install [**Rustup**](https://rustup.rs/)
 
+Install wasm-pack 
+```bash
+cargo install wasm-pack
+```
+
 Clone the proyect
 ```bash
 git clone https://github.com/Mascaro101/Echo-Chat-App

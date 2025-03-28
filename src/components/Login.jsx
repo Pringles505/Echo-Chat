@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 
+import { Buffer } from 'buffer';
+
+import init, { generate_private_key, generate_public_key,
+                generate_private_prekey, generate_public_prekey
+ } from '/dh-wasm/pkg';
+
+
 const Login = () => {
   console.log('Login component rendered');
   const [username, setUsername] = useState('');
@@ -9,7 +16,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     if (!username || !password) {
@@ -18,6 +25,24 @@ const Login = () => {
       return;
     }
 
+    await init();
+
+    const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+    const privatePreKey = generate_private_key(randomBytes);
+    const publicPreKey = generate_public_key(privatePreKey);
+
+    console.log("Private Pre Key:", new Uint8Array(privatePreKey));
+    console.log("Public Pre Key:", new Uint8Array(publicPreKey));
+
+    const publicPreKeyString = Buffer.from(publicPreKey).toString('base64');
+    const arrayBufferToBase64 = (buffer) => {
+      return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    };
+
+    const privateKeyBase64 = arrayBufferToBase64(privatePreKey);
+    localStorage.setItem("privatePreKey", privateKeyBase64);
+
+    
     // Connect to the server temporarily to handle login
     const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
 
