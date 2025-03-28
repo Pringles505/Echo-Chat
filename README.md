@@ -14,6 +14,8 @@ Montgomery Point and Scalar operations
 
 ## Setup
 
+Install [**Rustup**](https://rustup.rs/)
+
 Clone the proyect
 ```bash
 git clone https://github.com/Mascaro101/Echo-Chat-App
