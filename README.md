@@ -4,15 +4,15 @@
     <source 
       srcset="logoTextDark.png" 
       media="(prefers-color-scheme: dark)"
-      width="190" 
-      height="80"
+      width="300" 
+      height="130"
     >
-    <!-- Light mode logo (default) -->
+    <!-- Light mode logo -->
     <img 
       src="logoTextLight.png" 
       alt="Echo Logo" 
-      width="190" 
-      height="80"
+      width="300" 
+      height="130"
     >
   </picture>
 </h1>
