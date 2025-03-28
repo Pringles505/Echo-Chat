@@ -1,10 +1,27 @@
-# <img src="logo.png" alt="Echo Logo" width="70" height="60" align="center"/> Echo Chat App
+<h1 align="center">
+  <picture>
+    <!-- Dark mode logo -->
+    <source 
+      srcset="logoTextDark.png" 
+      media="(prefers-color-scheme: dark)"
+      width="190" 
+      height="80"
+    >
+    <!-- Light mode logo (default) -->
+    <img 
+      src="logoTextLight.png" 
+      alt="Echo Logo" 
+      width="190" 
+      height="80"
+    >
+  </picture>
+</h1>
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Built_with-Rust-orange.svg)](https://www.rust-lang.org/)
 [![WASM](https://img.shields.io/badge/Powered_by-WebAssembly-purple.svg)](https://webassembly.org/)
 
-Echo is a secure chat app with a security protocol based on the [**Signal Protocol**](https://signal.org/docs/). Built with minimum external library use, all **Diffie Hellman Operations** including **Scalar Multiplication** are powered by our own Rust modules compiled with **WebAssembly** for the WebApp.
+Echo is a secure chat app with a security protocol based on the [**Signal Protocol**](https://signal.org/docs/). Built with minimal external library use, all **Diffie Hellman Operations** including **Scalar Multiplication** are powered by our own Rust modules compiled with **WebAssembly** for the WebApp.
 
 #### Outsourced Cryptographic Functions
 For the time being, the following cryptographic functionalities are handled by external crates:
@@ -25,7 +42,7 @@ Install wasm-pack
 cargo install wasm-pack
 ```
 
-Clone the proyect
+Clone the project
 ```bash
 git clone https://github.com/Mascaro101/Echo-Chat-App
 ```
@@ -38,7 +55,7 @@ Navigate and build the Rust AES-256 module
 cd aes-wasm
 wasm-pack build --target web
 ```
-Navigate and build the Rust Eliptic Curve Diffie-Hellman module
+Navigate and build the Rust Elliptic Curve Diffie-Hellman module
 ```
 cd dh-wasm
 wasm-pack build --target web
