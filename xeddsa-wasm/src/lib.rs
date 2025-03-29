@@ -3,6 +3,49 @@ use sha2::{Sha512, Digest};
 use num_bigint::BigUint;
 use curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
 use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::edwards::{CompressedEdwardsY, EdwardsPoint};
+use web_sys::console;
+
+macro_rules! log_bytes {
+    ($label:expr, $bytes:expr) => {
+        console::log_1(&format!("{}: {:?}", $label, &$bytes[..]).into());
+    };
+}
+
+pub struct DecodedXedSignature {
+    pub r: EdwardsPoint,
+    pub s: Scalar,
+    pub r_bytes: [u8; 32],
+}
+
+pub fn decode_xeddsa_signature(signature: &[u8]) -> Result<DecodedXedSignature, &'static str> {
+    if signature.len() != 64 {
+        return Err("Signature must be 64 bytes (R || S)");
+    }
+
+    let mut s_bytes = [0u8; 32];
+    let mut r_bytes = [0u8; 32];
+
+    s_bytes.copy_from_slice(&signature[32..64]);
+    r_bytes.copy_from_slice(&signature[0..32]);
+
+    let compressed_r = CompressedEdwardsY(r_bytes);
+    let r_point = compressed_r
+        .decompress()
+        .ok_or("Failed to decompress R point")?;
+
+    let s_ctopt = Scalar::from_canonical_bytes(s_bytes);
+    if s_ctopt.is_some().unwrap_u8() == 0 {
+        return Err("Invalid scalar S (not canonical)");
+    }
+    let s_scalar = s_ctopt.unwrap();
+
+    Ok(DecodedXedSignature {
+        r: r_point,
+        s: s_scalar,
+        r_bytes,
+    })
+}
 
 pub fn reduce_hash_mod_l(hash: &[u8]) -> BigUint {
     let big = BigUint::from_bytes_le(hash);
@@ -28,6 +71,15 @@ pub fn sha512_bytes(data: &[u8]) -> [u8; 64] {
 
 pub fn bytes_to_biguint(bytes: &[u8]) -> BigUint {
     BigUint::from_bytes_le(bytes)
+}
+
+fn biguint_to_scalar_bytes(value: &BigUint) -> [u8; 32] {
+    let mut bytes = value.to_bytes_le(); 
+    bytes.resize(32, 0); 
+
+    let mut fixed = [0u8; 32];
+    fixed.copy_from_slice(&bytes);
+    fixed
 }
 
 pub fn clamp(private_key: &mut [u8; 32]) {
@@ -98,17 +150,17 @@ pub fn compute_nonce_point(nonce_bytes: &[u8]) -> Vec<u8> {
 
 #[wasm_bindgen]
 pub fn derive_ed25519_keypair_from_x25519(private_key_bytes: &[u8]) -> Vec<u8> {
-    // Convert &[u8] to [u8; 32]
-    let mut fixed_bytes = [0u8; 32];
-    fixed_bytes.copy_from_slice(&private_key_bytes[0..32]);
+    let h = sha512_bytes(private_key_bytes);
 
-    // Create scalar and compute R = r * B
-    let scalar = Scalar::from_bytes_mod_order(fixed_bytes);
+    let mut a = [0u8; 32];
+    a.copy_from_slice(&h[..32]);
+    clamp(&mut a);
+
+    let scalar = Scalar::from_bytes_mod_order(a);
     let point = &scalar * &ED25519_BASEPOINT_POINT;
 
-    // Compress and return as Vec<u8>
     point.compress().to_bytes().to_vec()
-}   
+}
 
 #[wasm_bindgen]
 pub fn compute_challenge_hash(nonce_point: &[u8], public_ed_key: &[u8], message: &[u8]) -> Vec<u8> {
@@ -161,4 +213,78 @@ pub fn compute_signature(nonce_point: &[u8], signature_scalar: &[u8]) -> Vec<u8>
     signature.extend_from_slice(signature_scalar);  // S
 
     signature
+}
+
+#[wasm_bindgen]
+pub fn verify_signature(signature: &[u8], message: &[u8], public_ed_key: &[u8]) -> bool {
+    if signature.len() != 64 || public_ed_key.len() != 32 {
+        return false;
+    }
+
+    // Try to decode signature
+    let decoded_signature = match decode_xeddsa_signature(signature) {
+        Ok(sig) => sig,
+        Err(_) => return false,
+    };
+    let r = decoded_signature.r;
+    let s = decoded_signature.s;
+
+    // Decompress public key
+    let mut pubkey_bytes = [0u8; 32];
+    pubkey_bytes.copy_from_slice(public_ed_key);
+    let compressed_pubkey = CompressedEdwardsY(pubkey_bytes);
+    let A = match compressed_pubkey.decompress() {
+        Some(point) => point,
+        None => return false,
+    };
+
+    // Compute challenge hash as scalar directly
+    let mut hasher = Sha512::new();
+    hasher.update(&decoded_signature.r_bytes);
+    hasher.update(public_ed_key);
+    hasher.update(message);
+    let hash_bytes = hasher.finalize();
+    
+    let reduced = reduce_hash_mod_l(&hash_bytes);
+    let k_bytes = biguint_to_scalar_bytes(&reduced);
+    let k = Scalar::from_bytes_mod_order(k_bytes);
+
+    
+    // Compute verification equation
+    let SB = s * ED25519_BASEPOINT_POINT;
+    let kA = k * A;
+    let expected = r + kA;
+
+    SB == expected
+} 
+
+#[wasm_bindgen]
+pub fn test_sign_and_verify(prekey: &[u8], identity_seed: &[u8]) -> bool {
+
+    log_bytes!("PREKEY", prekey);
+    log_bytes!("IDENTITY SEED", identity_seed);
+
+    let xeddsa = convert_x25519_to_xeddsa(identity_seed);
+    let a = &xeddsa[0..32];
+    let prefix = &xeddsa[32..64];
+
+    log_bytes!("XEdDSA", xeddsa);
+    log_bytes!("a", a);
+    log_bytes!("prefix", prefix);
+
+    let r = compute_determenistic_nonce(prefix, prekey);
+    let R = compute_nonce_point(&r);
+    let A = derive_ed25519_keypair_from_x25519(identity_seed);
+    let k = compute_challenge_hash(&R, &A, prekey);
+    let s = compute_signature_scaler(&r, &k, a);
+    let signature = compute_signature(&R, &s);
+
+    log_bytes!("r", r);
+    log_bytes!("R", R);
+    log_bytes!("A", A);
+    log_bytes!("k", k);
+    log_bytes!("s", s);
+    log_bytes!("signature", signature);
+
+    verify_signature(&signature, prekey, &A)
 }

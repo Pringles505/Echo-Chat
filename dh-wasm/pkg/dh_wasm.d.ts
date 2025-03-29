@@ -4,6 +4,8 @@ export function derive_symmetric_key(shared_secret: Uint8Array): Uint8Array;
 export function diffie_hellman(my_private_key_bytes: Uint8Array, their_public_key_bytes: Uint8Array): Uint8Array;
 export function generate_public_key(private_key_bytes: Uint8Array): Uint8Array;
 export function generate_private_key(js_random_bytes: Uint8Array): Uint8Array;
+export function generate_public_prekey(private_prekey_bytes: Uint8Array): Uint8Array;
+export function generate_private_prekey(js_random_bytes: Uint8Array): Uint8Array;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -13,6 +15,8 @@ export interface InitOutput {
   readonly diffie_hellman: (a: number, b: number, c: number, d: number) => [number, number];
   readonly generate_public_key: (a: number, b: number) => [number, number];
   readonly generate_private_key: (a: number, b: number) => [number, number];
+  readonly generate_private_prekey: (a: number, b: number) => [number, number];
+  readonly generate_public_prekey: (a: number, b: number) => [number, number];
   readonly __wbindgen_export_0: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;

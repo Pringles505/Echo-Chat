@@ -77,6 +77,32 @@ export function generate_private_key(js_random_bytes) {
     return v2;
 }
 
+/**
+ * @param {Uint8Array} private_prekey_bytes
+ * @returns {Uint8Array}
+ */
+export function generate_public_prekey(private_prekey_bytes) {
+    const ptr0 = passArray8ToWasm0(private_prekey_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.generate_public_prekey(ptr0, len0);
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
+ * @param {Uint8Array} js_random_bytes
+ * @returns {Uint8Array}
+ */
+export function generate_private_prekey(js_random_bytes) {
+    const ptr0 = passArray8ToWasm0(js_random_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.generate_private_prekey(ptr0, len0);
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
 async function __wbg_load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
         if (typeof WebAssembly.instantiateStreaming === 'function') {

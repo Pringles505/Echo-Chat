@@ -1,1 +1,1 @@
-C:\Users\masca\Desktop\Clase\FinalProject\Frontend\Echo-frontend\dh-wasm\target\wasm32-unknown-unknown\release\dh_wasm.wasm: C:\Users\masca\Desktop\Clase\FinalProject\Frontend\Echo-frontend\dh-wasm\src\lib.rs
+C:\Users\masca\Desktop\Clase\FinalProject\Echo-Frontend\Echo-Chat-App\dh-wasm\target\wasm32-unknown-unknown\release\dh_wasm.wasm: C:\Users\masca\Desktop\Clase\FinalProject\Echo-Frontend\Echo-Chat-App\dh-wasm\src\lib.rs
