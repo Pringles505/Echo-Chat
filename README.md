@@ -27,6 +27,13 @@ Echo is an open-source, end-to-end encrypted chat app built with a security prot
 
 Developed by 2ºCEB students **Marcos Cabrero**, **Gonzalo de la Lastra**, and **Miguel Mascaró** at IMMUNE Institute of Technology.
 
+## Table of Contents  
+- [Security Protocol](#security-protocol)  
+  - [X3DH (Extended Triple Diffie-Hellman)](#x3dh-extended-triple-diffie-hellman)  
+  - [XEdDSA (EdDSA for X25519)](#xeddsa-eddsa-for-x25519)  
+- [Setup](#setup)  
+- [References](#references)  
+
 # Security Protocol
 
 ## **X3DH (Extended Triple Diffie-Hellman)**
