@@ -68,14 +68,14 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 | Term         | Description                                                                 | Curve Form       |
 |--------------|-----------------------------------------------------------------------------|------------------|
 | `xPrivKey`   | X25519 private key (32-byte scalar)                                         | Montgomery       |
-| `xPubKey`    | X25519 public key (`u`-coordinate, derived as `xPubKey = xPrivKey * B`)     | Montgomery       |
+| `xPubKey`    | X25519 public key (Derived from  `xPrivKey`)                                | Montgomery       |
 | `a`          | Clamped Edwards private scalar (derived from `xPrivKey`)                    | Edwards          |
-| `A`          | Edwards public key (Ed25519 format, derived from `a`)                       | Edwards          |
-| `r`          | Deterministic nonce (generated via RFC 8032 rules)                          | Edwards          |
+| `A`          | Edwards public key (derived from `a`)                                       | Edwards          |
+| `r`          | Deterministic nonce                                                         | Edwards          |
 | `R`          | Nonce point (`R = r * B`)                                                   | Edwards          |
-| `k`          | Challenge hash (`k = H(R ‖ A ‖ M)`, where `H` is SHA-512)                   | N/A              |
+| `k`          | Challenge hash (`k = H(R ‖ A ‖ M)`, where `H` is SHA-512)                   |                  |
 | `S`          | Signature scalar (`S = (r + k * a) mod L`)                                  | Edwards          |
-| `L`          | Order of the curve (`2²⁵² + 27742317777372353535851937790883648493`)        | N/A              |
+| `L`          | Order of the curve (`2²⁵² + 27742317777372353535851937790883648493`)        |                  |
 | `B`          | Basepoint (curve generator)                                                 | Edwards/Montgomery |
 
 
