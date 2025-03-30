@@ -184,23 +184,23 @@ pub fn compute_challenge_hash(nonce_point: &[u8], public_ed_key: &[u8], message:
 }
 
 #[wasm_bindgen]
-pub fn compute_signature_scaler(nonce: &[u8], challenge_hash: &[u8], ed_private_scaler: &[u8]) -> Vec<u8> {
-    if nonce.len() != 32 || challenge_hash.len() != 32 || ed_private_scaler.len() != 32 {
+pub fn compute_signature_scaler(nonce: &[u8], challenge_hash: &[u8], ed_private_scalar: &[u8]) -> Vec<u8> {
+    if nonce.len() != 32 || challenge_hash.len() != 32 || ed_private_scalar.len() != 32 {
         panic!("All inputs must be 32 bytes");
     }
 
-    let r = bytes_to_biguint(nonce);
-    let k = bytes_to_biguint(challenge_hash);
-    let a = bytes_to_biguint(ed_private_scaler);
+    // Convert all inputs to Scalars
+    let r_scalar = Scalar::from_bytes_mod_order(*<&[u8; 32]>::try_from(nonce).unwrap());
+    let k_scalar = Scalar::from_bytes_mod_order(*<&[u8; 32]>::try_from(challenge_hash).unwrap());
+    let a_scalar = Scalar::from_bytes_mod_order(*<&[u8; 32]>::try_from(ed_private_scalar).unwrap());
 
-    let l = ed25519_l();
-    let s = (r + k * a) % l;
-    let mut bytes = s.to_bytes_le();
+    // s = r + k * a
+    let s_scalar = r_scalar + k_scalar * a_scalar;
 
-    bytes.resize(32, 0); 
-
-    bytes
+    // Return s as 32-byte array
+    s_scalar.to_bytes().to_vec()
 }
+
 
 #[wasm_bindgen]
 pub fn compute_signature(nonce_point: &[u8], signature_scalar: &[u8]) -> Vec<u8> {
