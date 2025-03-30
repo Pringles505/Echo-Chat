@@ -64,12 +64,27 @@ X3DH is a key agreement protocol used to establish a shared secret between two p
 ## **XEdDSA (EdDSA for X25519)**
 XEdDSA is a signature scheme based on the Edwards-curve digital signature algorithm (EdDSA). EdDSA is designed for Twisted-Edwards curves, however, since we use curve X25519 elliptic-curve for the diffie-hellman operations, keys are in Montgomery form so we must convert them into Edwards form and compute EdDSA. This preconversion of the input from Montgomery form to Edwards form is the key distinction of XEdDSA.
 ### **How It Works**
+
+#### **Prerequisites**
+
+`Scalar Multiplcation` in the context of Elliptic Curve Cryptography, is the repeated addition of a point on the curve to itself, this is the keystone in ECC
+
+`Clamping` is the process by which the keys are adjusted by byte, preventing certain subgroup attacks and from foreign malicious public key attacks.
+| Byte Index | Description             | Operation                       | Bit Constraint Result             | Purpose                                                  |
+|------------|-------------------------|----------------------------------|-----------------------------------|----------------------------------------------------------|
+| 0          | Least significant byte  | `a[0] &= 248`                    | Clears bits 0, 1, 2               | Ensures scalar is a multiple of 8    |
+| 1–30       | Middle bytes            | —                                | No change                         | Retains entropy for randomness                          |
+| 31         | Most significant byte   | `a[31] &= 127; a[31] |= 64`      | Clears bit 255, sets bit 254      | Ensures scalar is between 2²⁵⁴ and 2²⁵⁵−1 for security   |
+
+
 #### **Key Terminology**
 | Term         | Description                                                                 | Curve Form       |
 |--------------|-----------------------------------------------------------------------------|------------------|
-| `xPrivKey`   | X25519 private key (32-byte scalar)                                         | Montgomery       |
-| `xPubKey`    | X25519 public key (Derived from  `xPrivKey`)                                | Montgomery       |
-| `a`          | Clamped Edwards private scalar (derived from `xPrivKey`)                    | Edwards          |
+| `xprivIK`   | X25519 private key (32-byte scalar)                                         | Montgomery       |
+| `xpubIK`    | X25519 public key (Derived from  `xprivIK`)                                | Montgomery       |
+| `xpubPK`    | X25519 public pre key (Derived from  `xprivPK`)                                | Montgomery       |
+| `a`          | Clamped Edwards private scalar (derived from `xprivIK`)                    | Edwards          |
+| `Prefix`          | Generated with `a` (derived from `xprivIK`)                            | Edwards     |
 | `A`          | Edwards public key (derived from `a`)                                       | Edwards          |
 | `r`          | Deterministic nonce                                                         | Edwards          |
 | `R`          | Nonce point (`R = r * B`)                                                   | Edwards          |
@@ -78,10 +93,26 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 | `L`          | Order of the curve (`2²⁵² + 27742317777372353535851937790883648493`)        |                  |
 | `B`          | Basepoint (curve generator)                                                 | Edwards/Montgomery |
 
-
 1. **Initial Key Conversion**:
-   - Initially the 
-3. **Signing Prekeys**:
+   Initially the and XEdDSA key is computed by running the `xprivIK` through SHA-512. This outputs a 64 byte array, the first 32 bytes are `clamped` and become `a`. The last 32 bytes become the `Prefix`
+     
+2. **Compute Deterministic Nonce**:
+
+   $r = SHA(Prefix + message) % L$
+
+    We will pass `xpubPK` as the message to compute the nonce, this will effectively `sign` the PreKey.
+   
+3. **Compute Nonce Point**:
+
+   $R = B ⋅ r$
+
+   The Nonce point is computed by performing a `Scalar Multiplcation` between the `nonce` and the `Basepoint`
+
+4. **Recompute Public Key in Edwards Form**:
+
+   Similarly as in the initial key conversion, the `xprivIK` is ran through SHA-512 and the first 32 bytes are 
+   
+6. **Signing Prekeys**:
    - Bob signs his `SPK_B` using his identity key:
      ```python
      signature = XEdDSA_sign(IK_B_private, SPK_B_public)
@@ -91,7 +122,7 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
      assert XEdDSA_verify(IK_B_public, SPK_B_public, signature)
      ```
 
-4. **Why It Matters**:
+7. **Why It Matters**:
    - 🛡️ **Prevents MITM Attacks**: Ensures `SPK_B` truly belongs to Bob.
    - ⚡ **Efficient**: Fast Ed25519-based signatures.
 
