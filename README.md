@@ -97,6 +97,8 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 | `L`          | Order of the curve (`2²⁵² + 27742317777372353535851937790883648493`)        |                  |
 | `B`          | Basepoint (curve generator)                                                 | Edwards/Montgomery |
 
+
+### XEdDSA Signing
 1. **Initial Key Conversion**:
    Initially an XEdDSA key is computed by running the `xprivIK` through SHA-512. This outputs a 64 byte array, the first 32 bytes are `clamped` and become `a`. The last 32 bytes become the `Prefix`
      
@@ -104,7 +106,7 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 
    $r = SHA(Prefix + message) % L$
 
-    We will pass `xpubPK` as the message to compute the nonce, this will effectively `sign` the PreKey. We perform $% L$ to keep the nonce within the valid scalar range.
+    We will pass `xpubPK` as the message to compute the nonce, this will effectively `sign` the PreKey. We perform $mod L$ to keep the nonce within the valid scalar range.
    
 3. **Compute Nonce Point**:
 
@@ -121,24 +123,24 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 
    $k = SHA(R + A + message) % L$
 
-   The challenge hash is computed with PreKey as the message as was done in the calcuation for the deterministic Nonce, and $mod L$ is performed to keep the scalar within valid range.
+   The challenge hash is computed with `xpubPK` as the message as was done in the calcuation for the `Nonce Point`, and $mod L$ is performed to keep the scalar within valid range.
 
 6. **Compute Signature Scalar**
+
+    $S = (r + k + a)$
+
+   The Signature Scalar is a concatenation of the `nonce`, `challenge hash` and `PrivateKey` in Edwards form
+
+7. **Computing Signature**
+
+   $Signature = (R + S)$
+
+   The final signature is a concatenation of the `Nonce Point`
+
+### XEdDSA Verification
+
+
    
-7. **Signing Prekeys**:
-   - Bob signs his `SPK_B` using his identity key:
-     ```python
-     signature = XEdDSA_sign(IK_B_private, SPK_B_public)
-     ```
-   - Alice verifies the signature:
-     ```python
-     assert XEdDSA_verify(IK_B_public, SPK_B_public, signature)
-     ```
-
-8. **Why It Matters**:
-   - 🛡️ **Prevents MITM Attacks**: Ensures `SPK_B` truly belongs to Bob.
-   - ⚡ **Efficient**: Fast Ed25519-based signatures.
-
 ---
 
 # Setup
