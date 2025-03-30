@@ -67,6 +67,8 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 
 #### **Prerequisites**
 
+``Encoding`` For storing points, usually 64 bytes, 32 bytes for $X$ and $Y$. We can compress this by dropping the $X$ and adding a bit to represent the sign for $X$. This helps with transmission. The $X$ is recalculated later.
+
 `SHA-512` is a hashing algorithm used to convert text of any size into a fixed-size string.
 
 `Scalar Multiplication` in the context of Elliptic Curve Cryptography, is the repeated addition of a point on the curve to itself, this is the keystone in ECC
@@ -102,19 +104,28 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 
    $r = SHA(Prefix + message) % L$
 
-    We will pass `xpubPK` as the message to compute the nonce, this will effectively `sign` the PreKey.
+    We will pass `xpubPK` as the message to compute the nonce, this will effectively `sign` the PreKey. We perform $% L$ to keep the nonce within the valid scalar range.
    
 3. **Compute Nonce Point**:
 
    $R = B ⋅ r$
 
-   The Nonce point is computed by performing a `Scalar Multiplcation` between the `nonce` and the `Basepoint`
+   The Nonce point is computed by performing a `Scalar Multiplcation` between the `nonce` and the `Basepoint`. This is then `encoded` into 32 bytes, to only store the $Y$ and a sign bit for $X$ coordinate of the Nonce point.
 
 4. **Recompute Public Key in Edwards Form**:
 
-   Similarly as in the initial key conversion, the `xprivIK` is ran through SHA-512 and the first 32 bytes are 
+   Similarly as in the initial key conversion, the `xprivIK` is ran through SHA-512 and the first 32 bytes are `clamped`. Then a `Scalar Multiplication` is with the `Basepoint` to compute the publicIK in Edwards form. This is then       
+   `encoded`.
+
+5. **Compute Challenge Hash**
+
+   $k = SHA(R + A + message) % L$
+
+   The challenge hash is computed with PreKey as the message as was done in the calcuation for the deterministic Nonce, and $mod L$ is performed to keep the scalar within valid range.
+
+6. **Compute Signature Scalar**
    
-6. **Signing Prekeys**:
+7. **Signing Prekeys**:
    - Bob signs his `SPK_B` using his identity key:
      ```python
      signature = XEdDSA_sign(IK_B_private, SPK_B_public)
@@ -124,7 +135,7 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
      assert XEdDSA_verify(IK_B_public, SPK_B_public, signature)
      ```
 
-7. **Why It Matters**:
+8. **Why It Matters**:
    - 🛡️ **Prevents MITM Attacks**: Ensures `SPK_B` truly belongs to Bob.
    - ⚡ **Efficient**: Fast Ed25519-based signatures.
 
