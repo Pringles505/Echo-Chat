@@ -4,6 +4,7 @@ use aes_gcm::aead::{Aead, NewAead};
 use hex::encode;
 
 #[wasm_bindgen]
+// This function encrypts a given text using AES-GCM with a 256-bit key and a 96-bit nonce
 pub fn encrypt(text: &str, key: &[u8], nonce: &[u8]) -> Result<String, JsValue> {
     if key.len() != 32 {
         return Err(JsValue::from_str("Invalid key length"));
@@ -23,6 +24,7 @@ pub fn encrypt(text: &str, key: &[u8], nonce: &[u8]) -> Result<String, JsValue> 
     Ok(encode(ciphertext))
 }
 
+// This function decrypts a given ciphertext using AES-GCM with a 256-bit key and a 96-bit nonce
 #[wasm_bindgen]
 pub fn decrypt(text: &str, key: &[u8], nonce: &[u8]) -> Result<String, JsValue> {
     if key.len() != 32 {

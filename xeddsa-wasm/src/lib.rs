@@ -6,19 +6,23 @@ use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::edwards::{CompressedEdwardsY, EdwardsPoint};
 use web_sys::console;
 
+// For logging
 macro_rules! log_bytes {
     ($label:expr, $bytes:expr) => {
         console::log_1(&format!("{}: {:?}", $label, &$bytes[..]).into());
     };
 }
 
+// This struct is used to hold the decoded signature components
 pub struct DecodedXedSignature {
     pub r: EdwardsPoint,
     pub s: Scalar,
     pub r_bytes: [u8; 32],
 }
 
+// This function decodes a signature from a byte array 
 pub fn decode_xeddsa_signature(signature: &[u8]) -> Result<DecodedXedSignature, &'static str> {
+    // Check if signature length is 64 bytes
     if signature.len() != 64 {
         return Err("Signature must be 64 bytes (R || S)");
     }
@@ -26,9 +30,11 @@ pub fn decode_xeddsa_signature(signature: &[u8]) -> Result<DecodedXedSignature, 
     let mut s_bytes = [0u8; 32];
     let mut r_bytes = [0u8; 32];
 
+    // Extract R and S from the signature
     s_bytes.copy_from_slice(&signature[32..64]);
     r_bytes.copy_from_slice(&signature[0..32]);
 
+    // Decode R point (Nonce point R)
     let compressed_r = CompressedEdwardsY(r_bytes);
     let r_point = compressed_r
         .decompress()
@@ -40,6 +46,7 @@ pub fn decode_xeddsa_signature(signature: &[u8]) -> Result<DecodedXedSignature, 
     }
     let s_scalar = s_ctopt.unwrap();
 
+    // Decoded R, S from Signature
     Ok(DecodedXedSignature {
         r: r_point,
         s: s_scalar,
@@ -47,6 +54,7 @@ pub fn decode_xeddsa_signature(signature: &[u8]) -> Result<DecodedXedSignature, 
     })
 }
 
+// This function reduces the hash to a scalar mod L (% L)
 pub fn reduce_hash_mod_l(hash: &[u8]) -> BigUint {
     let big = BigUint::from_bytes_le(hash);
     big % ed25519_l()
@@ -60,6 +68,7 @@ pub fn ed25519_l() -> BigUint {
     ).unwrap()
 }
 
+// This function computes the SHA-512 hash of the input data and returns a 64-byte array
 pub fn sha512_bytes(data: &[u8]) -> [u8; 64] {
     let mut hasher = Sha512::new();
     hasher.update(data);
@@ -69,10 +78,7 @@ pub fn sha512_bytes(data: &[u8]) -> [u8; 64] {
     out
 }
 
-pub fn bytes_to_biguint(bytes: &[u8]) -> BigUint {
-    BigUint::from_bytes_le(bytes)
-}
-
+// This function converts a BigUint to a 32-byte array
 fn biguint_to_scalar_bytes(value: &BigUint) -> [u8; 32] {
     let mut bytes = value.to_bytes_le(); 
     bytes.resize(32, 0); 
@@ -82,6 +88,7 @@ fn biguint_to_scalar_bytes(value: &BigUint) -> [u8; 32] {
     fixed
 }
 
+// Clamp the byte array acording to X25519 rules
 pub fn clamp(private_key: &mut [u8; 32]) {
     private_key[0] &= 248;
     private_key[31] &= 127;
@@ -89,6 +96,7 @@ pub fn clamp(private_key: &mut [u8; 32]) {
 }
 
 #[wasm_bindgen]
+/// This function converts a X25519 private key to an XEdDSA private key
 pub fn convert_x25519_to_xeddsa(private_key_bytes: &[u8]) -> Vec<u8> {
     //Sha512 the private key
     let h = sha512_bytes(private_key_bytes);
@@ -113,6 +121,8 @@ pub fn convert_x25519_to_xeddsa(private_key_bytes: &[u8]) -> Vec<u8> {
 }   
 
 #[wasm_bindgen]
+// Compute r, r = SHA(Prefix + message) % L
+//// where Prefix is the prefix from the XEdDSA key and message is the message to sign
 pub fn compute_determenistic_nonce(prefix: &[u8], message: &[u8]) -> Vec<u8> {
     let mut hasher = Sha512::new();
     hasher.update(prefix);
@@ -130,6 +140,8 @@ pub fn compute_determenistic_nonce(prefix: &[u8], message: &[u8]) -> Vec<u8> {
 }   
 
 #[wasm_bindgen]
+// Compute R, R = B * r
+// where B is the base point and r is the nonce
 pub fn compute_nonce_point(nonce_bytes: &[u8]) -> Vec<u8> {
     // Check length
     if nonce_bytes.len() != 32 {
@@ -154,6 +166,8 @@ pub fn derive_ed25519_keypair_from_x25519(private_key_bytes: &[u8]) -> Vec<u8> {
 
     let mut a = [0u8; 32];
     a.copy_from_slice(&h[..32]);
+
+    //Important: Clamp the private key
     clamp(&mut a);
 
     let scalar = Scalar::from_bytes_mod_order(a);
@@ -163,6 +177,8 @@ pub fn derive_ed25519_keypair_from_x25519(private_key_bytes: &[u8]) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
+// Compute k, k = SHA(R || publicEdKey || message) % L
+// where R is the nonce point, publicEdKey is the public key, and message is the message to sign
 pub fn compute_challenge_hash(nonce_point: &[u8], public_ed_key: &[u8], message: &[u8]) -> Vec<u8> {
     // Check lengths
     if nonce_point.len() != 32 || public_ed_key.len() != 32 {
@@ -184,6 +200,8 @@ pub fn compute_challenge_hash(nonce_point: &[u8], public_ed_key: &[u8], message:
 }
 
 #[wasm_bindgen]
+// Compute s, s = r + k * a
+// where r is the nonce, k is the challenge hash, and a is the private key scalar
 pub fn compute_signature_scaler(nonce: &[u8], challenge_hash: &[u8], ed_private_scalar: &[u8]) -> Vec<u8> {
     if nonce.len() != 32 || challenge_hash.len() != 32 || ed_private_scalar.len() != 32 {
         panic!("All inputs must be 32 bytes");
@@ -203,6 +221,8 @@ pub fn compute_signature_scaler(nonce: &[u8], challenge_hash: &[u8], ed_private_
 
 
 #[wasm_bindgen]
+// Compute the signature as R || S
+// where R is the nonce point and S is the signature scalar
 pub fn compute_signature(nonce_point: &[u8], signature_scalar: &[u8]) -> Vec<u8> {
     if nonce_point.len() != 32 || signature_scalar.len() != 32 {
         panic!("Nonce point and scalar must be 32 bytes");
@@ -216,6 +236,8 @@ pub fn compute_signature(nonce_point: &[u8], signature_scalar: &[u8]) -> Vec<u8>
 }
 
 #[wasm_bindgen]
+/// Verify the signature
+/// Returns true if the signature is valid, false otherwise
 pub fn verify_signature(signature: &[u8], message: &[u8], public_ed_key: &[u8]) -> bool {
     if signature.len() != 64 || public_ed_key.len() != 32 {
         return false;
@@ -259,6 +281,7 @@ pub fn verify_signature(signature: &[u8], message: &[u8], public_ed_key: &[u8]) 
 } 
 
 #[wasm_bindgen]
+// For testing purposes, this function performs all XEdDSA within the module to rule out JS implementation issues
 pub fn test_sign_and_verify(prekey: &[u8], identity_seed: &[u8]) -> bool {
 
     log_bytes!("PREKEY", prekey);

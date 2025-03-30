@@ -6,6 +6,7 @@ use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::constants::X25519_BASEPOINT;
 
 #[wasm_bindgen]
+// This function derives a symmetric key from the shared secret using HKDF
 pub fn derive_symmetric_key(shared_secret: &[u8]) -> Vec<u8> {
     if shared_secret.len() != 32 {
         return vec![];
@@ -19,6 +20,7 @@ pub fn derive_symmetric_key(shared_secret: &[u8]) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
+// This function performs the Diffie-Hellman key exchange using X25519
 pub fn diffie_hellman(my_private_key_bytes: &[u8], their_public_key_bytes: &[u8]) -> Vec<u8> {
     if my_private_key_bytes.len() != 32 || their_public_key_bytes.len() != 32 {
         return vec![];
@@ -44,6 +46,7 @@ pub fn diffie_hellman(my_private_key_bytes: &[u8], their_public_key_bytes: &[u8]
 }
 
 #[wasm_bindgen]
+// This function generates a public key from a private key
 pub fn generate_public_key(private_key_bytes: &[u8]) -> Vec<u8> {
     if private_key_bytes.len() != 32 {
         return vec![];
@@ -64,6 +67,7 @@ pub fn generate_public_key(private_key_bytes: &[u8]) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
+// This function generates a private key from random bytes
 pub fn generate_private_key(js_random_bytes: &[u8]) -> Vec<u8> {
     let mut private_key = [0u8; 32];
 
@@ -80,6 +84,7 @@ pub fn generate_private_key(js_random_bytes: &[u8]) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
+// This function generates a public prekey from a private prekey (Functionally identical to generate_public_key)
 pub fn generate_public_prekey(private_prekey_bytes: &[u8]) -> Vec<u8> {
     if private_prekey_bytes.len() != 32 {
         return vec![];
@@ -100,6 +105,7 @@ pub fn generate_public_prekey(private_prekey_bytes: &[u8]) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
+// This function generates a private prekey from random bytes (Functionally identical to generate_private_key)
 pub fn generate_private_prekey(js_random_bytes: &[u8]) -> Vec<u8> {
     let mut private_prekey = [0u8; 32];
 
