@@ -23,23 +23,15 @@
 
 # What is Echo?
 
-Echo is a secure chat app with a security protocol based on the [**Signal Protocol**](https://signal.org/docs/). Built with minimal external library use, all **Diffie Hellman Operations** including **Scalar Multiplication** are powered by our own Rust modules compiled with **WebAssembly** for the WebApp.
+Echo is an open-source, end-to-end encrypted chat app built with a security protocol inspired by the [**Signal Protocol**](https://signal.org/docs/). All cryptographic operations in Echo are powered by custom Rust modules developed from the ground up, the modules power all **X3DH**, **XEdDSA**, **AES-256** functions.
 
-## Outsourced Cryptographic Functions
-For the time being, the following cryptographic functionalities are handled by external crates:
-
-Hash Key Derivation Function (HKDF)
-→ hkdf
-
-Montgomery Point and Scalar operations
-→ curve25519-dalek
-
+Developed by 2ºCEB students **Marcos Cabrero**, **Gonzalo de la Lastra**, and **Miguel Mascaró** at IMMUNE Institute of Technology.
 
 ## Setup
 
-Install [**Rustup**](https://rustup.rs/)
+Install [**Rust**](https://rustup.rs/) with Rustup
 
-Install wasm-pack 
+Install `wasm-pack`
 ```bash
 cargo install wasm-pack
 ```
@@ -52,6 +44,7 @@ Install Dependencies
 ```
 npm install
 ```
+## Building Rust Modules
 Navigate and build the Rust AES-256 module
 ```
 cd aes-wasm
@@ -60,5 +53,11 @@ wasm-pack build --target web
 Navigate and build the Rust Elliptic Curve Diffie-Hellman module
 ```
 cd dh-wasm
+wasm-pack build --target web
+```
+
+Navigate and build the Rust XEdDSA Module
+```
+cd xeddsa-wasm
 wasm-pack build --target web
 ```
