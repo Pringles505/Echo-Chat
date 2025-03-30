@@ -1,123 +1,51 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+@import "tailwindcss"
+
+
+:root {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --error: #dc2626;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --border: #d1d5db;
+  --background: #f3f4f6;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--background);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+.button {
+  @apply inline-block px-6 py-3 text-white font-semibold rounded-lg no-underline transition duration-300;
+  background-color: #5750a1; 
+}
+
+.button:hover {
+  background-color: #8985BD;
+}
+
+.button:focus {
+  outline: none;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
-.login-container, .register-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-}
-
-.login-container form, .register-container form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.login-container input, .register-container input {
-  margin: 10px;
-  padding: 10px;
-  width: 200px;
-}
-
-.login-container button, .register-container button {
-  padding: 10px 20px;
-}
-
-.friends-container {
-  display: flex;
-  flex-direction: column;
-  width: 250px;
-  height: 100vh;
-  background-color: #f8f9fa;
-  padding: 10px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.search-container {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.search-container input {
-  flex: 1;
-  padding: 5px;
-}
-
-.search-container button {
-  padding: 5px 10px;
-}
-
-.conversations-container {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.conversations-container ul {
-  list-style: none;
-  padding: 0;
-}
-
-.conversations-container li {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-}
-
-.dashboard-container {
-  display: flex;
-  height: 100vh;
-}
-
-.sidebar {
-  width: 250px;
-  background-color: #f8f9fa;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.main-content {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
+.bg-animated-gradient {
+  background: linear-gradient(45deg, #4c6ef5, #6f42c1, #00bcd4); 
+  background-size: 400% 400%;
+  animation: gradientMove 10s ease infinite;
 }
