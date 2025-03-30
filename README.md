@@ -67,7 +67,9 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 
 #### **Prerequisites**
 
-`Scalar Multiplcation` in the context of Elliptic Curve Cryptography, is the repeated addition of a point on the curve to itself, this is the keystone in ECC
+`SHA-512` is a hashing algorithm used to convert text of any size into a fixed-size string.
+
+`Scalar Multiplication` in the context of Elliptic Curve Cryptography, is the repeated addition of a point on the curve to itself, this is the keystone in ECC
 
 `Clamping` is the process by which the keys are adjusted by byte, preventing certain subgroup attacks and from foreign malicious public key attacks.
 | Byte Index | Description             | Operation                       | Bit Constraint Result             | Purpose                                                  |
@@ -94,7 +96,7 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 | `B`          | Basepoint (curve generator)                                                 | Edwards/Montgomery |
 
 1. **Initial Key Conversion**:
-   Initially the and XEdDSA key is computed by running the `xprivIK` through SHA-512. This outputs a 64 byte array, the first 32 bytes are `clamped` and become `a`. The last 32 bytes become the `Prefix`
+   Initially an XEdDSA key is computed by running the `xprivIK` through SHA-512. This outputs a 64 byte array, the first 32 bytes are `clamped` and become `a`. The last 32 bytes become the `Prefix`
      
 2. **Compute Deterministic Nonce**:
 
