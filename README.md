@@ -29,9 +29,9 @@ Developed by 2ºCEB students **Marcos Cabrero**, **Gonzalo de la Lastra**, and *
 
 ## Setup
 
-Install [**Rustup**](https://rustup.rs/)
+Install [**Rust**](https://rustup.rs/) with Rustup
 
-Install wasm-pack 
+Install `wasm-pack`
 ```bash
 cargo install wasm-pack
 ```
