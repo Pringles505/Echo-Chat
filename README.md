@@ -78,7 +78,7 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
 |------------|-------------------------|----------------------------------|-----------------------------------|----------------------------------------------------------|
 | 0          | Least significant byte  | `a[0] &= 248`                    | Clears bits 0, 1, 2               | Ensures scalar is a multiple of 8    |
 | 1–30       | Middle bytes            | —                                | No change                         | Retains entropy for randomness                          |
-| 31         | Most significant byte   | `a[31] &= 127; a[31] |= 64`      | Clears bit 255, sets bit 254      | Ensures scalar is between 2²⁵⁴ and 2²⁵⁵−1 for security   |
+| 31         | Most significant byte   | `a[31] &= 127; a[31] = 64`      | Clears bit 255, sets bit 254      | Ensures scalar is between 2²⁵⁴ and 2²⁵⁵−1 for security   |
 
 
 #### **Key Terminology**
