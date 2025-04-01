@@ -1,28 +1,56 @@
-import React, { useState } from 'react';
-import { Headphones, X, Send } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from "react";
+import { Headphones, X, Send } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([
-    { text: "Hi! I'm Echo, your support assistant. How can I help you today?", isBot: true }
+    {
+      text: "Hi! I'm Echo, your support assistant. How can I help you today?",
+      isBot: true,
+    },
   ]);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!message.trim()) return;
 
-    setMessages(prev => [...prev, { text: message, isBot: false }]);
-    setMessage('');
+    setMessages((prev) => [...prev, { text: message, isBot: false }]);
+    setMessage("");
+    setLoading(true);
 
-    // Simulate bot response
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        text: "I'm here to help you with any questions about our secure messaging platform.",
-        isBot: true
-      }]);
-    }, 1000);
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    try {
+      const response = await fetch("https://api.openai.com/v1/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`, 
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "text-davinci-003", 
+          prompt: message,
+          max_tokens: 150,
+          temperature: 0.7,
+        }),
+      });
+
+      const data = await response.json();
+
+      const botResponse = data.choices[0].text.trim();
+      setMessages((prev) => [...prev, { text: botResponse, isBot: true }]);
+    } catch (error) {
+      console.error("Error al conectar con la API:", error);
+      setMessages((prev) => [
+        ...prev,
+        { text: "Oops! Something went wrong. Please try again.", isBot: true },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -60,10 +88,14 @@ export const ChatWidget = () => {
 
             <div className="chat-messages">
               {messages.map((msg, index) => (
-                <div key={index} className={`message ${msg.isBot ? 'bot' : 'user'}`}>
+                <div
+                  key={index}
+                  className={`message ${msg.isBot ? "bot" : "user"}`}
+                >
                   {msg.text}
                 </div>
               ))}
+              {loading && <div className="loading">...</div>}
             </div>
 
             <form onSubmit={handleSubmit} className="chat-input">
@@ -73,7 +105,11 @@ export const ChatWidget = () => {
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Type your message..."
               />
-              <button type="submit" className="btn btn-primary">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={loading}
+              >
                 <Send size={20} />
               </button>
             </form>
