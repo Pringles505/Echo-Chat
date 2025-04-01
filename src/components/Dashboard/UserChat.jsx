@@ -125,21 +125,29 @@ function Chat({ token, activeChat }) {
     if (!userId || !targetUserId) return;
   
     console.log(`🔄 Fetching messages for chat: User ${userId} ↔ Target ${targetUserId}`);
-  
+
+    // Clear messages when switching chats, messages are not stored in local storage
+    // Clear derivedKey
     setMessages([]);
+    setDerivedKey(null);
   
     const initChat = async () => {
+
+      // Initialize Diffie-Hellman and compute the derived key
       await init_dh();
       const derivedKey = await computeDerivedKey();
       
       // Cache the derived key
       setDerivedKey(derivedKey); 
   
+      // Initialize the socket connection and emit the 'ready' event
       socket.emit('ready', { userId, targetUserId });
   
+      // Handle intial messages when chat loads
       const handleInitMessages = async (messages) => {
-        console.log('✅ Received init messages:', messages);
+        console.log('✅ Received initial messages:', messages);
   
+        // Decrypt all messages using the derived key
         const decryptedMessages = await Promise.all(
           messages.map(async (message) => ({
             ...message,
@@ -147,20 +155,26 @@ function Chat({ token, activeChat }) {
           }))
         );
   
+        // Once decrypted set as seen
         console.log('✅ Decrypted messages:', decryptedMessages);
         markMessagesAsSeen(decryptedMessages);
         setMessages(decryptedMessages);
       };
   
+      // Handle incoming chat messages in real-time
       const handleChatMessage = async (message) => {
         console.log('📩 Received real-time message:', message);
   
+        // Sender is the user who sent the message
         const sender = String(message.userId);
   
+        // Set messages as seen if the message is in the currently opened chat
         if (activeChat === sender) {
           socket.emit('messageSeen', { userId, targetUserId });
         }
   
+        // If the messages on chat belong to the current user or target user decrypt 
+        // Messages are encrypted/decrypted regardless of sender
         if (
           (message.userId === userId && message.targetUserId === targetUserId) ||
           (message.userId === targetUserId && message.targetUserId === userId)
@@ -173,20 +187,23 @@ function Chat({ token, activeChat }) {
         }
       };
   
-      socket.on('init', handleInitMessages);
-      socket.on('chat message', handleChatMessage);
+      // Listen for incoming messages and initial messages
+      socket.on('initChat', handleInitMessages);
+      socket.on('newMessage', handleChatMessage);
     };
   
     initChat();
   
+    // Cleanup function to remove listeners when the component unmounts or when userId or targetUserId changes
     return () => {
       console.log(`🧹 Cleaning up listeners for chat: User ${userId} ↔ Target ${targetUserId}`);
-      socket.off('init');
-      socket.off('chat message');
+      socket.off('initChat');
+      socket.off('newMessage');
     };
   }, [userId, targetUserId]);
   
 
+  // Scroll to the bottom of the messages container when new messages are added
   useEffect(() => {
     const container = document.querySelector(".messages-container");
     if (container) {
@@ -194,41 +211,47 @@ function Chat({ token, activeChat }) {
     }
   }, [messages]);
 
+  // Mark messages as seen when the user opens the chat
   const markMessagesAsSeen = (messages) => {
+    // Check if the current user is the target user of the messages
     const unseenMessages = messages.filter((msg) => msg.userId !== userId);
-    if (unseenMessages.length > 0) {
+    // if the messages are not seen and belong to the target user mark as seen
+    if (unseenMessages.length > 0 && unseenMessages.seenStatus === false) {
       socket.emit('messageSeen', { userId, targetUserId });
-      console.log('👀 Marking all messages as seen');
+      console.log('👀 Marking all UnseenMessages as seen');
     }
   };
 
+  // Send message function
   const sendMessage = async (text) => {
+
+    // Compute the derived key 
     await init_dh();
     computeDerivedKey();
+
+    // Check if the derived key is available before sending the message
+    if (!globalDerivedKey) {
+      console.error('Derived key is not available yet. Please wait for it to be computed.');
+      return;
+    }
+
+    // check if the text is empty
     if (!text.trim()) return;
+
     try {
+      // Encrypt the message using the derived key
       const encryptedText = await encrypt(text, globalDerivedKey);
 
-      // Temporary ID for React rendering and Display decrypted text instantly
-      const newMessage = {
-        _id: Date.now(),
-        text,
-        userId,
-        targetUserId,
-        username,
-        createdAt: new Date().toISOString(),
-      };
-
-      console.log('Sending message:', newMessage);
-
       // Emit message to the server
-      socket.emit('chat message', { text: encryptedText, userId, targetUserId, username });
+      socket.emit('newMessage', { text: encryptedText, userId, targetUserId, username });
+
     } catch (error) {
       console.error('Failed to send message:', error);
     }
   };
 
-  // Listen for messageSeenUpdate
+  // Listen for messageSeenUpdatem wehn the target user sees the message
+  // In this case, targetUserId=userId and userId=targetUserId, since its sent from the target user
   socket.on('messageSeenUpdate', ({ userId, targetUserId }) => {
     console.log('👀', targetUserId, 'Message seen by:', userId);
     setMessages((prevMessages) =>
