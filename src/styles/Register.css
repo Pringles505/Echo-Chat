@@ -174,11 +174,11 @@
 }
 
 .bg-indigo-600 {
-  background-color: var(--primary);
+  background-color: black;
 }
 
 .hover\:bg-indigo-700:hover {
-  background-color: var(--primary-hover);
+  background-color: blue;
 }
 
 .disabled\:opacity-50:disabled {
