@@ -7,8 +7,9 @@ import './UserChat.css';
 import SendText from './sendText';
 import DisplayText from './displayText';
 
+// Import DH and AES Rust Modules
 import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt } from './../../../aes-wasm/pkg';
-import init_dh, { derive_symmetric_key, diffie_hellman  } from '/dh-wasm/pkg';
+import init_dh, { derive_symmetric_key, diffie_hellman  } from './../../../dh-wasm/pkg';
 
 // Secret key and nonce for encryption
 const nonce = '000102030405060708090a0b'; 
@@ -21,6 +22,7 @@ const hexToUint8Array = (hex) => {
   return new Uint8Array(bytes);
 };
 
+// Convert the nonce from hex to byteArray
 const nonceArray = hexToUint8Array(nonce);
 
 // Encrypt and decrypt functions from WebAssembly module
@@ -37,9 +39,6 @@ const encrypt = async (text, derivedKey) => {
     const encryptedText = await wasmEncrypt(text, derivedKey, nonceArray);
     return encryptedText;
   } catch (error) {
-    console.log('Text:', text, typeof text);
-    console.log('Derived Key:', derivedKey, typeof derivedKey);
-    console.log('Nonce:', nonce, typeof nonce);
     console.error('Encryption error:', error);
     throw error;
   }
@@ -52,9 +51,6 @@ const decrypt = async (text, derivedKey) => {
   if (!derivedKey) {
     console.error('Derived key is missing');
   }
-  
-  console.log('🍔derivedKey:', derivedKey);
-  console.log('🍔nonce:', nonce);
   try {
     return wasmDecrypt(text, derivedKey, nonceArray);
   } catch (error) {
@@ -63,12 +59,14 @@ const decrypt = async (text, derivedKey) => {
   }
 };
 
+// Main chat component
 function Chat({ token, activeChat }) {
   const socket = io(import.meta.env.VITE_SOCKET_URL, {
     auth: { token },
   });
 
   // Convert the Base64 string into a Uint8Array
+  // Used when extracting the private key from localstorage, localstorage only stores strings
   const base64ToArrayBuffer = (base64String) => {
     const binaryString = atob(base64String);
     const byteArray = new Uint8Array(binaryString.length);
@@ -78,9 +76,11 @@ function Chat({ token, activeChat }) {
     return byteArray;
   };
 
+  // Extract the private key from localstorage and convert it to a ByteArray
   const storedPrivateKey = localStorage.getItem('privateKey');
   const privateKeyArray = base64ToArrayBuffer(storedPrivateKey);
 
+  // Fetches the pubIK from the current targetUser
   const fetchPublicIdentityKey = async (targetUserId) => {
     return new Promise((resolve, reject) => {
       socket.emit('getPublicIdentityKey', { targetUserId }, (response) => {
@@ -99,32 +99,23 @@ function Chat({ token, activeChat }) {
   const targetUserId = activeChat;
   const username = token ? jwtDecode(token).username : '';
   const [messages, setMessages] = useState([]);
-  const [targetPublicIdentityKey, setTargetPublicIdentityKey] = useState('');
   const [globalDerivedKey, setDerivedKey] = useState();
 
   const messagesEndRef = useRef(null);
 
-  const convert64ToArrayBuffer = (base64String) => {
-    const binaryString = atob(base64String);
-    const byteArray = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      byteArray[i] = binaryString.charCodeAt(i);
-    }
-    return byteArray;
-  };
-
+  // Compute the derived key using Diffie-Hellman key exchange
+  // and derive a symmetric key from the shared secret
   const computeDerivedKey = async () => {
     await init_dh();
+
+    // Fetch the pubIk and convert it to a ByteArray
     const targetPublicKey = await fetchPublicIdentityKey(targetUserId);
+    const targetPublicIdentityKey = base64ToArrayBuffer(targetPublicKey);
 
-    const targetPublicIdentityKey = convert64ToArrayBuffer(targetPublicKey);
-    setTargetPublicIdentityKey(targetPublicIdentityKey);
-    console.log('🖥️Computing Derived Key');
-    console.log('privateKeyArray:', privateKeyArray);
-    console.log('targetPublicIdentityKey:', targetPublicIdentityKey);
-
+    // Compute the shared secret using Diffie-Hellman and derive the symmetric key
     const sharedSecret = await diffie_hellman(privateKeyArray, targetPublicIdentityKey);
     const derivedKey = await derive_symmetric_key(sharedSecret);
+
     console.log('🖥️Derived key:', derivedKey);
     setDerivedKey(derivedKey);
     return derivedKey;
@@ -132,72 +123,69 @@ function Chat({ token, activeChat }) {
 
   useEffect(() => {
     if (!userId || !targetUserId) return;
-
+  
     console.log(`🔄 Fetching messages for chat: User ${userId} ↔ Target ${targetUserId}`);
-
-    // Reset messages when switching chats
+  
     setMessages([]);
-
-    const handleInitMessages = async (messages) => {
-      console.log('✅ Received init messages:', messages);
+  
+    const initChat = async () => {
       await init_dh();
       const derivedKey = await computeDerivedKey();
-      console.log('⭐handleinit⭐ Derived key:', globalDerivedKey);
-      console.log('😭handleinit😭 Derived key:', derivedKey);
-
-      const decryptedMessages = await Promise.all(
-        messages.map(async (message) => ({
-          ...message,
-          text: await decrypt(message.text, derivedKey),
-        }))
-      );
-
-      console.log('✅ Decrypted messages:', decryptedMessages);
-      markMessagesAsSeen(decryptedMessages);
-      setMessages(decryptedMessages);
+      
+      // Cache the derived key
+      setDerivedKey(derivedKey); 
+  
+      socket.emit('ready', { userId, targetUserId });
+  
+      const handleInitMessages = async (messages) => {
+        console.log('✅ Received init messages:', messages);
+  
+        const decryptedMessages = await Promise.all(
+          messages.map(async (message) => ({
+            ...message,
+            text: await decrypt(message.text, derivedKey),
+          }))
+        );
+  
+        console.log('✅ Decrypted messages:', decryptedMessages);
+        markMessagesAsSeen(decryptedMessages);
+        setMessages(decryptedMessages);
+      };
+  
+      const handleChatMessage = async (message) => {
+        console.log('📩 Received real-time message:', message);
+  
+        const sender = String(message.userId);
+  
+        if (activeChat === sender) {
+          socket.emit('messageSeen', { userId, targetUserId });
+        }
+  
+        if (
+          (message.userId === userId && message.targetUserId === targetUserId) ||
+          (message.userId === targetUserId && message.targetUserId === userId)
+        ) {
+          const decryptedMessage = {
+            ...message,
+            text: await decrypt(message.text, derivedKey),
+          };
+          setMessages((prevMessages) => [...prevMessages, decryptedMessage]);
+        }
+      };
+  
+      socket.on('init', handleInitMessages);
+      socket.on('chat message', handleChatMessage);
     };
-
-    const handleChatMessage = async (message) => {
-      console.log('📩 Received real-time message:', message);
-      const sender = String(message.userId);
-      await init_dh();
-      const derivedKey = await computeDerivedKey();
-      console.log('✨handleChat✨ Derived key:', derivedKey);
-      console.log('privateKeyArray:', privateKeyArray);
-
-      if (activeChat === sender) {
-        console.log('👁️👁️ Message seen:', message);
-        socket.emit('messageSeen', { userId, targetUserId });
-      } else {
-        console.log("NOT SEEN 👁️👁️ RecievedMessageId", message.userId, 'Active:', activeChat);
-      }
-
-      // Only update messages if they belong to the current chat
-      if (
-        (message.userId === userId && message.targetUserId === targetUserId) ||
-        (message.userId === targetUserId && message.targetUserId === userId)
-      ) {
-        const decryptedMessage = {
-          ...message,
-          text: await decrypt(message.text, derivedKey),
-        };
-        setMessages((prevMessages) => [...prevMessages, decryptedMessage]);
-      }
-    };
-
-    // Emit ready to fetch messages when opening a chat
-    socket.emit('ready', { userId, targetUserId });
-
-    // Listen for real-time messages
-    socket.on('init', handleInitMessages);
-    socket.on('chat message', handleChatMessage);
-
+  
+    initChat();
+  
     return () => {
       console.log(`🧹 Cleaning up listeners for chat: User ${userId} ↔ Target ${targetUserId}`);
-      socket.off('init', handleInitMessages);
-      socket.off('chat message', handleChatMessage);
+      socket.off('init');
+      socket.off('chat message');
     };
-  }, [userId, targetUserId]); // Runs whenever activeChat changes
+  }, [userId, targetUserId]);
+  
 
   useEffect(() => {
     const container = document.querySelector(".messages-container");
