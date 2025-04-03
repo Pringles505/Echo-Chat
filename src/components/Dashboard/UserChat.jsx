@@ -9,7 +9,9 @@ import DisplayText from './displayText';
 
 // Import DH and AES Rust Modules
 import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt } from './../../../aes-wasm/pkg';
-import init_dh, { derive_symmetric_key, diffie_hellman  } from './../../../dh-wasm/pkg';
+import init_dh, { derive_symmetric_key, diffie_hellman, generate_private_ephemeral_key, 
+  generate_public_ephemeral_key  } from './../../../dh-wasm/pkg';
+import init_xeddsa, {verify_signature, convert_x25519_to_xeddsa} from './../../../xeddsa-wasm/pkg';
 
 // Secret key and nonce for encryption
 const nonce = '000102030405060708090a0b'; 
@@ -77,18 +79,51 @@ function Chat({ token, activeChat }) {
   };
 
   // Extract the private key from localstorage and convert it to a ByteArray
-  const storedPrivateKey = localStorage.getItem('privateKey');
+  const storedPrivateKey = localStorage.getItem('publicKeyX25519');
   const privateKeyArray = base64ToArrayBuffer(storedPrivateKey);
 
   // Fetches the pubIK from the current targetUser
-  const fetchPublicIdentityKey = async (targetUserId) => {
+  const fetchPublicIdentityKeyX25519 = async (targetUserId) => {
     return new Promise((resolve, reject) => {
-      socket.emit('getPublicIdentityKey', { targetUserId }, (response) => {
+      socket.emit('getPublicIdentityKeyX25519', { targetUserId }, (response) => {
         if (response.success) {
-          console.log('✅ Fetched publicIdentityKey:', response.publicIdentityKey);
-          resolve(response.publicIdentityKey);
+          console.log(response)
+          console.log('✅ Fetched publicIdentityKey:', response.publicIdentityKeyX25519);
+          resolve(response.publicIdentityKeyX25519);
         } else {
           console.error('❌ Failed to fetch publicIdentityKey:', response.error);
+          reject(new Error(response.error));
+        }
+      });
+    });
+  };
+
+  // Fetches the pubIK from the current targetUser
+  const fetchPublicIdentityKeyEd25519 = async (targetUserId) => {
+    return new Promise((resolve, reject) => {
+      socket.emit('getPublicIdentityKeyEd25519', { targetUserId }, (response) => {
+        if (response.success) {
+          console.log(response)
+          console.log('✅ Fetched PublicIdentityKeyEd25519:', response.publicIdentityKeyEd25519);
+          resolve(response.publicIdentityKeyEd25519);
+        } else {
+          console.error('❌ Failed to fetch publicIdentityKey:', response.error);
+          reject(new Error(response.error));
+        }
+      });
+    });
+  };
+
+  // Fetches the pubSPK from the current targetUser
+  const fetchSignedPreKey = async (targetUserId) => {
+    return new Promise((resolve, reject) => {
+      socket.emit('getSignedPreKey', { targetUserId }, (response) => {
+        if (response.success) {
+          console.log('✅ Fetched getSignedPreKey:', response.signedPreKey, response.signature);
+
+          resolve({signedPreKey: response.signedPreKey, signature: response.signature});
+        } else {
+          console.error('❌ Failed to fetch getSignedPreKey:', response.error);
           reject(new Error(response.error));
         }
       });
@@ -109,17 +144,60 @@ function Chat({ token, activeChat }) {
     await init_dh();
 
     // Fetch the pubIk and convert it to a ByteArray
-    const targetPublicKey = await fetchPublicIdentityKey(targetUserId);
-    const targetPublicIdentityKey = base64ToArrayBuffer(targetPublicKey);
+    const encTargetPublicIdentityKey = await fetchPublicIdentityKeyX25519(targetUserId);
+    const targetPublicIdentityKey = base64ToArrayBuffer(encTargetPublicIdentityKey);
 
-    // Compute the shared secret using Diffie-Hellman and derive the symmetric key
+    console.log('Target Public Identity Key:', targetPublicIdentityKey);
+    console.log('Private Key:', privateKeyArray);
+
+    // Compute the shared secret using X3DH
     const sharedSecret = await diffie_hellman(privateKeyArray, targetPublicIdentityKey);
     const derivedKey = await derive_symmetric_key(sharedSecret);
+
 
     console.log('🖥️Derived key:', derivedKey);
     setDerivedKey(derivedKey);
     return derivedKey;
   };
+
+  const initializeDoubleRatchet = async (ephemeralKey_private) => {
+    await init_dh();
+    console.log('🗝️⚠️⚠️Initializing Double Ratchet...');
+    const encTargetPublicIdentityKeyEd25519 = await fetchPublicIdentityKeyEd25519(targetUserId);
+    const targetPublicIdentityKeyEd25519 = base64ToArrayBuffer(encTargetPublicIdentityKeyEd25519);
+    console.log('BINGO');
+    const { signedPreKey, signature } = await fetchSignedPreKey(targetUserId);
+    const targetSignedPreKey = base64ToArrayBuffer(signedPreKey);
+    const targetSignature = base64ToArrayBuffer(signature);
+
+    console.log('🗝️⚠️⚠️Init XEdDSA with', targetSignedPreKey, targetSignature, targetPublicIdentityKeyEd25519);
+
+    await init_xeddsa();
+    const isValidSignature = await verify_signature(
+      targetSignature,
+      targetSignedPreKey,
+      targetPublicIdentityKeyEd25519);
+    console.log('Signature valid:', isValidSignature);
+
+    await init_xeddsa();
+
+    const dh1 = await diffie_hellman(privateKeyArray, targetSignedPreKey);
+    const dh2 = await diffie_hellman(ephemeralKey_private, targetPublicIdentityKeyEd25519);
+    const dh3 = await diffie_hellman(ephemeralKey_private, targetSignedPreKey);
+
+    console.log('DH1:', dh1);
+    console.log('DH2:', dh2);
+    console.log('DH3:', dh3);
+    
+    const IKM = new Uint8Array(dh1.length + dh2.length + dh3.length);
+    IKM.set(dh1, 0);
+    IKM.set(dh2, dh1.length);
+    IKM.set(dh3, dh1.length + dh2.length);
+    console.log('IKM:', IKM);
+
+    return IKM
+
+  }
 
   useEffect(() => {
     if (!userId || !targetUserId) return;
@@ -135,6 +213,25 @@ function Chat({ token, activeChat }) {
 
       // Initialize Diffie-Hellman and compute the derived key
       await init_dh();
+      console.log('🧑‍🤝‍🧑 Checking Session State 🧑‍🤝‍🧑')
+
+      // THIS WILL BE CHANGED TO AN ENCRYPTED LOCAL DB INSTEAD OF THE PUBLIC ACCESS LOCALSTORAGE
+      const savedSessions = localStorage.getItem(`chatSession-${userId}-${targetUserId}`);
+      if (savedSessions) {
+        const {savedMessages, savedDerivedKey} = JSON.parse(savedSessions);
+        setMessages(savedMessages || []);
+        setDerivedKey(savedDerivedKey || null);
+        console.log('📂Loaded session data from local📂');
+      } else {
+        console.log('📂No session data found, generating new session...📂');
+        const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+        const privateEphemeralKey = generate_private_ephemeral_key(randomBytes);
+        const publicEphemeralKey = generate_public_ephemeral_key(privateEphemeralKey);
+        console.log('🗝️ Generated ephemeral keys:', publicEphemeralKey, privateEphemeralKey);
+        initializeDoubleRatchet(privateEphemeralKey);
+      }
+
+      console.log("🗝️⚠️Computing derived key...");
       const derivedKey = await computeDerivedKey();
       
       // Cache the derived key
@@ -159,6 +256,11 @@ function Chat({ token, activeChat }) {
         console.log('✅ Decrypted messages:', decryptedMessages);
         markMessagesAsSeen(decryptedMessages);
         setMessages(decryptedMessages);
+
+        localStorage.setItem(
+          `chatSession-${userId}-${targetUserId}`,
+          JSON.stringify({ savedMessages: decryptedMessages, savedDerivedKey: derivedKey })
+        )
       };
   
       // Handle incoming chat messages in real-time
@@ -183,7 +285,17 @@ function Chat({ token, activeChat }) {
             ...message,
             text: await decrypt(message.text, derivedKey),
           };
-          setMessages((prevMessages) => [...prevMessages, decryptedMessage]);
+          setMessages((prevMessages) => {
+            const updatedMessages = [...prevMessages, decryptedMessage];
+  
+            // Save updated session data to localStorage
+            localStorage.setItem(
+              `chatSession-${userId}-${targetUserId}`,
+              JSON.stringify({ savedMessages: updatedMessages, savedDerivedKey: derivedKey })
+            );
+  
+            return updatedMessages;
+          });
         }
       };
   
