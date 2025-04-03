@@ -4,7 +4,7 @@ import io from 'socket.io-client';
 
 import { Buffer } from 'buffer';
 
-import init, { generate_private_key, generate_public_key} from '/dh-wasm/pkg';
+import init, { generate_private_prekey, generate_public_prekey} from '/dh-wasm/pkg';
 
 
 const Login = () => {
@@ -26,8 +26,8 @@ const Login = () => {
     await init();
 
     const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-    const privatePreKey = generate_private_key(randomBytes);
-    const publicPreKey = generate_public_key(privatePreKey);
+    const privatePreKey = generate_private_prekey(randomBytes);
+    const publicPreKey = generate_public_prekey(privatePreKey);
 
     console.log("Private Pre Key:", new Uint8Array(privatePreKey));
     console.log("Public Pre Key:", new Uint8Array(publicPreKey));
