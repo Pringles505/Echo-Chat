@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import { Buffer } from 'buffer';
 
-import init, { generate_private_key, generate_public_key } from '/dh-wasm/pkg';
+import init, { generate_ed25519_private_key, generate_ed25519_public_key, generate_public_prekey, 
+  generate_private_prekey, derive_x25519_from_ed25519_private } from '/dh-wasm/pkg';
 import init_xeddsa, { convert_x25519_to_xeddsa, compute_determenistic_nonce, 
   compute_nonce_point, derive_ed25519_keypair_from_x25519, compute_challenge_hash, 
   compute_signature_scaler, compute_signature, verify_signature, test_sign_and_verify} from '/xeddsa-wasm/pkg';
@@ -30,17 +31,25 @@ const Register = () => {
     await init_xeddsa();
 
     // Generate the identity pair
-    const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+    const randomBytes_IK = crypto.getRandomValues(new Uint8Array(32));
+    const randomBytes_SPK = crypto.getRandomValues(new Uint8Array(32));
 
-    const privateKey = generate_private_key(randomBytes);
-    const publicKey = generate_public_key(privateKey);
-    const privatePreKey = generate_private_key(randomBytes);
-    const publicPreKey = generate_public_key(privatePreKey);
+    const privateKey = generate_ed25519_private_key(randomBytes_IK);
+    const publicKey = generate_ed25519_public_key(privateKey);
+    
+    const privatePreKey = generate_public_prekey(randomBytes_SPK);
+    const publicPreKey = generate_private_prekey(privatePreKey);
 
-    console.log("Private Key:", new Uint8Array(privateKey));
-    console.log("Public Key:", new Uint8Array(publicKey));
+    console.log("Private Key: Ed25519", new Uint8Array(privateKey));
+    console.log("Public Key Ed25519:", new Uint8Array(publicKey));
     console.log("Private Pre Key:", new Uint8Array(privatePreKey));
     console.log("Public Pre Key:", new Uint8Array(publicPreKey));
+
+    const x25519_key_pair =  derive_x25519_from_ed25519_private(privateKey);
+    const { x25519_private_key, x25519_public_key } = x25519_key_pair;
+
+    console.log("X25519 Private Key:", new Uint8Array(x25519_private_key));
+    console.log("X25519 Public Key:", new Uint8Array(x25519_public_key));
 
 
     const xeddsaKey = convert_x25519_to_xeddsa(privateKey);
@@ -90,7 +99,8 @@ const Register = () => {
     console.log("Challenge hash (k)", Array.from(challenge_hash));
 
     // Emit the registration event
-    const publicKeyString = Buffer.from(publicKey).toString('base64');
+    const publicKeyStringX25519 = Buffer.from(x25519_public_key).toString('base64');
+    const publicKeyStringED25519 = Buffer.from(publicKey).toString('base64');
     const publicPreKeyString = Buffer.from(publicPreKey).toString('base64');
     const signatureString= Buffer.from(signature).toString('base64');
 
@@ -99,14 +109,17 @@ const Register = () => {
     };
     
     const privatePreKeyBase64 = arrayBufferToBase64(privatePreKey);
-    const privateKeyBase64 = arrayBufferToBase64(privateKey);
+    const ed25519PrivateKeyBase64 = arrayBufferToBase64(privateKey);
+    const x25519PrivateKeyBase64 = arrayBufferToBase64(x25519_private_key);
 
-    localStorage.setItem("privateKey", privateKeyBase64);
+    
+    localStorage.setItem("privateKeyEd25519", ed25519PrivateKeyBase64);
+    localStorage.setItem("publicKeyX25519", x25519PrivateKeyBase64);
     localStorage.setItem("privatePreKey", privatePreKeyBase64);
 
-
     const keyBundle = {
-      publicIdentityKey: publicKeyString,
+      publicIdentityKeyX25519: publicKeyStringX25519,
+      publicIdentityKeyEd25519: publicKeyStringED25519,
       publicSignedPreKey: [
         publicPreKeyString,
         signatureString,
