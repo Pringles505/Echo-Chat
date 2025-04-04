@@ -66,7 +66,6 @@ function App() {
         ease: "power2.out",
       });
 
-      // Agrega esta parte para la animación al pasar el cursor
       const featureCards = document.querySelectorAll(".feature-card");
       featureCards.forEach((card) => {
         card.addEventListener("mouseenter", () => {
@@ -92,7 +91,6 @@ function App() {
       });
     }
 
-    // Efecto de partículas
     const particlesContainer = document.getElementById("particles-container");
     const particleCount = 80;
 
@@ -242,17 +240,10 @@ function App() {
                     <a href="#contact" className="nav-link">
                       {t("nav.contact")}
                     </a>
-                    <div className="language-selector">
-                      <ReactFlagsSelect
-                        selected={selectedFlag}
-                        onSelect={handleFlagSelect}
-                        countries={["GB", "ES", "RU"]}
-                        customLabels={{ GB: "EN", ES: "ES", RU: "RU" }}
-                        placeholder="Select Language"
-                      />
-                    </div>
+
                     <div className="auth-buttons">
                       <button
+                        href="login"
                         className="btn btn-outline"
                         onClick={() => {
                           setAuthType("login");
@@ -262,6 +253,7 @@ function App() {
                         {t("nav.login")}
                       </button>
                       <button
+                        href="register"
                         className="btn btn-primary"
                         onClick={() => {
                           setAuthType("register");
@@ -270,6 +262,17 @@ function App() {
                       >
                         {t("nav.register")}
                       </button>
+                    </div>
+                    <div className="language-selector">
+                      <ReactFlagsSelect
+                        selected={selectedFlag}
+                        onSelect={handleFlagSelect}
+                        countries={["GB", "ES", "RU"]}
+                        customLabels={{ GB: "EN", ES: "ES", RU: "RU" }}
+                        selectButtonClassName="react-flag-select-btn"
+                        menuClassName="react-flag-select-menu"
+                        optionClassName="react-flag-select-option"
+                      />
                     </div>
                   </nav>
                 </div>

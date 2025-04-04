@@ -1,19 +1,19 @@
 :root {
-  --color-primary: #5750a1;  /* Un tono morado estelar */
+  --color-primary: #5750a1; /* Un tono morado estelar */
   --color-secondary: #8c85c2; /* Un tono lila más claro */
-  --color-accent: #5750a1;  /* Un tono morado estelar */
-  --color-background: #000000;  /* Negro profundo del espacio */
-  --color-text: #ffffff;      /* Blanco brillante de las estrellas */
-  --color-border: #222222;    /* Un borde muy oscuro */
-  --color-success: #00ff00;  /* Verde neón, para efectos especiales */
-  --color-error: #ff0000;    /* Rojo intenso, para errores */
+  --color-accent: #5750a1; /* Un tono morado estelar */
+  --color-background: #000000; /* Negro profundo del espacio */
+  --color-text: #ffffff; /* Blanco brillante de las estrellas */
+  --color-border: #222222; /* Un borde muy oscuro */
+  --color-success: #00ff00; /* Verde neón, para efectos especiales */
+  --color-error: #ff0000; /* Rojo intenso, para errores */
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Inter', sans-serif; 
+  font-family: "Inter", sans-serif;
 }
 
 body {
@@ -28,8 +28,8 @@ body {
   left: 0;
   right: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.8); /* Fondo negro semi-transparente */
-  backdrop-filter: blur(15px);      /* Un blur más pronunciado */
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(15px);
   border-bottom: 1px solid var(--color-border);
   padding: 1rem 2rem;
 }
@@ -44,7 +44,6 @@ body {
 
 .logo {
   height: 40px;
-  /* Podrías usar un logo con un estilo estelar/galáctico si tienes uno */
 }
 
 .nav-links {
@@ -61,7 +60,7 @@ body {
 }
 
 .nav-link:hover {
-  color: var(--color-primary); /* Al pasar el ratón, un brillo morado */
+  color: var(--color-primary);
 }
 
 .language-selector {
@@ -85,6 +84,40 @@ body {
   width: 24px;
   height: 16px;
   border-radius: 2px;
+}
+
+.ReactFlagsSelect-module_selectBtn__19wW7 {
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  font-family: inherit;
+  color: #ffffff;
+  border: thin solidrgb(40, 40, 40);
+  border-radius: 4px;
+  background: transparent;
+}
+
+.ReactFlagsSelect-module_selectOptions__3LNBJ {
+  position: absolute;
+  z-index: 999999;
+  border: 1px solid #bdbbbb;
+  border-radius: 3px;
+  background: #000000;
+  margin-top: 8px;
+  padding: 8px 0;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.ReactFlagsSelect-module_selectOptionWithlabel__2GpmM {
+  padding: 4px 10px;
+}
+
+.ReactFlagsSelect-module_selectOptionWithlabel__2GpmM:hover {
+  background: grey !important;
 }
 
 .auth-buttons {
@@ -133,10 +166,10 @@ body {
 
 .hero {
   background: linear-gradient(135deg, #000000 0%, #0c0c33 100%);
-  display: flex; 
-  justify-content: center; 
-  align-items: center; 
-  min-height: 100vh; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
 .hero-content {
@@ -148,7 +181,7 @@ body {
   font-size: 4.5rem;
   margin-bottom: 2rem;
   color: white;
-  font-family: 'TuFuentePersonalizada', sans-serif;
+  font-family: "TuFuentePersonalizada", sans-serif;
   background: none;
   -webkit-background-clip: unset;
   -webkit-text-fill-color: white;
@@ -162,7 +195,7 @@ body {
 }
 
 .features {
-  background-color: #000000; 
+  background-color: #000000;
 }
 
 .features-grid {
@@ -185,7 +218,12 @@ body {
 
 .feature-card:hover {
   transform: translateY(-10px);
-  background-color: rgba(255, 255, 255, 0.1); /* Ligeramente más claro al pasar el ratón */
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.1
+  ); /* Ligeramente más claro al pasar el ratón */
 }
 
 /* Chat Widget */
@@ -202,7 +240,7 @@ body {
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s;
-  box-shadow: 0 4px 20px rgba(255, 127, 80, 0.3); /* Sombra del color del acento */
+  box-shadow: 0 4px 20px #5750a1;
 }
 
 .chat-bubble:hover {
@@ -285,7 +323,6 @@ body {
   box-shadow: 0 0 5px rgba(87, 80, 161, 0.3);
 }
 
-/* Auth Modal */
 .auth-modal {
   position: fixed;
   top: 50%;
@@ -385,20 +422,20 @@ body {
 
 /* Footer */
 .footer {
-  background: #000; 
+  background: #000;
   color: var(--color-text);
   padding: 3rem 2rem;
   border-top: 1px solid var(--color-border);
-  position: relative; 
+  position: relative;
   overflow: hidden;
 }
 
 .footer-logo {
-  position: absolute; 
-  top: 1rem; 
-  left: 1200px; 
-  width: 200px; 
-  height: auto; 
+  position: absolute;
+  top: 1rem;
+  left: 1200px;
+  width: 200px;
+  height: auto;
 }
 
 .footer-content {
@@ -472,9 +509,9 @@ body {
   color: var(--color-text);
 }
 
-.subscribe-form input:focus{
-    box-shadow: 0 0 5px rgba(87, 80, 161, 0.3);
-    border-color: var(--color-primary);
+.subscribe-form input:focus {
+  box-shadow: 0 0 5px rgba(87, 80, 161, 0.3);
+  border-color: var(--color-primary);
 }
 
 .subscribe-form button {
@@ -587,7 +624,6 @@ body {
     opacity: 0.6;
   }
 }
-
 
 .glow {
   position: absolute;
