@@ -14,12 +14,12 @@ const resources = {
         register: 'Register'
       },
       hero: {
-        title: 'Secure Chat: Your Privacy, Our Priority',
+        title: 'ECHO: Your Privacy, Our Priority',
         subtitle: 'End-to-end encrypted messaging for everyone',
         cta: 'Try Now'
       },
       features: {
-        title: 'Why Choose Secure Chat',
+        title: 'Why Choose ECHO',
         card1: {
           title: 'Advanced Encryption',
           description: 'Your messages are protected with state-of-the-art encryption'
@@ -60,12 +60,12 @@ const resources = {
         register: 'Registrarse'
       },
       hero: {
-        title: 'Chat Seguro: Tu Privacidad, Nuestra Prioridad',
+        title: 'ECHO: Tu Privacidad, Nuestra Prioridad',
         subtitle: 'Mensajería cifrada de extremo a extremo para todos',
         cta: 'Prueba Ahora'
       },
       features: {
-        title: 'Por qué elegir Chat Seguro',
+        title: 'Por qué elegir ECHO',
         card1: {
           title: 'Cifrado Avanzado',
           description: 'Tus mensajes están protegidos con cifrado de última generación'
@@ -106,12 +106,12 @@ const resources = {
         register: 'Регистрация'
       },
       hero: {
-        title: 'Безопасный Чат: Ваша Конфиденциальность - Наш Приоритет',
+        title: 'ECHO: Ваша Конфиденциальность - Наш Приоритет',
         subtitle: 'Сквозное шифрование для всех',
         cta: 'Попробовать'
       },
       features: {
-        title: 'Почему выбирают Secure Chat',
+        title: 'Почему выбирают ECHO',
         card1: {
           title: 'Продвинутое Шифрование',
           description: 'Ваши сообщения защищены современным шифрованием'
