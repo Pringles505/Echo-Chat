@@ -195,3 +195,15 @@ pub fn generate_private_ephemeral_key(js_random_bytes: &[u8]) -> Vec<u8> {
 
     private_prekey.to_vec()
 }
+
+#[wasm_bindgen]
+pub fn hkdf_derive(input_key_material: &[u8], salt: &[u8], info: &[u8], output_len: usize) -> Vec<u8> {
+    let hkdf = Hkdf::<Sha256>::new(Some(salt), input_key_material);
+
+    let mut okm = vec![0u8; output_len];
+    if hkdf.expand(info, &mut okm).is_err() {
+        return vec![]; // Handle failure
+    }
+
+    okm
+}

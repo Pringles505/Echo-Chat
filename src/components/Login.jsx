@@ -25,22 +25,6 @@ const Login = () => {
 
     await init();
 
-    const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-    const privatePreKey = generate_private_prekey(randomBytes);
-    const publicPreKey = generate_public_prekey(privatePreKey);
-
-    console.log("Private Pre Key:", new Uint8Array(privatePreKey));
-    console.log("Public Pre Key:", new Uint8Array(publicPreKey));
-
-    const publicPreKeyString = Buffer.from(publicPreKey).toString('base64');
-    const arrayBufferToBase64 = (buffer) => {
-      return btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    };
-
-    const privateKeyBase64 = arrayBufferToBase64(privatePreKey);
-    localStorage.setItem("privatePreKey", privateKeyBase64);
-
-    
     // Connect to the server temporarily to handle login
     const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
 

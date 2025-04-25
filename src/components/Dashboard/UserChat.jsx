@@ -10,8 +10,8 @@ import DisplayText from './displayText';
 // Import DH and AES Rust Modules
 import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt } from './../../../aes-wasm/pkg';
 import init_dh, { derive_symmetric_key, diffie_hellman, generate_private_ephemeral_key, 
-  generate_public_ephemeral_key  } from './../../../dh-wasm/pkg';
-import init_xeddsa, {verify_signature, convert_x25519_to_xeddsa} from './../../../xeddsa-wasm/pkg';
+  generate_public_ephemeral_key, hkdf_derive  } from './../../../dh-wasm/pkg';
+import init_xeddsa, {verify_signature} from './../../../xeddsa-wasm/pkg';
 
 // Secret key and nonce for encryption
 const nonce = '000102030405060708090a0b'; 
@@ -29,6 +29,7 @@ const nonceArray = hexToUint8Array(nonce);
 
 // Encrypt and decrypt functions from WebAssembly module
 const encrypt = async (text, derivedKey) => {
+  console.log("🎈🎈Encrypting with", derivedKey)
   await init();
   console.log('derivedKey:', derivedKey);
 
@@ -47,6 +48,7 @@ const encrypt = async (text, derivedKey) => {
 };
 
 const decrypt = async (text, derivedKey) => {
+  console.log("🎈🎈Decrypting with", derivedKey)
   await init();
 
   // Ensure the derived key is computed before decryption
@@ -78,8 +80,19 @@ function Chat({ token, activeChat }) {
     return byteArray;
   };
 
+  const arrayBufferToBase64 = (buffer) => {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    console.log('CONVERTED ARRAY BUFFER TO BASE64:', btoa(binary));
+    return btoa(binary);
+  };
+
   // Extract the private key from localstorage and convert it to a ByteArray
-  const storedPrivateKey = localStorage.getItem('publicKeyX25519');
+  const storedPrivateKey = localStorage.getItem('privateKeyX25519');
   const privateKeyArray = base64ToArrayBuffer(storedPrivateKey);
 
   // Fetches the pubIK from the current targetUser
@@ -93,6 +106,34 @@ function Chat({ token, activeChat }) {
         } else {
           console.error('❌ Failed to fetch publicIdentityKey:', response.error);
           reject(new Error(response.error));
+        }
+      });
+    });
+  };
+
+  const fetchLatestMessageNumber = async () => {
+    return new Promise((resolve, reject) => {
+      socket.emit('getLatestMessageNumber', { userId, targetUserId }, (response) => {
+        if (response.success) {
+          const messageNumber = response.messageNumber || 1;
+          console.log('✅ Latest message number:', messageNumber);
+          resolve(messageNumber);
+        } else {
+          console.log('No messages found, starting with messageNumber 1');
+          resolve(0);
+        }
+      });
+    });
+  };
+  const checkFirstMessage = async () => {
+    return new Promise((resolve, reject) => {
+      socket.emit('checkIfMessagesExist', { userId, targetUserId }, (response) => {
+        if (response.success) {
+          console.log('✅ Messages exist for this user pair');
+          resolve(true); 
+        } else {
+          console.log('❌ No messages found for this user pair');
+          resolve(false); 
         }
       });
     });
@@ -135,6 +176,7 @@ function Chat({ token, activeChat }) {
   const username = token ? jwtDecode(token).username : '';
   const [messages, setMessages] = useState([]);
   const [globalDerivedKey, setDerivedKey] = useState();
+  const [messageNumber, setMessageNumber] = useState(0);
 
   const messagesEndRef = useRef(null);
 
@@ -160,34 +202,52 @@ function Chat({ token, activeChat }) {
     return derivedKey;
   };
 
-  const initializeDoubleRatchet = async (ephemeralKey_private) => {
+  const initializeDoubleRatchet = async (ephemeralKey_private, publicEphemeralKey) => {
     await init_dh();
     console.log('🗝️⚠️⚠️Initializing Double Ratchet...');
-    const encTargetPublicIdentityKeyEd25519 = await fetchPublicIdentityKeyEd25519(targetUserId);
-    const targetPublicIdentityKeyEd25519 = base64ToArrayBuffer(encTargetPublicIdentityKeyEd25519);
+    const encTargetPublicIdentityKeyX25519 = await fetchPublicIdentityKeyX25519(targetUserId);
+    const targetPublicIdentityKeyX25519 = base64ToArrayBuffer(encTargetPublicIdentityKeyX25519);
     console.log('BINGO');
     const { signedPreKey, signature } = await fetchSignedPreKey(targetUserId);
     const targetSignedPreKey = base64ToArrayBuffer(signedPreKey);
     const targetSignature = base64ToArrayBuffer(signature);
 
-    console.log('🗝️⚠️⚠️Init XEdDSA with', targetSignedPreKey, targetSignature, targetPublicIdentityKeyEd25519);
+    console.log('🗝️⚠️⚠️Init XEdDSA with', targetSignedPreKey, targetSignature, targetPublicIdentityKeyX25519);
 
     await init_xeddsa();
     const isValidSignature = await verify_signature(
       targetSignature,
       targetSignedPreKey,
-      targetPublicIdentityKeyEd25519);
+      targetPublicIdentityKeyX25519);
     console.log('Signature valid:', isValidSignature);
 
     await init_xeddsa();
 
+    const publicIdentityKeyX25519 = localStorage.getItem('publicKeyX25519');
+    console.log("🗝️🎈 publicIdentityKeyX25519: ", publicIdentityKeyX25519)
+    console.log("🗝️🎈 publicEphemeralKey: ", publicEphemeralKey)
+
+    console.log("🎈🎈 Init DR with: ")
+    console.log("🎈", "target Public IK: ", targetPublicIdentityKeyX25519)
+    console.log("🎈", "target Public PK: ", targetSignedPreKey)
+    console.log("🎈", "private EK: ", ephemeralKey_private)
+    console.log("🎈", "private IK", privateKeyArray)
+
+
     const dh1 = await diffie_hellman(privateKeyArray, targetSignedPreKey);
-    const dh2 = await diffie_hellman(ephemeralKey_private, targetPublicIdentityKeyEd25519);
+    const dh2 = await diffie_hellman(ephemeralKey_private, targetPublicIdentityKeyX25519);
     const dh3 = await diffie_hellman(ephemeralKey_private, targetSignedPreKey);
 
     console.log('DH1:', dh1);
+    console.log('Private Key:', privateKeyArray);
+    console.log('Target Signed PreKey:', targetSignedPreKey);
+
     console.log('DH2:', dh2);
+    console.log('Target Public Identity Key:', targetPublicIdentityKeyX25519);
+    console.log('Private Ephemeral Key:', ephemeralKey_private);
+
     console.log('DH3:', dh3);
+
     
     const IKM = new Uint8Array(dh1.length + dh2.length + dh3.length);
     IKM.set(dh1, 0);
@@ -195,8 +255,58 @@ function Chat({ token, activeChat }) {
     IKM.set(dh3, dh1.length + dh2.length);
     console.log('IKM:', IKM);
 
-    return IKM
+    //HKDF the IKM to produce the root key
+    const root_key = hkdf_derive(IKM, 0, "EchoProtocol", 32)
+    console.log('Root Key:', root_key);
 
+    return root_key;
+  }
+
+  const initializeDoubleRatchetResponse = async (messages) => {
+    await init_dh();
+    // Retrieve the privatePreKey from local storage
+    const storedPrivatePreKey = localStorage.getItem('privatePreKey');
+    if (!storedPrivatePreKey) {
+      throw new Error('Private PreKey not found in local storage');
+    }
+    const privatePreKey = base64ToArrayBuffer(storedPrivatePreKey);
+
+    const encTargetPublicIdentityKey = await fetchPublicIdentityKeyX25519(targetUserId);
+    const targetPublicIdentityKey = base64ToArrayBuffer(encTargetPublicIdentityKey);
+
+    const encTargetPublicEphemeralKey = messages[0].publicEphemeralKey;
+    const targetPublicEphemeralKey = base64ToArrayBuffer(encTargetPublicEphemeralKey);
+
+
+    console.log("🎈🎈 Init DR Response with: ");
+    console.log("🎈", "target Public IK: ", targetPublicIdentityKey)
+    console.log("🎈", "private PreKey: ", privatePreKey)
+    console.log("🎈", "target Public EK: ", targetPublicEphemeralKey)
+
+    const dh1 = await diffie_hellman(privatePreKey, targetPublicIdentityKey);
+    const dh2 = await diffie_hellman(privateKeyArray, targetPublicEphemeralKey);
+    const dh3 = await diffie_hellman(privatePreKey, targetPublicEphemeralKey);
+
+    console.log('DH1:', dh1);
+    console.log('Private PreKey:', privatePreKey);
+    console.log('Target Public Identity Key:', targetPublicIdentityKey);
+
+    console.log('DH2:', dh2);
+    console.log('Target Public Ephemeral Key:', targetPublicEphemeralKey);
+
+    console.log('DH3:', dh3);
+    console.log('Private Key:', privateKeyArray);
+
+    const IKM = new Uint8Array(dh1.length + dh2.length + dh3.length); 
+    IKM.set(dh1, 0);
+    IKM.set(dh2, dh1.length);
+    IKM.set(dh3, dh1.length + dh2.length);
+    console.log('IKM:', IKM);
+
+    const root_key = hkdf_derive(IKM, 0, "EchoProtocol", 32)
+    console.log('Root Key:', root_key);
+    setDerivedKey(root_key);
+    return root_key;
   }
 
   useEffect(() => {
@@ -211,37 +321,18 @@ function Chat({ token, activeChat }) {
   
     const initChat = async () => {
 
-      // Initialize Diffie-Hellman and compute the derived key
-      await init_dh();
-      console.log('🧑‍🤝‍🧑 Checking Session State 🧑‍🤝‍🧑')
-
-      // THIS WILL BE CHANGED TO AN ENCRYPTED LOCAL DB INSTEAD OF THE PUBLIC ACCESS LOCALSTORAGE
-      const savedSessions = localStorage.getItem(`chatSession-${userId}-${targetUserId}`);
-      if (savedSessions) {
-        const {savedMessages, savedDerivedKey} = JSON.parse(savedSessions);
-        setMessages(savedMessages || []);
-        setDerivedKey(savedDerivedKey || null);
-        console.log('📂Loaded session data from local📂');
-      } else {
-        console.log('📂No session data found, generating new session...📂');
-        const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-        const privateEphemeralKey = generate_private_ephemeral_key(randomBytes);
-        const publicEphemeralKey = generate_public_ephemeral_key(privateEphemeralKey);
-        console.log('🗝️ Generated ephemeral keys:', publicEphemeralKey, privateEphemeralKey);
-        initializeDoubleRatchet(privateEphemeralKey);
-      }
-
-      console.log("🗝️⚠️Computing derived key...");
-      const derivedKey = await computeDerivedKey();
-      
-      // Cache the derived key
-      setDerivedKey(derivedKey); 
+      // Fetch the latest message number
+      const latestMessageNumber = await fetchLatestMessageNumber();
+      console.log('📩 Latest message number:', latestMessageNumber);
+      setMessageNumber(latestMessageNumber);
   
       // Initialize the socket connection and emit the 'ready' event
       socket.emit('ready', { userId, targetUserId });
-  
       // Handle intial messages when chat loads
       const handleInitMessages = async (messages) => {
+
+        initializeDoubleRatchetResponse(messages);
+
         console.log('✅ Received initial messages:', messages);
   
         // Decrypt all messages using the derived key
@@ -257,10 +348,7 @@ function Chat({ token, activeChat }) {
         markMessagesAsSeen(decryptedMessages);
         setMessages(decryptedMessages);
 
-        localStorage.setItem(
-          `chatSession-${userId}-${targetUserId}`,
-          JSON.stringify({ savedMessages: decryptedMessages, savedDerivedKey: derivedKey })
-        )
+        
       };
   
       // Handle incoming chat messages in real-time
@@ -288,6 +376,7 @@ function Chat({ token, activeChat }) {
           setMessages((prevMessages) => {
             const updatedMessages = [...prevMessages, decryptedMessage];
   
+            console.log('Saving session to localStorage:', `chatSession-${userId}-${targetUserId}`);
             // Save updated session data to localStorage
             localStorage.setItem(
               `chatSession-${userId}-${targetUserId}`,
@@ -336,15 +425,60 @@ function Chat({ token, activeChat }) {
 
   // Send message function
   const sendMessage = async (text) => {
+    console.log('🧑‍🤝‍🧑 Checking Session State 🧑‍🤝‍🧑')
+
+      // THIS WILL BE CHANGED TO AN ENCRYPTED LOCAL DB INSTEAD OF THE PUBLIC ACCESS LOCALSTORAGE
+      const savedSessions = localStorage.getItem(`chatSession-${userId}-${targetUserId}`);
+
+       // Set inital message to false and publicEphemeralKey local var
+      let isInitialMessage = false;
+      let publicEphemeralKeyBase64 = null;
+      let root_key = null;
+
+      if (savedSessions) {
+        const {savedMessages, savedDerivedKey} = JSON.parse(savedSessions);
+        setMessages(savedMessages || []);
+        setDerivedKey(savedDerivedKey || null);
+        console.log('📂Loaded session data from local📂');
+        const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+
+        const privateEphemeralKey = generate_private_ephemeral_key(randomBytes);
+        const publicEphemeralKey = generate_public_ephemeral_key(privateEphemeralKey);
+
+        publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
+
+        console.log('Saved To State: ', publicEphemeralKeyBase64);
+        console.log('🗝️ Generated ephemeral keys:', publicEphemeralKey, privateEphemeralKey);
+
+
+      } else {
+
+        // If no session data is found, check if it's the first message
+        isInitialMessage = !(await checkFirstMessage());
+        console.log('Is this the first message?', isInitialMessage);
+
+        console.log('📂No session data found, generating new session...📂');
+        const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+
+        const privateEphemeralKey = generate_private_ephemeral_key(randomBytes);
+        const publicEphemeralKey = generate_public_ephemeral_key(privateEphemeralKey);
+
+        publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
+
+        console.log('Saved To State: ', publicEphemeralKeyBase64);
+        console.log('🗝️ Generated ephemeral keys:', publicEphemeralKey, privateEphemeralKey);
+
+        if (isInitialMessage) {
+          console.log("🤪🤪🤪🤪🤪")
+          const root = await initializeDoubleRatchet(privateEphemeralKey, publicEphemeralKey);
+          root_key = root
+          setDerivedKey(root_key);
+        }
+      }
 
     // Compute the derived key 
-    await init_dh();
-    computeDerivedKey();
-
-    // Check if the derived key is available before sending the message
-    if (!globalDerivedKey) {
-      console.error('Derived key is not available yet. Please wait for it to be computed.');
-      return;
+    if (!isInitialMessage) {
+      await computeDerivedKey();
     }
 
     // check if the text is empty
@@ -352,11 +486,33 @@ function Chat({ token, activeChat }) {
 
     try {
       // Encrypt the message using the derived key
-      const encryptedText = await encrypt(text, globalDerivedKey);
+      const encryptedText = await encrypt(text, root_key);  
 
-      // Emit message to the server
-      socket.emit('newMessage', { text: encryptedText, userId, targetUserId, username });
 
+      // Increment the message number
+      let currentMessageNumber = messageNumber;
+      if (!isInitialMessage){
+        currentMessageNumber = messageNumber + 1;
+        setMessageNumber(currentMessageNumber);
+      }
+
+    // Emit the message to the server with additional fields
+    socket.emit('newMessage', {
+      text: encryptedText,
+      userId,
+      targetUserId,
+      username,
+      is_initial: isInitialMessage,
+      messageNumber: currentMessageNumber,
+      publicEphemeralKey: publicEphemeralKeyBase64,
+    });
+
+    console.log('📤 Sent message:', {
+      text: encryptedText,
+      is_initial: isInitialMessage,
+      messageNumber: currentMessageNumber,
+      publicEphemeralKey: publicEphemeralKeyBase64,
+    });
     } catch (error) {
       console.error('Failed to send message:', error);
     }

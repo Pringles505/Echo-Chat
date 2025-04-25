@@ -37,8 +37,8 @@ const Register = () => {
     const privateKey = generate_ed25519_private_key(randomBytes_IK);
     const publicKey = generate_ed25519_public_key(privateKey);
     
-    const privatePreKey = generate_public_prekey(randomBytes_SPK);
-    const publicPreKey = generate_private_prekey(privatePreKey);
+    const privatePreKey = generate_private_prekey(randomBytes_SPK);
+    const publicPreKey = generate_public_prekey(privatePreKey);
 
     console.log("Private Key: Ed25519", new Uint8Array(privateKey));
     console.log("Public Key Ed25519:", new Uint8Array(publicKey));
@@ -111,10 +111,12 @@ const Register = () => {
     const privatePreKeyBase64 = arrayBufferToBase64(privatePreKey);
     const ed25519PrivateKeyBase64 = arrayBufferToBase64(privateKey);
     const x25519PrivateKeyBase64 = arrayBufferToBase64(x25519_private_key);
+    const x25519PublicKeyBase64 = arrayBufferToBase64(x25519_public_key);
 
     
     localStorage.setItem("privateKeyEd25519", ed25519PrivateKeyBase64);
-    localStorage.setItem("publicKeyX25519", x25519PrivateKeyBase64);
+    localStorage.setItem("privateKeyX25519", x25519PrivateKeyBase64);
+    localStorage.setItem("publicKeyX25519", x25519PublicKeyBase64);
     localStorage.setItem("privatePreKey", privatePreKeyBase64);
 
     const keyBundle = {
