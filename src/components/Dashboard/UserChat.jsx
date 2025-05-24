@@ -70,16 +70,17 @@ const storeKey = (userId, targetUserId, messageNumber, keyUint8Array) => {
   const keyListJSON = localStorage.getItem(keyStorageKey);
   const keyList = keyListJSON ? JSON.parse(keyListJSON) : [];
 
-  // Ensure the array has enough length to insert at `messageNumber`
-  while (keyList.length < messageNumber) {
-    keyList.push(null); // pad missing indices
+  // Ensure we're not overwriting existing keys
+  if (keyList[messageNumber]) {
+    console.warn(`⚠️ Key already exists at index ${messageNumber}, not overwriting`);
+    return;
   }
 
+  // Store the key at its messageNumber index
   keyList[messageNumber] = Array.from(keyUint8Array);
   localStorage.setItem(keyStorageKey, JSON.stringify(keyList));
+  console.log(`🔑 Stored key at index ${messageNumber}`);
 };
-
-
 
 
 const getLatestKey = (userId, targetUserId) => {
@@ -89,15 +90,20 @@ const getLatestKey = (userId, targetUserId) => {
   if (!keyListJSON) return null;
 
   const keyList = JSON.parse(keyListJSON);
-  if (!Array.isArray(keyList) || keyList.length === 0) return null;
-
-  const latestKeyArray = keyList[keyList.length - 1];
-  if (!latestKeyArray || latestKeyArray.length !== 32) {
-    console.error("❌ Latest key is invalid or wrong length:", latestKeyArray);
-    return null;
+  
+  // Find the last non-null key
+  for (let i = keyList.length - 1; i >= 0; i--) {
+    if (keyList[i]) {
+      const key = new Uint8Array(keyList[i]);
+      if (key.length === 32) {
+        console.log(`🔑 Retrieved latest key at index ${i}`);
+        return key;
+      }
+    }
   }
 
-  return new Uint8Array(latestKeyArray);
+  console.error("❌ No valid keys found in storage");
+  return null;
 };
 
 
@@ -110,11 +116,13 @@ const getKey = (userId, targetUserId, index) => {
   if (!keyListJSON) return null;
 
   const keyList = JSON.parse(keyListJSON);
-  const keyArray = keyList[index];
-  if (!keyArray) return null;
+  if (index >= keyList.length || !keyList[index]) {
+    console.error(`❌ No key found at index ${index}`);
+    return null;
+  }
 
-  const key = new Uint8Array(keyArray);
-  console.log(`🔑 Retrieved key for index ${index} (length ${key.length}):`, key);
+  const key = new Uint8Array(keyList[index]);
+  console.log(`🔑 Retrieved key for index ${index} (length ${key.length})`);
   return key;
 };
 
@@ -181,21 +189,14 @@ function Chat({ token, activeChat }) {
   };
 
   const fetchLatestMessageNumber = async () => {
-    return new Promise((resolve, reject) => {
-      socket.emit('getLatestMessageNumber', { userId, targetUserId }, (response) => {
-        if (response.success) {
-          const messageNumber = (response.messageNumber !== undefined) ? response.messageNumber : 0;
-          const retrievedUserId = response.userId || userId;
-          console.log('✅ Latest message number:', messageNumber);  
-          console.log('by: ', retrievedUserId)
-          resolve(messageNumber, retrievedUserId);
-        } else {
-          console.log('No messages found, starting with messageNumber 1');
-          resolve(0);
-        }
+    return new Promise((resolve) => {
+        socket.emit('getLatestMessageNumber', { userId, targetUserId }, (response) => {
+            // Always resolve with a number
+            resolve(response.success ? response.messageNumber : 0);
+        });
       });
-    });
   };
+
   const checkFirstMessage = async () => {
     return new Promise((resolve, reject) => {
       socket.emit('checkIfMessagesExist', { userId, targetUserId }, (response) => {
@@ -474,9 +475,6 @@ function Chat({ token, activeChat }) {
                 text: await decrypt(message.text, derivedKey),
               };
 
-              const targetPublicEphemeralKeyBase64 = message.publicEphemeralKey;
-              localStorage.setItem('previousTargetPublicEphemeralKey', targetPublicEphemeralKeyBase64);
-
               updateSavedMessages(decryptedMessage);
               continue;
           }
@@ -514,6 +512,8 @@ function Chat({ token, activeChat }) {
             console.error(`❌ No key found for message number ${message.messageNumber}`);
             return;
           }
+          
+          storeKey(userId, message.userId, message.messageNumber, derivedKey);
 
           const decryptedMessage = {
             ...message,
@@ -562,8 +562,7 @@ function Chat({ token, activeChat }) {
   // Send message function
   const sendMessage = async (text) => {
     console.log('🧑‍🤝‍🧑 Checking Session State 🧑‍🤝‍🧑')
-    const currentMessageNumber = getNextSharedMessageNumber (userId, targetUserId);
-
+    const currentMessageNumber = (await fetchLatestMessageNumber (userId, targetUserId) + 1);
     console.log("🧮 Using message number:", currentMessageNumber);
 
       // THIS WILL BE CHANGED TO AN ENCRYPTED LOCAL DB INSTEAD OF THE PUBLIC ACCESS LOCALSTORAGE
@@ -604,7 +603,9 @@ function Chat({ token, activeChat }) {
           console.log("No previous target public ephemeral key found")
           new_root_key = await continueDoubleRatchetChain(currentKeyChain, currentKeyChain);
         }
-        storeKey(userId, targetUserId, currentMessageNumber, new_root_key);
+        const latestMessageNumber = await fetchLatestMessageNumber();
+        console.log('📩 Latest message number:', latestMessageNumber);
+        storeKey(userId, targetUserId, latestMessageNumber + 1, new_root_key);
 
       } else {
         console.log("⛓️⛓️ No chain, initializing new chain ⛓️⛓️")
@@ -645,15 +646,13 @@ function Chat({ token, activeChat }) {
       // Encrypt the message using the derived key
 
       let encryptedText = null;
-      const latestMessageNumber = await fetchLatestMessageNumber();
-      console.log("🚧🚧root_key: ", root_key, "currentKeyChain: ", currentKeyChain)
       if (!continueChain && !isInitialMessage) {
         console.log("🚧🚧Encrypting with: ", currentKeyChain)
 
         const currentKeyChainU8 = getLatestKey(userId, targetUserId);
 
         encryptedText = await encrypt(text, currentKeyChainU8);  
-        storeKey(userId, targetUserId, latestMessageNumber + 1, currentKeyChainU8);
+        storeKey(userId, targetUserId, currentMessageNumber, currentKeyChainU8);
 
 
       }else{
@@ -663,7 +662,7 @@ function Chat({ token, activeChat }) {
         if (isInitialMessage) {
           storeKey(userId, targetUserId, 0, root_key);
         } else {
-          storeKey(userId, targetUserId, latestMessageNumber, root_key);
+          storeKey(userId, targetUserId, currentMessageNumber, root_key);
         }
       }
 
