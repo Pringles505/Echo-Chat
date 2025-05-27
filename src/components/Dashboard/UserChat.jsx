@@ -107,7 +107,6 @@ const getLatestKey = (userId, targetUserId) => {
 };
 
 
-
 // Retrieve the derived key for a given message number
 const getKey = (userId, targetUserId, index) => {
   const sessionId = [userId, targetUserId].join('-');
@@ -288,7 +287,7 @@ function Chat({ token, activeChat }) {
     await init_dh();
 
     // Fetch the pubIk and convert it to a ByteArray
-    const encTargetPublicIdentityKey = await fetchPublicIdentityKeyX25519(targetUserId);
+    const encTargetPublicIdentityKey = await fetchPublicIdentityKeyEd25519(targetUserId);
     const targetPublicIdentityKey = base64ToArrayBuffer(encTargetPublicIdentityKey);
 
     console.log('Target Public Identity Key:', targetPublicIdentityKey);
@@ -309,6 +308,10 @@ function Chat({ token, activeChat }) {
     console.log('🗝️⚠️⚠️Initializing Double Ratchet...');
     const encTargetPublicIdentityKeyX25519 = await fetchPublicIdentityKeyX25519(targetUserId);
     const targetPublicIdentityKeyX25519 = base64ToArrayBuffer(encTargetPublicIdentityKeyX25519);
+
+    const encTargetPublicIdentityKeyEd25519 = await fetchPublicIdentityKeyEd25519(targetUserId);
+    const targetPublicIdentityKeyEd25519 = base64ToArrayBuffer(encTargetPublicIdentityKeyEd25519);
+    
     console.log('BINGO');
     const { signedPreKey, signature } = await fetchSignedPreKey(targetUserId);
     const targetSignedPreKey = base64ToArrayBuffer(signedPreKey);
@@ -320,7 +323,12 @@ function Chat({ token, activeChat }) {
     const isValidSignature = await verify_signature(
       targetSignature,
       targetSignedPreKey,
-      targetPublicIdentityKeyX25519);
+      targetPublicIdentityKeyEd25519);
+
+    console.log("Signature", targetSignature)
+    console.log("targetSignedPreKey", targetSignedPreKey)
+    console.log("publicIdentityKeyEd25519", targetPublicIdentityKeyEd25519)
+
     console.log('Signature valid:', isValidSignature);
 
 
