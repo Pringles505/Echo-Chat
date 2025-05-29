@@ -6,7 +6,7 @@ const DisplayText = ({ messages = [], currentUserId }) => {
   return (
     <ul className="chat-messages">
       {messages.map((message) => (
-        <li key={message._id} className="chat-message">
+        <li key={message._id} className={`chat-message${message.userId !== currentUserId ? " other" : ""}`}>
           <div className="message-header">
             <strong className="message-username">{message.username}</strong>
             <span className="message-timestamp">

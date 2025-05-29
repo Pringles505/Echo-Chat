@@ -1,34 +1,92 @@
 .chat-messages {
-  list-style-type: none; /* Remove bullet points */
-  padding: 0; /* Remove default padding */
-  margin: 0; /* Remove default margin */
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .chat-message {
-  background-color: #f1f1f1; /* Light grey background */
-  border-radius: 10px; /* Rounded corners */
-  padding: 10px; /* Padding inside the message box */
-  margin-bottom: 10px; /* Space between messages */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  display: inline-block;
+  align-self: flex-end; /* User messages align right */
+  max-width: 70%;
+  min-width: 40px;
+  word-break: break-word;
+  background-color: var(--color-accent);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  text-align: left;
+  color: var(--color-white);
+}
+
+/* Other user (received) message box */
+.chat-message.other {
+  align-self: flex-start;
+  background-color: #fff;
+  color: #222;
+  border: 1px solid #eee;
 }
 
 .message-header {
-  display: flex; /* Align items horizontally */
-  justify-content: space-between; /* Space between username and timestamp */
-  margin-bottom: 5px; /* Space between header and text */
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
 }
 
 .message-username {
-  font-weight: bold; /* Bold username */
-  color: #333; /* Dark grey color */
+  font-weight: bold;
+  color: var(--color-white);
+}
+
+.chat-message.other .message-username {
+  color: #513b96; /* Optional: accent color for sender name */
 }
 
 .message-timestamp {
-  font-size: 0.8em; /* Smaller font size for timestamp */
-  color: #999; /* Light grey color */
+  font-size: 0.8em;
+  color: #cccccc;
+}
+
+.chat-message.other .message-timestamp {
+  color: #888;
 }
 
 .message-text {
-  font-size: 1em; /* Normal font size for message text */
-  color: #333; /* Dark grey color */
+  font-size: 1em;
+  color: inherit;
+}
+
+.message-seen-status {
+  font-size: 0.75em;
+  margin-top: 5px;
+  color: #a0ffa0;
+}
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.message-username {
+  font-weight: bold;
+  color: var(--color-white);
+}
+
+.message-timestamp {
+  font-size: 0.8em;
+  color: #cccccc;
+}
+
+.message-text {
+  font-size: 1em;
+  color: inherit;
+}
+
+.message-seen-status {
+  font-size: 0.75em;
+  margin-top: 5px;
+  color: #a0ffa0;
 }

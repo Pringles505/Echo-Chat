@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 
+import './Dashboard.css';
+
 const SendText = ({ sendMessage }) => {
   const [text, setText] = useState('');
 

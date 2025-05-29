@@ -29,3 +29,42 @@
     background-color: #f1f1f1;
     border-top: 1px solid #ddd;
   }
+
+  .app-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.logo-container {
+  padding: 1rem;
+  background-color: var(--color-black);
+  border-bottom: 1px solid var(--color-accent);
+}
+
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-black);
+  width: 100%;
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  background-color: var(--color-black);
+  border-bottom: 1px solid var(--color-accent);
+  color: var(--color-white);
+}
+
+.send-text-container {
+  padding: 1rem;
+  background-color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
