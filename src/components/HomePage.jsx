@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Twitter, Instagram, Linkedin, Shield, Smartphone, MessageSquare } from "lucide-react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
@@ -28,42 +28,6 @@ const HomePage = () => {
     if (langMap[countryCode]) {
       setSelectedFlag(countryCode);
       i18n.changeLanguage(langMap[countryCode]);
-    }
-  };
-
-  const initAnimations = () => {
-    if (featuresRef.current) {
-      gsap.from(".feature-card", {
-        scrollTrigger: {
-          trigger: featuresRef.current,
-          start: "top center",
-          toggleActions: "play none none reverse",
-        },
-        opacity: 0,
-        y: 100,
-        stagger: 0.2,
-        duration: 1,
-        ease: "power2.out",
-      });
-
-      document.querySelectorAll(".feature-card").forEach(card => {
-        card.addEventListener("mouseenter", () => gsap.to(card, { scale: 1.05, duration: 0.2 }));
-        card.addEventListener("mouseleave", () => gsap.to(card, { scale: 1, duration: 0.2 }));
-      });
-    }
-
-    if (securityRef.current) {
-      gsap.from(securityRef.current, {
-        scrollTrigger: {
-          trigger: securityRef.current,
-          start: "top center",
-          toggleActions: "play none none reverse",
-        },
-        opacity: 0,
-        scale: 0.8,
-        duration: 1,
-        ease: "power2.out",
-      });
     }
   };
 
@@ -103,10 +67,42 @@ const HomePage = () => {
     Array.from({ length: 80 }).forEach(createParticle);
   };
 
-  useEffect(() => {
-    initAnimations();
+    useEffect(() => {
+    const animateSphere = (selector) => {
+      gsap.to(selector, {
+        x: () => gsap.utils.random(-200, 200),
+        y: () => gsap.utils.random(-200, 200),
+        scale: () => gsap.utils.random(0.95, 1.1),
+        duration: () => gsap.utils.random(6, 12),
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1,
+        force3D: true,
+      });
+    };
+
+    animateSphere(".sphere-1");
+    animateSphere(".sphere-2");
+    animateSphere(".sphere-3");
     initParticles();
+    
+    // Reveal feature cards on scroll
+    const cards = document.querySelectorAll(".feature-card");
+    gsap.set(cards, { y: 50, opacity: 0 });
+
+    ScrollTrigger.batch(cards, {
+    onEnter: batch => gsap.to(batch, {
+      opacity: 1,
+      y: 0,
+      stagger: 0.2,
+      duration: 1,
+      ease: "power3.out",
+    }),
+    once: true,
+  });
+
   }, [i18n]);
+
 
   const NavLink = ({ href, children }) => (
     <a href={href} className="nav-link">{children}</a>
@@ -136,13 +132,12 @@ const HomePage = () => {
           <div className="gradient-sphere sphere-3"></div>
           <div className="glow"></div>
           <div className="grid-overlay"></div>
-          <div className="noise-overlay"></div>
         </div>
       </div>
 
       <header className="header">
         <div className="header-content">
-          <img src="/echo-logo-light.svg" alt="Echo Logo" className="logo" />
+          <img src="/echo-logo.svg" alt="Echo Logo" className="logo" />
           <nav className="nav-links">
             <NavLink href="#home">{t("nav.home")}</NavLink>
             <NavLink href="#features">{t("nav.features")}</NavLink>
@@ -173,6 +168,7 @@ const HomePage = () => {
         </div>
       </header>
 
+      // Hero Section parte de arriba
       <section className="section hero" id="home">
         <div className="hero-content">
           <h1>{t("hero.title")}</h1>
@@ -180,7 +176,7 @@ const HomePage = () => {
           <button className="btn btn-primary">{t("hero.cta")}</button>
           <div className="canvas-container">
             <Canvas camera={{ position: [0, 0, 5] }}>
-              <ambientLight intensity={0.5} />
+              <ambientLight intensity={400} />
               <pointLight position={[10, 10, 10]} />
               <OrbitControls enableZoom={false} autoRotate />
             </Canvas>
