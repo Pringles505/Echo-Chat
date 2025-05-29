@@ -19,9 +19,9 @@ const WaveBackground: React.FC = () => {
     resizeCanvas();
 
     const waves = [
-      { offset: 0, length: 0.5, amplitude: 0.08, speed: 0.2, color: '#5750a1' },
-      { offset: 0.1, length: 0.6, amplitude: 0.04, speed: 0.15, color: '#8c85c2' },
-      { offset: 0.2, length: 0.4, amplitude: 0.06, speed: 0.3, color: '#5750a1' }
+      { offset: 0.25, length: 0.5, amplitude: 0.1, speed: 0.1, color: '#5750a1' },
+      { offset: 0.1, length: 0.6, amplitude: 0.08, speed: 0.11, color: '#8c85c2' },
+      { offset: 0.2, length: 0.4, amplitude: 0.06, speed: 0.05, color: '#5750a1' }
     ];
 
     let animationFrameId: number;
@@ -31,7 +31,7 @@ const WaveBackground: React.FC = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       waves.forEach(wave => {
-        const baseY = canvas.height * (1 - wave.offset); // start at bottom and offset upward
+        const baseY = canvas.height * (1 - wave.offset); 
         const gradient = ctx.createLinearGradient(0, baseY - wave.amplitude * canvas.height, 0, canvas.height);
         gradient.addColorStop(0, `${wave.color}00`);
         gradient.addColorStop(0.5, `${wave.color}66`);
