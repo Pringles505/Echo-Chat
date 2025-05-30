@@ -449,6 +449,10 @@ function Chat({ token, activeChat }) {
     // Clear derivedKey
     setMessages([]);
     setDerivedKey(null);
+
+    const savedSessionKey = `chatSession-${userId}-${targetUserId}`;
+    localStorage.removeItem(savedSessionKey);
+    setMessages([]);
   
     const initChat = async () => {
 
@@ -466,70 +470,74 @@ function Chat({ token, activeChat }) {
         const messages = Array.isArray(payload) ? payload : [payload];
 
         for (const message of messages) {
-          try {
+          if (message.userId == activeChat || message.userId == userId) {
+            try {
 
-            // Skip own messages
-            if (message.userId === userId) {
-              console.log("📩 Received my own message");
+              // Skip own messages
+              if (message.userId === userId) {
+                console.log("📩 Received my own message");
 
-              const derivedKey = getKey(userId, targetUserId, message.messageNumber);
-              if (!derivedKey) {
-                console.error(`❌ No key found for self message number ${message.messageNumber}`);
-                return;
+                const derivedKey = getKey(userId, targetUserId, message.messageNumber);
+                if (!derivedKey) {
+                  console.error(`❌ No key found for self message number ${message.messageNumber}`);
+                  return;
+                }
+
+                const decryptedMessage = {
+                  ...message,
+                  text: await decrypt(message.text, derivedKey),
+                };
+
+                updateSavedMessages(decryptedMessage);
+                continue;
+            }
+
+              console.log('📩 Received real-time message:', message);
+
+              const targetPublicEphemeralKeyBase64 = message.publicEphemeralKey;
+              localStorage.setItem('previousTargetPublicEphemeralKey', targetPublicEphemeralKeyBase64);
+
+              const sender = String(message.userId);
+
+              if (activeChat === sender) {
+                socket.emit('messageSeen', { userId, targetUserId });
               }
+              let derived_rootKey = null;
+              if (message.is_initial == true) {
+                derived_rootKey = await initializeDoubleRatchetResponse(message);
+              } else {
+                const sessionId = [userId, targetUserId].join('-');
+                const privateEphemeralBase64 = localStorage.getItem(`ephPriv-${sessionId}`)
+                const privateEphemeral = base64ToArrayBuffer(privateEphemeralBase64);
 
-              const decryptedMessage = {
-                ...message,
-                text: await decrypt(message.text, derivedKey),
-              };
-
-              updateSavedMessages(decryptedMessage);
-              continue;
-          }
-
-            console.log('📩 Received real-time message:', message);
-
-            const targetPublicEphemeralKeyBase64 = message.publicEphemeralKey;
-            localStorage.setItem('previousTargetPublicEphemeralKey', targetPublicEphemeralKeyBase64);
-
-            const sender = String(message.userId);
-
-            if (activeChat === sender) {
-              socket.emit('messageSeen', { userId, targetUserId });
+                derived_rootKey = await continueDoubleRatchetChain(message.publicEphemeralKey, privateEphemeral);
+              }
+              console.log("Computed Derived Key", derived_rootKey)
+              storeKey(userId, message.userId, message.messageNumber, derived_rootKey)
+            
+            } catch (err) {
+              console.error('❌ Error handling message:', err, message);
             }
-            let derived_rootKey = null;
-            if (message.is_initial == true) {
-              derived_rootKey = await initializeDoubleRatchetResponse(message);
-            } else {
-              const sessionId = [userId, targetUserId].join('-');
-              const privateEphemeralBase64 = localStorage.getItem(`ephPriv-${sessionId}`)
-              const privateEphemeral = base64ToArrayBuffer(privateEphemeralBase64);
 
-              derived_rootKey = await continueDoubleRatchetChain(message.publicEphemeralKey, privateEphemeral);
+            const derivedKey = getKey(userId, targetUserId, message.messageNumber);
+            console.log("Derived Key: ", derivedKey)
+            if (!derivedKey) {
+              console.error(`❌ No key found for message number ${message.messageNumber}`);
+              return;
             }
-            console.log("Computed Derived Key", derived_rootKey)
-            storeKey(userId, message.userId, message.messageNumber, derived_rootKey)
-          
-          } catch (err) {
-            console.error('❌ Error handling message:', err, message);
-          }
+            
+            storeKey(userId, message.userId, message.messageNumber, derivedKey);
 
-          const derivedKey = getKey(userId, targetUserId, message.messageNumber);
-          console.log("Derived Key: ", derivedKey)
-          if (!derivedKey) {
-            console.error(`❌ No key found for message number ${message.messageNumber}`);
-            return;
-          }
-          
-          storeKey(userId, message.userId, message.messageNumber, derivedKey);
+            const decryptedMessage = {
+              ...message,
+              text: await decrypt(message.text, derivedKey),
+            };
 
-          const decryptedMessage = {
-            ...message,
-            text: await decrypt(message.text, derivedKey),
-          };
-
-          updateSavedMessages(decryptedMessage);
-          localStorage.setItem('messages', JSON.stringify(decryptedMessage));
+            updateSavedMessages(decryptedMessage);
+            localStorage.setItem('messages', JSON.stringify(decryptedMessage));
+          }else {
+          console.log("Message targetUserId: ", message.userId, "does not match activeChat: ", activeChat);
+        }
         }
       };
   
