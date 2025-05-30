@@ -2,17 +2,17 @@
   <picture>
     <!-- Dark mode logo -->
     <source 
-      srcset="logoTextDark.png" 
+      srcset="echo-logo-text.png" 
       media="(prefers-color-scheme: dark)"
       width="300" 
-      height="130"
+      height="100"
     >
     <!-- Light mode logo -->
     <img 
-      src="logoTextLight.png" 
-      alt="Echo Logo" 
+      srcset="echo-logo-text.png" 
+      media="(prefers-color-scheme: dark)"
       width="300" 
-      height="130"
+      height="100"
     >
   </picture>
 </h1>
@@ -30,7 +30,9 @@ Developed by 2ºCEB students **Marcos Cabrero**, **Gonzalo de la Lastra**, and *
 ## Table of Contents  
 - [Security Protocol](#security-protocol)  
   - [X3DH (Extended Triple Diffie-Hellman)](#x3dh-extended-triple-diffie-hellman)  
-  - [XEdDSA (EdDSA for X25519)](#xeddsa-eddsa-for-x25519)  
+  - [XEdDSA (EdDSA for X25519)](#xeddsa-eddsa-for-x25519)
+  - [XEdDSA Signing](#xeddsa-signing)
+  - [XEdDSA Verification](#xeddsa-verification)  
 - [Setup](#setup)  
 - [References](#references)  
 
@@ -138,6 +140,26 @@ XEdDSA is a signature scheme based on the Edwards-curve digital signature algori
    The final signature is a concatenation of the `Nonce Point`
 
 ### XEdDSA Verification
+
+To verify a signature, the verifier must follow these steps:
+
+1. **Decompress Inputs:**
+   - Extract the components `R` and `S` from the received signature.
+   - Convert the received public key (`A`) back into Edwards form if it’s stored in compressed format.
+
+2. **Compute Challenge Hash:**
+   
+   $k = SHA(R + A + message) % L$
+
+3. **Compute signature:**
+
+    $S * B == R + k * A$
+
+4. **Verify signature**
+
+    The signature is then compared with the given signature. In the case it matches it's authorized
+
+
 
 
    
