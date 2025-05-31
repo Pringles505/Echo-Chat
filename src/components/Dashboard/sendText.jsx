@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 
-import './Dashboard.css';
+import './SendText.css';
 
 const SendText = ({ sendMessage }) => {
   const [text, setText] = useState('');
@@ -19,9 +19,15 @@ const SendText = ({ sendMessage }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input type="text" value={text} onChange={handleChange} />
-      <button type="submit">Send</button>
+    <form onSubmit={handleSubmit} className="send-text-form">
+      <input
+        type="text"
+        value={text}
+        onChange={handleChange}
+        placeholder="Type a message..."
+        className="send-text-input"
+      />
+      <button type="submit" className="send-text-button">Send</button>
     </form>
   );
 };
