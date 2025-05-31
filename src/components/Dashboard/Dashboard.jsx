@@ -3,8 +3,6 @@ import Friends from './Friends';
 import UserInfo from './UserInfo';
 import UserChat from './UserChat';
 
-import './dashboard.css';
-
 //Always keep in braces
 import {jwtDecode} from 'jwt-decode';
 const Dashboard = () => {
