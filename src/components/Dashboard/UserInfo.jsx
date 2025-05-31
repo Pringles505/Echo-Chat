@@ -1,7 +1,5 @@
 import PropTypes from 'prop-types';
 
-import './Dashboard.css';
-
 const UserInfo = ({ username, userId }) => {
   return (
     <div className="user-info-container">
