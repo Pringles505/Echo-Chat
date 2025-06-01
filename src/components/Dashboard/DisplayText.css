@@ -26,8 +26,12 @@
 .chat-message.other {
   align-self: flex-start;
   background-color: #fff;
-  color: #222;
+
   border: 1px solid #eee;
+}
+
+.chat-message.other .message-text {
+  color: #181825; 
 }
 
 .message-header {
@@ -35,6 +39,7 @@
   justify-content: space-between;
   margin-bottom: 5px;
 }
+
 
 .message-username {
   font-weight: bold;
