@@ -1,50 +1,50 @@
 import { useState } from 'react';
+import { FaUserCircle, FaCog, FaComments } from 'react-icons/fa';
 import Friends from './Friends';
-import UserInfo from './UserInfo';
-import UserChat from './UserChat';
+import UserProfile from '../UserProfile';
+import './Dashboard.css';
 
-//Always keep in braces
-import {jwtDecode} from 'jwt-decode';
-const Dashboard = () => {
-  const token = localStorage.getItem('token');
-  console.log('Token in Dashboard:', token);
-  let username = '';
-  let userId = '';
-  
-  // Token authentication and decoding
-  if (token) {
-    const decodedToken = jwtDecode(token);
-    username = decodedToken.username;
-    userId = decodedToken.id;
-  }
+const Dashboard = ({ token, username, userId, password = '', about = '', profilePic = '' }) => {
+  const [activeChatId, setActiveChatId] = useState(null);
+  const [showUserProfile, setShowUserProfile] = useState(false);
 
-  const [activeChat, setActiveChat] = useState('');
-
-  const handleActiveChatChange = (targetUser) => {
-    setActiveChat(targetUser);
-    console.log('Active chat in Dashboard:', targetUser);
+  const handleProfileToggle = () => {
+    setShowUserProfile((prev) => !prev);
   };
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar with Friends */}
-      <nav className="dashboard-nav">
-        <h2>Friends</h2>
-        <Friends token={token} onActiveChatChange={handleActiveChatChange} />
-      </nav>
-
-      {/* Main Content Area with Chat */}
-      <div className="dashboard-content">
-        {activeChat ? (
-          <UserChat token={token} activeChat={activeChat}/>
-        ) : (
-          <UserChat token={token} />
+      <div className="dashboard-nav">
+        <h2>Chats</h2>
+        <div className="friends-scroll">
+          <Friends token={token} onActiveChatChange={setActiveChatId} />
+        </div>
+        <div className="dashboard-footer">
+          <FaComments className="footer-icon active" />
+          <FaCog className="footer-icon" />
+          <div className="footer-icon" onClick={handleProfileToggle}>
+            <FaUserCircle size={24} />
+          </div>
+        </div>
+        {showUserProfile && (
+          <div className="profile-popover">
+            <UserProfile
+              username={username}
+              userId={userId}
+              password={password}
+              about={about}
+              profilePic={profilePic}
+            />
+          </div>
         )}
       </div>
-        
-      {/* User Info */}
-      <div className="user-info">
-        <UserInfo username={username} userId={userId} />
+
+      <div className="dashboard-content">
+        {activeChatId ? (
+          <p>Chat activo: {activeChatId}</p>
+        ) : (
+          <p className="chat-placeholder">Selecciona un chat para comenzar</p>
+        )}
       </div>
     </div>
   );
