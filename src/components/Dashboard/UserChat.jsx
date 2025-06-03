@@ -12,6 +12,7 @@ import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt } from './../../..
 import init_dh, { derive_symmetric_key, diffie_hellman, generate_private_ephemeral_key, 
   generate_public_ephemeral_key, hkdf_derive  } from './../../../dh-wasm/pkg';
 import init_xeddsa, {verify_signature} from './../../../xeddsa-wasm/pkg';
+import { get } from 'react-hook-form';
 
 // Secret key and nonce for encryption
 const nonce = '000102030405060708090a0b'; 
@@ -382,6 +383,7 @@ function Chat({ token, activeChat }) {
       previousTargetPublicEphemeralKey = previousTargetPublicEphemeralKeyBase64;
     } else {
       previousTargetPublicEphemeralKey = base64ToArrayBuffer(previousTargetPublicEphemeralKeyBase64);
+      console.log("🚧🚧Converted Previous Target Public Ephemeral Key to ArrayBuffer: ", previousTargetPublicEphemeralKey)
     }
     console.log("🚧🚧Previous Target Public Ephemeral Key: ", previousTargetPublicEphemeralKey)
 
@@ -494,24 +496,29 @@ function Chat({ token, activeChat }) {
 
               console.log('📩 Received real-time message:', message);
 
-              const targetPublicEphemeralKeyBase64 = message.publicEphemeralKey;
-              localStorage.setItem('previousTargetPublicEphemeralKey', targetPublicEphemeralKeyBase64);
+
+              const previousTargetPublicEphemeralKey = localStorage.getItem('previousTargetPublicEphemeralKey');
 
               const sender = String(message.userId);
 
               if (activeChat === sender) {
                 socket.emit('messageSeen', { userId, targetUserId });
               }
+
               let derived_rootKey = null;
+              console.log("🐸message.publicEphemeralKey: ", message.publicEphemeralKey)
+              console.log("🐸previousTargetPublicEphemeralKey: ", previousTargetPublicEphemeralKey)
               if (message.is_initial == true) {
                 derived_rootKey = await initializeDoubleRatchetResponse(message);
-              } else {
+              } else if(message.publicEphemeralKey != previousTargetPublicEphemeralKey) {
                 const sessionId = [userId, targetUserId].join('-');
                 const privateEphemeralBase64 = localStorage.getItem(`ephPriv-${sessionId}`)
                 const privateEphemeral = base64ToArrayBuffer(privateEphemeralBase64);
 
                 derived_rootKey = await continueDoubleRatchetChain(message.publicEphemeralKey, privateEphemeral);
-              }
+              } else {
+                derived_rootKey = getLatestKey(userId, targetUserId);
+              } 
               console.log("Computed Derived Key", derived_rootKey)
               storeKey(userId, message.userId, message.messageNumber, derived_rootKey)
             
@@ -525,7 +532,9 @@ function Chat({ token, activeChat }) {
               console.error(`❌ No key found for message number ${message.messageNumber}`);
               return;
             }
-            
+
+            const targetPublicEphemeralKeyBase64 = message.publicEphemeralKey;
+            localStorage.setItem('previousTargetPublicEphemeralKey', targetPublicEphemeralKeyBase64);
             storeKey(userId, message.userId, message.messageNumber, derivedKey);
 
             const decryptedMessage = {
@@ -593,31 +602,32 @@ function Chat({ token, activeChat }) {
       if (currentKeyChain) {
         console.log('currentKeyChain:', currentKeyChain);
         console.log("⛓️⛓️ Continuing ⛓️⛓️");
-        const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-
-        await init_dh();
-        const privateEphemeralKey = generate_private_ephemeral_key(randomBytes);
-        const publicEphemeralKey = generate_public_ephemeral_key(privateEphemeralKey);
-
-        const sessionId = [userId, targetUserId].join('-');
-        localStorage.setItem(`ephPriv-${sessionId}`, arrayBufferToBase64(privateEphemeralKey));
-
-        publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
-
-        console.log('Saved To State: ', publicEphemeralKeyBase64);
-        console.log('🗝️🗝️ Generated ephemeral keys:', publicEphemeralKey, privateEphemeralKey);
 
         const previousTargetPublicEphemeralKey = localStorage.getItem('previousTargetPublicEphemeralKey');
-        const previousTargetPublicEphemeralKeyArray = base64ToArrayBuffer(previousTargetPublicEphemeralKey);
         
         let new_root_key = null;
         if (previousTargetPublicEphemeralKey){
+          const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+          await init_dh();
+          const privateEphemeralKey = generate_private_ephemeral_key(randomBytes);
+          const publicEphemeralKey = generate_public_ephemeral_key(privateEphemeralKey);
+
+          const sessionId = [userId, targetUserId].join('-');
+          localStorage.setItem(`ephPriv-${sessionId}`, arrayBufferToBase64(privateEphemeralKey));
+
+          publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
+
+          console.log('Saved To State: ', publicEphemeralKeyBase64);
+          console.log('🗝️🗝️ Generated ephemeral keys:', publicEphemeralKey, privateEphemeralKey);
+
           console.log("Previous Target Public Ephemeral Key: ", previousTargetPublicEphemeralKey)
-          new_root_key = await continueDoubleRatchetChain(previousTargetPublicEphemeralKeyArray, privateEphemeralKey);
+          new_root_key = await continueDoubleRatchetChain(previousTargetPublicEphemeralKey, privateEphemeralKey);
           console.log("New Root Key: ", new_root_key)
         } else {
           console.log("No previous target public ephemeral key found")
-          new_root_key = await continueDoubleRatchetChain(currentKeyChain, currentKeyChain);
+          new_root_key = getLatestKey(userId, targetUserId);
+          
+          publicEphemeralKeyBase64 = localStorage.getItem('initialSelfPublicEphemeralKey');
         }
         const latestMessageNumber = await fetchLatestMessageNumber();
         console.log('📩 Latest message number:', latestMessageNumber);
@@ -637,7 +647,7 @@ function Chat({ token, activeChat }) {
         const publicEphemeralKey = generate_public_ephemeral_key(privateEphemeralKey);
 
         publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
-
+        localStorage.setItem('initialSelfPublicEphemeralKey', publicEphemeralKeyBase64);
         console.log('Saved To State: ', publicEphemeralKeyBase64);
         console.log('🗝️ Generated ephemeral keys:', publicEphemeralKey, privateEphemeralKey);
 
