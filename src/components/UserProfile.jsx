@@ -27,9 +27,10 @@ const UserProfile = () => {
     const [copied, setCopied] = useState('');
 
     // Load profile image and about me from localStorage on mount
+    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&bold=true`;
     useEffect(() => {
         const storedImage = localStorage.getItem(`profileImage-${userId}`);
-        setProfileImage(storedImage || profilePic || '');
+        setProfileImage(storedImage || profilePic || defaultAvatar);
         const storedAbout = localStorage.getItem(`aboutMe-${userId}`);
         setAboutMe(storedAbout !== null ? storedAbout : about);
     }, [userId, profilePic, about]);

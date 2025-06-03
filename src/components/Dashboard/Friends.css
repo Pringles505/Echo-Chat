@@ -14,18 +14,25 @@
 }
 
 .friends-container button {
-  width: 100%;
-  padding: 0.5rem;
-  background-color: var(--color-white);
-  color: var(--color-black);
+  background: linear-gradient(to right, #514b96, #8e79f2);
+  color: white;
+  font-weight: 500;
+  border-radius: 10px;
+  padding: 10px 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
 }
 
 .friends-container button:hover {
-  background-color: #e0e0e0;
+  opacity: 0.9;
 }
+
+.friends-container button:active {
+  transform: scale(0.98);
+}
+
 
 .chat-list {
   list-style: none;
@@ -43,7 +50,7 @@
 }
 
 .chat-list li:hover {
-  background-color: #1a1a1a;
+  background-color:rgb(0, 0, 0);
   border-left: 4px solid var(--color-white);
 }
 

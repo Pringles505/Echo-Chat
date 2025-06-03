@@ -1,3 +1,21 @@
+:root {
+  --background-dark: #000000;     
+  --background-light: #121212;   
+  --primary-color: #514B96;      
+  --text-primary: #E9EDEF;      
+  --text-secondary: #A1A1AA;     
+  --border-color:rgb(0, 0, 0);        
+}
+
+
+body, html {
+  background-color: var(--background-dark);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Helvetica, sans-serif;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -31,7 +49,7 @@
 }
 
 .read-the-docs {
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .login-container, .register-container {
@@ -48,14 +66,22 @@
   align-items: center;
 }
 
-.login-container input, .register-container input {
+.login-container input,
+.register-container input {
   margin: 10px;
   padding: 10px;
   width: 200px;
+  background-color: var(--background-light);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
-.login-container button, .register-container button {
+.login-container button,
+.register-container button {
   padding: 10px 20px;
+  background-color: var(--background-light);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .friends-container {
@@ -63,9 +89,9 @@
   flex-direction: column;
   width: 250px;
   height: 100vh;
-  background-color: #f8f9fa;
+  background-color: var(--background-light);
   padding: 10px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
 }
 
 .search-container {
@@ -77,10 +103,16 @@
 .search-container input {
   flex: 1;
   padding: 5px;
+  background-color: var(--background-dark);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .search-container button {
   padding: 5px 10px;
+  background-color: var(--background-light);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .conversations-container {
@@ -95,7 +127,7 @@
 
 .conversations-container li {
   padding: 10px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .dashboard-container {
@@ -105,8 +137,8 @@
 
 .sidebar {
   width: 250px;
-  background-color: #f8f9fa;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  background-color: var(--background-light);
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
 }
 
 .main-content {
@@ -118,6 +150,6 @@
 .particle {
   position: absolute;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgb(255, 255, 255);
   pointer-events: none;
 }
