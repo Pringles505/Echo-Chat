@@ -32,6 +32,7 @@ function getArrayU8FromWasm0(ptr, len) {
     return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 /**
+ * This function converts a X25519 private key to an XEdDSA private key
  * @param {Uint8Array} private_key_bytes
  * @returns {Uint8Array}
  */
@@ -141,6 +142,8 @@ export function compute_signature(nonce_point, signature_scalar) {
 }
 
 /**
+ * Verify the signature
+ * Returns true if the signature is valid, false otherwise
  * @param {Uint8Array} signature
  * @param {Uint8Array} message
  * @param {Uint8Array} public_ed_key
