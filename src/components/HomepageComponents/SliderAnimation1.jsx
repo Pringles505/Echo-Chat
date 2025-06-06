@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRive } from "@rive-app/react-canvas";
-import animationFile from "./cleankeygeneration.riv";
+import animationFile from "./cleankeygeneration2.riv";
 
 export default function SliderAnimation1() {
-  const ANIMATION_DURATION = 37;
-  const SNAP_POINTS = [9, 22.1, 29, 32]; // snap points in seconds
+  const ANIMATION_DURATION = 59;
+  const SNAP_POINTS = [11, 19, 29, 39, 49, 59]; // snap points in seconds
   const SNAP_THRESHOLD = 0.8; // how close you need to be to snap
-  const SNAP_DELAY = 200; // milliseconds to freeze at snap point
+  const SNAP_DELAY = 2; // milliseconds to freeze at snap point
 
   const [slider, setSlider] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -58,6 +58,10 @@ export default function SliderAnimation1() {
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
+      <div style={{ width: "100%", height: "600px" }}>
+        <RiveComponent style={{ width: "100%", height: "100%" }} />
+      </div>
+
       <div className="relative w-full mb-4">
         <input
           type="range"
@@ -66,30 +70,34 @@ export default function SliderAnimation1() {
           step="0.01"
           value={slider}
           onChange={handleSliderChange}
-          className="w-full"
+          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer transition-all duration-200 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full"
         />
-        {/* Display snap points */}
+
+        {/* Display snap labels */}
         <div className="absolute left-0 right-0 top-full flex justify-between mt-1 pointer-events-none">
-          {SNAP_POINTS.map((point, idx) => (
-            <div
-              key={point}
-              style={{
-                left: `${(point / ANIMATION_DURATION) * 100}%`,
-                transform: "translateX(-50%)",
-                position: "absolute",
-                color: "#fff",
-                fontSize: "0.9rem",
-                fontWeight: slider === point ? "bold" : "normal",
-              }}
-            >
-              ● {point}
-            </div>
-          ))}
+          {SNAP_POINTS.map((point, idx) => {
+            const labels = ["One", "Two", "Three", "Four", "Five", "Six"];
+            return (
+              <div
+                key={point}
+                style={{
+                  left: `${(point / ANIMATION_DURATION) * 100}%`,
+                  transform: "translateX(-50%) rotate(35eg)",
+                  transformOrigin: "left",
+                  position: "absolute",
+                  color: "#fff",
+                  fontSize: slider === point ? "1.5rem" : "1rem",
+                  whiteSpace: "nowrap",
+                  fontWeight: slider === point ? "bold" : "normal",
+                }}
+              >
+                {labels[idx]}
+              </div>
+            );
+          })}
         </div>
       </div>
-      <div style={{ width: "100%", height: "600px" }}>
-        <RiveComponent style={{ width: "100%", height: "100%" }} />
-      </div>
+
       {!isLoaded && <p className="text-white mt-2">Loading animation...</p>}
     </div>
   );
