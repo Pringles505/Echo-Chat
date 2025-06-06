@@ -1,12 +1,13 @@
 import { useLocation, Navigate } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
+import ParticlesBackground from './HomepageComponents/ParticlesBackground';
+import WaveBackground from './HomepageComponents/WaveBackground';
 import './styles/UserProfile.css';
 
 const UserProfile = () => {
     const location = useLocation();
     const { username, userId, password = '', about = '', profilePic = '' } = location.state || {};
 
-    // All hooks must be called before any early return
     const [currentUsername, setCurrentUsername] = useState(username);
     const [editingUsername, setEditingUsername] = useState(false);
     const [editingAbout, setEditingAbout] = useState(false);
@@ -21,24 +22,19 @@ const UserProfile = () => {
 
     const [aboutMe, setAboutMe] = useState('');
     const [profileImage, setProfileImage] = useState('');
+    const [showMoreAbout, setShowMoreAbout] = useState(false);
     const fileInputRef = useRef(null);
-
-    // For clipboard feedback
     const [copied, setCopied] = useState('');
 
-    // Load profile image and about me from localStorage on mount
+    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&bold=true`;
+
     useEffect(() => {
-        const storedImage = localStorage.getItem(`profileImage-${userId}`);
-        setProfileImage(storedImage || profilePic || '');
-        const storedAbout = localStorage.getItem(`aboutMe-${userId}`);
-        setAboutMe(storedAbout !== null ? storedAbout : about);
-    }, [userId, profilePic, about]);
+        setProfileImage(localStorage.getItem(`profileImage-${userId}`) || profilePic || defaultAvatar);
+        setAboutMe(localStorage.getItem(`aboutMe-${userId}`) ?? about);
+    }, [userId, profilePic, about, defaultAvatar]);
 
-    if (!username || !userId) {
-        return <Navigate to="/login" />;
-    }
+    if (!username || !userId) return <Navigate to="/login" />;
 
-    // Clipboard copy logic
     const handleCopy = (value, label) => {
         navigator.clipboard.writeText(value);
         setCopied(label);
@@ -48,7 +44,7 @@ const UserProfile = () => {
     const handleActionButton = () => {
         if (showPasswordChange) {
             if (!newPassword || !confirmPassword) {
-                setPasswordError('Please fill both fields.');
+                setPasswordError('Please fill all fields.');
                 return;
             }
             if (newPassword !== confirmPassword) {
@@ -66,10 +62,7 @@ const UserProfile = () => {
             setEditingAbout(false);
             setSuccessMsg('Profile updated!');
             setTimeout(() => setSuccessMsg(''), 2000);
-            // Save profile image and about me to localStorage
-            if (profileImage) {
-                localStorage.setItem(`profileImage-${userId}`, profileImage);
-            }
+            if (profileImage) localStorage.setItem(`profileImage-${userId}`, profileImage);
             localStorage.setItem(`aboutMe-${userId}`, aboutMe);
         }
     };
@@ -82,232 +75,279 @@ const UserProfile = () => {
         setNewPassword('');
         setConfirmPassword('');
         setCurrentUsername(username);
-        // Restore aboutMe and profileImage from localStorage or initial
-        const storedImage = localStorage.getItem(`profileImage-${userId}`);
-        setProfileImage(storedImage || profilePic || '');
-        const storedAbout = localStorage.getItem(`aboutMe-${userId}`);
-        setAboutMe(storedAbout !== null ? storedAbout : about);
+        setProfileImage(localStorage.getItem(`profileImage-${userId}`) || profilePic || defaultAvatar);
+        setAboutMe(localStorage.getItem(`aboutMe-${userId}`) ?? about);
     };
 
-    // Handle profile image upload
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (ev) => {
-                setProfileImage(ev.target.result);
-            };
+            reader.onload = (ev) => setProfileImage(ev.target.result);
             reader.readAsDataURL(file);
         }
     };
 
     return (
-        <div className="user-profile-container">
-            <h2>User Profile</h2>
-            <div className="user-profile-details user-profile-details-flex">
-                <div className="user-profile-picture-side">
-                    <div className="user-profile-picture-wrapper">
-                        <img
-                            src={profileImage || '/echo-logo.svg'}
-                            alt="Profile"
-                            className="user-profile-picture"
-                        />
-                        <button
-                            className="user-profile-pencil-btn"
-                            type="button"
-                            onClick={() => fileInputRef.current.click()}
-                            disabled={editingUsername || editingAbout || showPasswordChange}
-                            title="Change Picture"
-                        >
-                            ✏️
-                        </button>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            ref={fileInputRef}
-                            style={{ display: 'none' }}
-                            onChange={handleImageChange}
-                        />
-                    </div>
-                </div>
-                <div className="user-profile-main-fields">
-                    <label className="user-profile-label-row">
-                        <span>Username:</span>
-                        {editingUsername ? (
-                            <input
-                                className="user-profile-input"
-                                value={currentUsername}
-                                onChange={e => setCurrentUsername(e.target.value)}
-                                autoFocus
-                            />
-                        ) : (
-                            <>
-                                <span
-                                    className="user-profile-value"
-                                    style={{ cursor: 'pointer' }}
-                                    onDoubleClick={() => handleCopy(currentUsername, 'Username')}
-                                    title="Double click to copy"
-                                >
-                                    {currentUsername}
-                                </span>
-                                {!editingAbout && !editingUsername && !showPasswordChange && (
-                                    <button
-                                        className="user-profile-action-btn"
-                                        onClick={() => setEditingUsername(true)}
-                                        type="button"
-                                        disabled={editingAbout || showPasswordChange}
-                                    >
-                                        Edit
-                                    </button>
-                                )}
-                            </>
-                        )}
-                    </label>
-                    <label>
-                        User ID:
-                        <span
-                            className="user-profile-value"
-                            style={{ cursor: 'pointer' }}
-                            onDoubleClick={() => handleCopy(userId, 'User ID')}
-                            title="Double click to copy"
-                        >
-                            {userId}
-                        </span>
-                    </label>
-                    <label className="user-profile-label-row">
-                        <span>About me:</span>
-                        {editingAbout ? (
-                            <textarea
-                                className="user-profile-input"
-                                value={aboutMe}
-                                onChange={e => setAboutMe(e.target.value)}
-                                rows={3}
-                                autoFocus
-                            />
-                        ) : (
-                            <>
-                                <span
-                                    className="user-profile-value"
-                                    style={{ cursor: 'pointer' }}
-                                >
-                                    {aboutMe || ""}
-                                </span>
-                                {!editingAbout && !editingUsername && !showPasswordChange && (
-                                    <button
-                                        className="user-profile-action-btn"
-                                        onClick={() => setEditingAbout(true)}
-                                        type="button"
-                                        disabled={editingUsername || showPasswordChange}
-                                    >
-                                        Edit
-                                    </button>
-                                )}
-                            </>
-                        )}
-                    </label>
-                    <label>
-                        Password:
-                        {showPasswordChange ? (
-                            <div className="user-profile-password-fields">
-                                <div style={{ position: 'relative' }}>
-                                    <input
-                                        className="user-profile-input"
-                                        type={showNewPassword ? "text" : "password"}
-                                        placeholder="New password"
-                                        value={newPassword}
-                                        onChange={e => setNewPassword(e.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="user-profile-eye-btn"
-                                        tabIndex={-1}
-                                        onMouseDown={() => setShowNewPassword(true)}
-                                        onMouseUp={() => setShowNewPassword(false)}
-                                        onMouseLeave={() => setShowNewPassword(false)}
-                                        onTouchStart={() => setShowNewPassword(true)}
-                                        onTouchEnd={() => setShowNewPassword(false)}
-                                        aria-label="Show new password"
-                                    >
-                                        {showNewPassword ? "🙈" : "👁️"}
-                                    </button>
-                                </div>
-                                <div style={{ position: 'relative' }}>
-                                    <input
-                                        className="user-profile-input"
-                                        type={showConfirmPassword ? "text" : "password"}
-                                        placeholder="Confirm new password"
-                                        value={confirmPassword}
-                                        onChange={e => setConfirmPassword(e.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="user-profile-eye-btn"
-                                        tabIndex={-1}
-                                        onMouseDown={() => setShowConfirmPassword(true)}
-                                        onMouseUp={() => setShowConfirmPassword(false)}
-                                        onMouseLeave={() => setShowConfirmPassword(false)}
-                                        onTouchStart={() => setShowConfirmPassword(true)}
-                                        onTouchEnd={() => setShowConfirmPassword(false)}
-                                        aria-label="Show confirm password"
-                                    >
-                                        {showConfirmPassword ? "🙈" : "👁️"}
-                                    </button>
-                                </div>
-                                {passwordError && <div className="user-profile-error">{passwordError}</div>}
-                            </div>
-                        ) : (
-                            <span className="user-profile-value" style={{ position: 'relative' }}>
-                                {showPassword ? (password || 'password') : "••••••••"}
+        <div className="relative min-h-screen overflow-hidden bg-[var(--color-background)]">
+            <ParticlesBackground />
+            <WaveBackground />
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+                <div className="w-full max-w-xl bg-black/60 backdrop-blur-md rounded-xl p-8 border border-[var(--color-primary)]/30 shadow-xl relative z-10">
+                    <h2 className="text-2xl font-bold text-center mb-6 text-[var(--color-secondary)]">
+                        User Profile
+                    </h2>
+                    <div className="flex flex-col gap-8 items-center w-full">
+                        <div className="flex flex-col items-center">
+                            <div className="relative">
+                                <img
+                                    src={profileImage || '/echo-logo.svg'}
+                                    alt="Profile"
+                                    className="user-profile-picture"
+                                />
                                 <button
+                                    className="user-profile-pencil-btn"
                                     type="button"
-                                    className="user-profile-eye-btn"
-                                    tabIndex={-1}
-                                    onMouseDown={() => setShowPassword(true)}
-                                    onMouseUp={() => setShowPassword(false)}
-                                    onMouseLeave={() => setShowPassword(false)}
-                                    onTouchStart={() => setShowPassword(true)}
-                                    onTouchEnd={() => setShowPassword(false)}
-                                    aria-label="Show password"
-                                    disabled={editingUsername || editingAbout}
+                                    onClick={() => fileInputRef.current.click()}
+                                    disabled={editingUsername || editingAbout || showPasswordChange}
+                                    title="Change Picture"
                                 >
-                                    {showPassword ? "🙈" : "👁️"}
+                                    ✏️
                                 </button>
-                                {!editingUsername && !editingAbout && (
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    ref={fileInputRef}
+                                    style={{ display: 'none' }}
+                                    onChange={handleImageChange}
+                                />
+                            </div>
+                        </div>
+                        <div className="w-full max-w-md mx-auto">
+                            {/* Username */}
+                            <label className="block mb-6 w-full">
+                                <span className="block text-white font-semibold mb-1">
+                                    Username:
+                                </span>
+                                {editingUsername ? (
+                                    <input
+                                        className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                        value={currentUsername}
+                                        onChange={e => setCurrentUsername(e.target.value)}
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <div className="flex items-center w-full">
+                                        <input
+                                            className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                            type="text"
+                                            value={currentUsername}
+                                            readOnly
+                                            tabIndex={-1}
+                                            onDoubleClick={() => handleCopy(currentUsername, 'Username')}
+                                            title="Double click to copy"
+                                        />
+                                        {!editingAbout && !editingUsername && !showPasswordChange && (
+                                            <button
+                                                className="ml-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
+                                                onClick={() => setEditingUsername(true)}
+                                                type="button"
+                                                disabled={editingAbout || showPasswordChange}
+                                            >
+                                                Edit
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </label>
+                            {/* User ID */}
+                            <label className="block mb-6 w-full">
+                                <span className="block text-white font-semibold mb-1">
+                                    User ID:
+                                </span>
+                                <input
+                                    className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                    type="text"
+                                    value={userId}
+                                    readOnly
+                                    tabIndex={-1}
+                                    onDoubleClick={() => handleCopy(userId, 'User ID')}
+                                    title="Double click to copy"
+                                />
+                            </label>
+                            {/* About me */}
+                            <label className="block mb-6 w-full">
+                                <span className="block text-white font-semibold mb-1">
+                                    About me:
+                                </span>
+                                {editingAbout ? (
+                                    <textarea
+                                        className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all resize-none"
+                                        value={aboutMe}
+                                        onChange={e => setAboutMe(e.target.value)}
+                                        rows={3}
+                                        autoFocus
+                                        onInput={e => {
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="flex items-center w-full">
+                                        <input
+                                            className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black font-medium transition-all"
+                                            style={{
+                                                minHeight: 34,
+                                                maxHeight: showMoreAbout ? 200 : 34,
+                                                overflow: 'hidden',
+                                                whiteSpace: showMoreAbout ? 'pre-wrap' : 'nowrap',
+                                                textOverflow: showMoreAbout ? 'clip' : 'ellipsis',
+                                                wordBreak: 'break-word',
+                                                transition: 'max-height 0.2s'
+                                            }}
+                                            value={aboutMe}
+                                            readOnly
+                                            title="Description"
+                                        />
+                                        {!editingAbout && !editingUsername && !showPasswordChange && !showMoreAbout && aboutMe && aboutMe.length > 60 && (
+                                            <button
+                                                type="button"
+                                                className="ml-2 px-2 py-1 bg-transparent text-[var(--color-primary)] underline rounded transition hover:text-[var(--color-secondary)]"
+                                                onClick={() => setShowMoreAbout(true)}
+                                            >
+                                                ...más
+                                            </button>
+                                        )}
+                                        {!editingAbout && !editingUsername && !showPasswordChange && showMoreAbout && aboutMe && aboutMe.length > 60 && (
+                                            <button
+                                                type="button"
+                                                className="ml-2 px-2 py-1 bg-transparent text-[var(--color-primary)] underline rounded transition hover:text-[var(--color-secondary)]"
+                                                onClick={() => setShowMoreAbout(false)}
+                                            >
+                                                menos
+                                            </button>
+                                        )}
+                                        {!editingAbout && !editingUsername && !showPasswordChange && (
+                                            <button
+                                                className="ml-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
+                                                onClick={() => setEditingAbout(true)}
+                                                type="button"
+                                                disabled={editingUsername || showPasswordChange}
+                                            >
+                                                Edit
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </label>
+                            {/* Password */}
+                            <label className="block mb-6 w-full">
+                                {showPasswordChange ? (
+                                    <div>
+                                        {/* Current password */}
+                                        <div className="relative mb-3">
+                                            <input
+                                                className="w-full px-4 py-3 pr-10 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                                type={showPassword ? "text" : "password"}
+                                                placeholder="Current password"
+                                                value={password}
+                                                onChange={e => setNewPassword(e.target.value)}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute top-1/2 right-3 transform -translate-y-1/2 text-black hover:text-[#514b96]"
+                                                aria-label="Toggle current password visibility"
+                                                tabIndex={-1}
+                                            >
+                                                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <ellipse cx="12" cy="12" rx="8" ry="6" />
+                                                    <circle cx="12" cy="12" r="2" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        {/* New password */}
+                                        <div className="relative mb-3">
+                                            <input
+                                                className="w-full px-4 py-3 pr-10 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                                type={showNewPassword ? "text" : "password"}
+                                                placeholder="New password"
+                                                value={newPassword}
+                                                onChange={e => setNewPassword(e.target.value)}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                                className="absolute top-1/2 right-3 transform -translate-y-1/2 text-black hover:text-[#514b96]"
+                                                aria-label="Toggle new password visibility"
+                                                tabIndex={-1}
+                                            >
+                                                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <ellipse cx="12" cy="12" rx="8" ry="6" />
+                                                    <circle cx="12" cy="12" r="2" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        {/* Confirm new password */}
+                                        <div className="relative">
+                                            <input
+                                                className="w-full px-4 py-3 pr-10 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                                type={showConfirmPassword ? "text" : "password"}
+                                                placeholder="Confirm new password"
+                                                value={confirmPassword}
+                                                onChange={e => setConfirmPassword(e.target.value)}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute top-1/2 right-3 transform -translate-y-1/2 text-black hover:text-[#514b96]"
+                                                aria-label="Toggle confirm password visibility"
+                                                tabIndex={-1}
+                                            >
+                                                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <ellipse cx="12" cy="12" rx="8" ry="6" />
+                                                    <circle cx="12" cy="12" r="2" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        {passwordError && <div className="user-profile-error">{passwordError}</div>}
+                                    </div>
+                                ) : (
                                     <button
-                                        className="user-profile-action-btn"
+                                        className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)] mt-2"
                                         onClick={() => setShowPasswordChange(true)}
                                         type="button"
                                     >
                                         Change Password
                                     </button>
                                 )}
-                            </span>
-                        )}
-                    </label>
+                            </label>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-4 mt-8 w-full max-w-md mx-auto">
+                        <button
+                            className="px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
+                            onClick={handleActionButton}
+                            type="button"
+                        >
+                            Save
+                        </button>
+                        <button
+                            className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold border border-red-700 transition hover:bg-red-700 hover:text-white"
+                            onClick={handleCancel}
+                            type="button"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                    {successMsg && <div className="user-profile-success">{successMsg}</div>}
+                    {copied && (
+                        <div className="user-profile-success" style={{ color: '#a0ffa0' }}>
+                            {copied} copied!
+                        </div>
+                    )}
                 </div>
             </div>
-            <div className="user-profile-actions-bottom">
-                <button
-                    className="user-profile-action-btn"
-                    onClick={handleActionButton}
-                    type="button"
-                >
-                    Save
-                </button>
-                <button
-                    className="user-profile-action-btn cancel"
-                    onClick={handleCancel}
-                    type="button"
-                >
-                    Cancel
-                </button>
-            </div>
-            {successMsg && <div className="user-profile-success">{successMsg}</div>}
-            {copied && (
-                <div className="user-profile-success" style={{ color: '#a0ffa0' }}>
-                    {copied} copied!
-                </div>
-            )}
         </div>
     );
 };
