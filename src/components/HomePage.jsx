@@ -6,6 +6,7 @@ import Pricing from './HomepageComponents/Pricing';
 import Footer from './HomepageComponents/Footer';
 import WaveBackground from './HomepageComponents/WaveBackground';
 import ParticlesBackground from './HomepageComponents/ParticlesBackground';
+import SliderAnimation1 from './HomepageComponents/SliderAnimation1';
 
 function HomePage() {
   return (
@@ -15,6 +16,7 @@ function HomePage() {
       <WaveBackground />
       <div className="relative z-10">
         <Hero />
+        <SliderAnimation1 /> 
         <Features />
         <Testimonials />
         <Pricing />
@@ -23,5 +25,6 @@ function HomePage() {
     </div>
   );
 }
+
 
 export default HomePage;

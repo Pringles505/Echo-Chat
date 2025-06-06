@@ -12,6 +12,7 @@
   "dependencies": {
     "@react-three/drei": "^9.77.1",
     "@react-three/fiber": "^8.13.3",
+    "@rive-app/react-canvas": "^4.21.2",
     "bcryptjs": "^2.4.3",
     "buffer": "^6.0.3",
     "crypt-js": "^1.0.4",

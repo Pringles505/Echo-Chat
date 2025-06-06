@@ -9,4 +9,5 @@ export default defineConfig({
     wasm(),
     topLevelAwait(),
   ],
+  assetsInclude: ['**/*.riv'],
 });
