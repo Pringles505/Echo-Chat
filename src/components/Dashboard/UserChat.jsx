@@ -376,6 +376,24 @@ function Chat({ token, activeChat }) {
     console.log("🚧🚧Continue DR Chain🚧🚧")
     console.log("🚧🚧Previous Target Public Ephemeral Key Base64: ", previousTargetPublicEphemeralKeyBase64)
     console.log("🚧🚧Private Ephemeral Key: ", privateEphemeralKey)
+    const { signedPreKey, signature } = await fetchSignedPreKey(targetUserId);
+    const targetSignedPreKey = base64ToArrayBuffer(signedPreKey);
+    const targetSignature = base64ToArrayBuffer(signature);
+
+    const encTargetPublicIdentityKeyEd25519 = await fetchPublicIdentityKeyEd25519(targetUserId);
+    const targetPublicIdentityKeyEd25519 = base64ToArrayBuffer(encTargetPublicIdentityKeyEd25519);
+
+    await init_xeddsa();
+    const isValidSignature = await verify_signature(
+      targetSignature,
+      targetSignedPreKey,
+      targetPublicIdentityKeyEd25519);
+    console.log("isXeddsaVlidSignature🚧🚧: ", isValidSignature)
+
+    if (!isValidSignature) {
+      console.error('❌ Invalid signature for target signed prekey');
+      throw new Error('Invalid signature for target signed prekey'); 
+    }
 
     // Only convert if not already a Uint8Array
     let previousTargetPublicEphemeralKey;
