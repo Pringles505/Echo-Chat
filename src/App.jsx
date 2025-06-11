@@ -3,9 +3,9 @@ import './App.css';
 
 import Login from './components/Login';
 import Register from './components/Register';
-import Chat from './components/Dashboard/Chat';
+import Chat from './components/Dashboard/Chat/Chat';
 import Dashboard from './components/Dashboard/Dashboard';
-import PrivateRoute from './components/Dashboard/PrivateRoute';
+import PrivateRoute from './components/auth/PrivateRoute';
 import HomePage from './components/HomePage';
 import UserProfile from './components/UserProfile';
 import { useLocation, Navigate } from 'react-router-dom';

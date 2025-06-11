@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import Friends from './Friends';
-import UserInfo from './UserInfo';
-import UserChat from './UserChat';
+import Friends from './Friends/Friends';
+import UserInfo from './UserInfo/UserInfo';
+import UserChat from './Chat/Chat';
 
-import './dashboard.css';
+import './Dashboard.css';
 
 //Always keep in braces
 import {jwtDecode} from 'jwt-decode';

@@ -2,21 +2,29 @@ import { useState, useEffect, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import io from 'socket.io-client';
 import PropTypes from 'prop-types';
-import Logo from '../canLogo/logo';
-import './UserChat.css';
-import SendText from './sendText';
-import DisplayText from './displayText';
+import Logo from '../../Logo/logo';
+import './Chat.css';
+import SendText from './MessageInput/sendText';
+import DisplayText from './MessageDisplay/displayText';
 
 // Import DH and AES Rust Modules
-import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt } from './../../../aes-wasm/pkg';
+import { encrypt, decrypt } from './utils/crypto/aes';
+
 import init_dh, { derive_symmetric_key, diffie_hellman, generate_private_ephemeral_key, 
-  generate_public_ephemeral_key, hkdf_derive  } from './../../../dh-wasm/pkg';
-import init_xeddsa, {verify_signature} from './../../../xeddsa-wasm/pkg';
+  generate_public_ephemeral_key, hkdf_derive  } from 'dh-wasm';
+
+import init_xeddsa, {verify_signature} from 'xeddsa-wasm';
+
 import { get } from 'react-hook-form';
 
 // Secret key and nonce for encryption
 const nonce = '000102030405060708090a0b'; 
 
+
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
 const hexToUint8Array = (hex) => {
   const bytes = [];
   for (let i = 0; i < hex.length; i += 2) {
@@ -28,42 +36,10 @@ const hexToUint8Array = (hex) => {
 // Convert the nonce from hex to byteArray
 const nonceArray = hexToUint8Array(nonce);
 
-// Encrypt and decrypt functions from WebAssembly module
-const encrypt = async (text, derivedKey) => {
-  console.log("🎈🎈Encrypting with", derivedKey)
-  await init();
-  console.log('derivedKey:', derivedKey);
-
-  try {
-    // Ensure derivedKey is a Uint8Array
-    if (!(derivedKey instanceof Uint8Array)) {
-      derivedKey = new Uint8Array(derivedKey);
-    }
-    // Call the WebAssembly encrypt function
-    const encryptedText = await wasmEncrypt(text, derivedKey, nonceArray);
-    return encryptedText;
-  } catch (error) {
-    console.error('Encryption error:', error);
-    throw error;
-  }
-};
-
-const decrypt = async (text, derivedKey) => {
-  console.log("🎈🎈Decrypting with", derivedKey)
-  await init();
-
-  // Ensure the derived key is computed before decryption
-  if (!derivedKey) {
-    console.error('Derived key is missing');
-  }
-  try {
-    return wasmDecrypt(text, derivedKey, nonceArray);
-  } catch (error) {
-    console.error('Decryption error:', error);
-    throw error;
-  }
-};
-
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
 // Serialize and store a derived key per message number
 const storeKey = (userId, targetUserId, messageNumber, keyUint8Array) => {
   const sessionId = [userId, targetUserId].join('-');
@@ -84,6 +60,10 @@ const storeKey = (userId, targetUserId, messageNumber, keyUint8Array) => {
 };
 
 
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
 const getLatestKey = (userId, targetUserId) => {
   const sessionId = [userId, targetUserId].join('-');
   const keyStorageKey = `chatKeys-${sessionId}`;
@@ -107,7 +87,10 @@ const getLatestKey = (userId, targetUserId) => {
   return null;
 };
 
-
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
+// HELPER HELPER FUNCTION
 // Retrieve the derived key for a given message number
 const getKey = (userId, targetUserId, index) => {
   const sessionId = [userId, targetUserId].join('-');
@@ -125,18 +108,6 @@ const getKey = (userId, targetUserId, index) => {
   console.log(`🔑 Retrieved key for index ${index} (length ${key.length})`);
   return key;
 };
-
-
-
-const getNextSharedMessageNumber = (userId, targetUserId) => {
-  const sessionId = [userId, targetUserId].join('-');
-  const key = `chatSession-${sessionId}-counter`;
-  const currentValue = parseInt(localStorage.getItem(key) || '0', 10);
-  const nextValue = currentValue + 1;
-  localStorage.setItem(key, nextValue.toString());
-  return nextValue;
-};
-
 
 
 // Main chat component
@@ -505,7 +476,7 @@ function Chat({ token, activeChat }) {
 
                 const decryptedMessage = {
                   ...message,
-                  text: await decrypt(message.text, derivedKey),
+                  text: await decrypt(message.text, derivedKey, nonceArray),
                 };
 
                 updateSavedMessages(decryptedMessage);
@@ -557,7 +528,7 @@ function Chat({ token, activeChat }) {
 
             const decryptedMessage = {
               ...message,
-              text: await decrypt(message.text, derivedKey),
+              text: await decrypt(message.text, derivedKey, nonceArray),
             };
 
             updateSavedMessages(decryptedMessage);
@@ -695,13 +666,13 @@ function Chat({ token, activeChat }) {
 
         const currentKeyChainU8 = getLatestKey(userId, targetUserId);
 
-        encryptedText = await encrypt(text, currentKeyChainU8);  
+        encryptedText = await encrypt(text, currentKeyChainU8, nonceArray);  
         storeKey(userId, targetUserId, currentMessageNumber, currentKeyChainU8);
 
 
       }else{
         console.log("🚧Encrypting with: ", root_key)
-        encryptedText = await encrypt(text, root_key);  
+        encryptedText = await encrypt(text, root_key, nonceArray);  
 
         if (isInitialMessage) {
           storeKey(userId, targetUserId, 0, root_key);
