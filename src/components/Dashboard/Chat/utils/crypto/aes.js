@@ -22,7 +22,6 @@ const encrypt = async (text, derivedKey, nonceArray) => {
 const decrypt = async (text, derivedKey, nonceArray) => {
   console.log("🎈🎈Decrypting with", derivedKey)
   await init();
-  console.log("PENEPENE", nonceArray)
   // Ensure the derived key is computed before decryption
   if (!derivedKey) {
     console.error('Derived key is missing');
