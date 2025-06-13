@@ -3,7 +3,7 @@ import Friends from './Friends';
 import UserChat from './UserChat';
 import { jwtDecode } from 'jwt-decode';
 import { FiSettings, FiLogOut } from 'react-icons/fi';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import ParticlesBackground from '../HomepageComponents/ParticlesBackground';
 
 const styles = {
@@ -36,6 +36,9 @@ const styles = {
     overflow: 'hidden',
     cursor: 'pointer',
     marginRight: '15px',
+    border: 'none',
+    background: 'none',
+    padding: 0,
   },
   profileImg: {
     width: '100%',
@@ -79,17 +82,17 @@ const styles = {
     width: '200px',
     opacity: 0.8,
   },
-    sidebarHeader: {
+  sidebarHeader: {
     padding: '15px 15px',
     display: 'flex',
     alignItems: 'center',
-    borderBottom: '1px solidrgb(0, 0, 0)',
+    borderBottom: '1px solid rgb(0, 0, 0)', // Corregido aquí
     marginBottom: '10px',
   },
-
 };
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const [activeChat, setActiveChat] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -125,16 +128,16 @@ const Dashboard = () => {
       <div style={styles.dashboard}>
         <div style={{ ...styles.sidebar, transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
           <div style={styles.sidebarHeader}>
-            <div
+            <button
               style={styles.profilePic}
-              onClick={() => window.location.href = `/profile/${userId}`}
+              onClick={() => navigate(`/profile/${userId}`)}
             >
               <img src={profileImage} alt={username} style={styles.profileImg} />
-            </div>
+            </button>
           </div>
 
           <div style={styles.chatsList}>
-            <Friends token={token} onSelectChat={handleChatSelect} activeChat={activeChat} />
+            <Friends token={token} onActiveChatChange={handleChatSelect} activeChat={activeChat} />
           </div>
 
           <div style={styles.sidebarFooter}>
