@@ -236,7 +236,25 @@ const Register = () => {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-.948.135-1.865.388-2.737m3.012 3.5a3.003 3.003 0 014.243-4.243m4.95 1.757a3 3 0 00-4.243 4.243m4.95 1.757A10.05 10.05 0 0112 19c5.523 0 10-4.477 10-10 0-.948-.135-1.865-.388-2.737m-3.012 3.5l-6.36 6.36"
+                        d="M3 3l18 18"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10.477 10.477a3 3 0 104.046 4.046"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 5c4.477 0 8.268 2.943 9.542 7-1.18 3.753-4.614 6.518-8.665 6.902"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6.343 6.343A9.957 9.957 0 003 12c1.274 4.057 5.065 7 9.542 7"
                       />
                     </svg>
                   ) : (
@@ -257,7 +275,7 @@ const Register = () => {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-.914 2.848-3.028 5.21-5.697 6.188M15 12h.01"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                       />
                     </svg>
                   )}

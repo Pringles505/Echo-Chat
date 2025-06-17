@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { Github, Twitter, Linkedin } from 'lucide-react';
@@ -8,6 +8,49 @@ const Footer = () => {
     triggerOnce: true,
     threshold: 0.1,
   });
+
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+
+  const footerLinks = {
+    product: [
+      { label: 'Features', href: '#' },
+      { label: 'Pricing', href: '#' },
+      { label: 'Documentation', href: '#' },
+      { label: 'Updates', href: '#' }
+    ],
+    company: [
+      { label: 'About', href: '#' },
+      { label: 'Blog', href: '#' },
+      { label: 'Careers', href: '#' },
+      { label: 'Contact', href: '#' }
+    ],
+    legal: [
+      { label: 'Privacy', href: '#' },
+      { label: 'Terms', href: '#' },
+      { label: 'Security', href: '#' }
+    ]
+  };
+
+  const socialIcons = [
+    { Icon: Github, href: '#' },
+    { Icon: Twitter, href: '#' },
+    { Icon: Linkedin, href: '#' }
+  ];
+
+  const renderLinks = (links) => (
+    <ul className="space-y-2">
+      {links.map((link, index) => (
+        <li key={index}>
+          <a 
+            href={link.href} 
+            className="inline-block text-[var(--color-text)]/70 hover:text-[#514b96] transition-all duration-300 transform hover:scale-105"
+          >
+            {link.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <footer className="py-12 px-4 border-t border-[var(--color-primary)]/10" ref={ref}>
@@ -24,54 +67,40 @@ const Footer = () => {
               Building the future of digital interaction.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">
-                <Github className="w-6 h-6" />
-              </a>
-              <a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">
-                <Twitter className="w-6 h-6" />
-              </a>
-              <a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">
-                <Linkedin className="w-6 h-6" />
-              </a>
+              {socialIcons.map(({ Icon, href }, index) => (
+                <a 
+                  key={index}
+                  href={href}
+                  className="text-[var(--color-text)]/70 hover:text-[#514b96] transition-all duration-300 transform hover:scale-110"
+                >
+                  <Icon className="w-6 h-6" />
+                </a>
+              ))}
             </div>
           </div>
           
           <div>
             <h4 className="font-semibold mb-4">Product</h4>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Features</a></li>
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Pricing</a></li>
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Documentation</a></li>
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Updates</a></li>
-            </ul>
+            {renderLinks(footerLinks.product)}
           </div>
           
           <div>
             <h4 className="font-semibold mb-4">Company</h4>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">About</a></li>
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Blog</a></li>
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Careers</a></li>
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Contact</a></li>
-            </ul>
+            {renderLinks(footerLinks.company)}
           </div>
           
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Privacy</a></li>
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Terms</a></li>
-              <li><a href="#" className="text-[var(--color-text)]/70 hover:text-[var(--color-secondary)]">Security</a></li>
-            </ul>
+            {renderLinks(footerLinks.legal)}
           </div>
         </div>
         
         <div className="mt-12 pt-8 border-t border-[var(--color-primary)]/10 text-center text-[var(--color-text)]/60">
-          <p>&copy; {new Date().getFullYear()} ECHO. All rights reserved.</p>
+          <p>&copy; {currentYear} ECHO. All rights reserved.</p>
         </div>
       </motion.div>
     </footer>
   );
 }
 
-export default Footer;
+export default React.memo(Footer);
