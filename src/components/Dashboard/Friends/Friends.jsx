@@ -3,13 +3,10 @@ import io from 'socket.io-client';
 import PropTypes from 'prop-types';
 import './Friends.css';
 import '../Dashboard.css';
+import { jwtDecode } from 'jwt-decode';
 
-//Always keep in braces
-import {jwtDecode} from 'jwt-decode';
-
-const Friends = ({ token, onActiveChatChange}) => {
+const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
   console.log('Rendering Friends component');
-  const [searchTerm, setSearchTerm] = useState('');
   const [chatList, setSearchList] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
@@ -22,10 +19,16 @@ const Friends = ({ token, onActiveChatChange}) => {
       console.log('Socket connected');
     });
 
-    // When the user receives a notification
     socket.on('notification', (notification) => {
       console.log('Received notification:', notification);
-      setNotifications((prevNotifications) => [...prevNotifications, notification]);
+      setNotifications((prevNotifications) => [...prevNotifications, {
+        ...notification,
+        messageData: {
+          ...notification.messageData,
+          profileImage: notification.messageData.profileImage || `https://ui-avatars.com/api/?name=${notification.messageData.username}&background=6366f1&color=fff`,
+          status: 'online'
+        }
+      }]);
     });
 
     socket.on('disconnect', () => {
@@ -37,7 +40,15 @@ const Friends = ({ token, onActiveChatChange}) => {
     };
   }, [token]);
 
-  // Search for a user when adding a friend
+  useEffect(() => {
+    // Realizar búsqueda automáticamente cuando searchTerm cambia
+    if (searchTerm && searchTerm.trim() !== '') {
+      handleSearch();
+    } else {
+      setSearchList([]); // Limpiar resultados si el searchTerm está vacío
+    }
+  }, [searchTerm]);
+
   const handleSearch = () => {
     const user = token ? jwtDecode(token) : '';
     console.log('Searching for:', searchTerm);
@@ -47,39 +58,74 @@ const Friends = ({ token, onActiveChatChange}) => {
       console.log('TempSocket connected');
     });
 
-    // Disconnect if the search term is empty or the same as the user
     if (!searchTerm || searchTerm === user.username) {
       console.log('Search term is empty or the same as the user');
       tempSocket.disconnect();
       return;
     }
 
-    // Search for the user in the db and add to the chat list
     tempSocket.emit('searchUser', { searchTerm }, (response) => {
       console.log('Search response:', response);
-      const targetUser = response.user;
+      const targetUser = {
+        ...response.user,
+        profileImage: response.user.profileImage || `https://ui-avatars.com/api/?name=${response.user.username}&background=6366f1&color=fff`,
+        status: 'online'
+      };
       setSearchList((prevChatList) => [...prevChatList, targetUser]); 
     });
   };
 
   return (
     <div className="friends-container">
-      <input
-        type="text"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        placeholder="Search for friends..."
-      />
-      <button onClick={handleSearch}>Search</button>
       <ul className="chat-list">
         {chatList.map((targetUser, index) => (
-          <li key={index} onClick={() => onActiveChatChange(targetUser.id)}>
-            {targetUser.username}
+          <li 
+            key={index} 
+            onClick={() => onActiveChatChange({
+              id: targetUser.id,
+              username: targetUser.username,
+              profileImage: targetUser.profileImage,
+              status: targetUser.status
+            })}
+          >
+            <div className="friend-item">
+              <img 
+                src={targetUser.profileImage} 
+                alt={targetUser.username}
+                className="friend-avatar"
+                onError={(e) => {
+                  e.target.src = `https://ui-avatars.com/api/?name=${targetUser.username}&background=6366f1&color=fff`;
+                }}
+              />
+              <span>{targetUser.username}</span>
+            </div>
           </li>
         ))}
         {notifications.map((notification, index) => (
-          <li key={index} className="notification-item" onClick={() => onActiveChatChange(notification.messageData.userId)}>
-            <strong>{notification.message}</strong>{notification.messageData.username}
+          <li 
+            key={index} 
+            className="notification-item" 
+            onClick={() => onActiveChatChange({
+              id: notification.messageData.userId,
+              username: notification.messageData.username,
+              profileImage: notification.messageData.profileImage,
+              status: notification.messageData.status
+            })}
+          >
+            <div className="friend-item">
+              <img 
+                src={notification.messageData.profileImage} 
+                alt={notification.messageData.username}
+                className="friend-avatar"
+                onError={(e) => {
+                  e.target.src = `https://ui-avatars.com/api/?name=${notification.messageData.username}&background=6366f1&color=fff`;
+                }}
+              />
+              <div>
+                <strong>{notification.message}</strong>
+                <span>{notification.messageData.username}</span>
+              </div>
+            </div>
           </li>
         ))}
       </ul>
@@ -90,7 +136,8 @@ const Friends = ({ token, onActiveChatChange}) => {
 Friends.propTypes = {
   token: PropTypes.string.isRequired,
   onActiveChatChange: PropTypes.func.isRequired,
-  notifications: PropTypes.array,
+  searchTerm: PropTypes.string,
+  onSearch: PropTypes.func,
 };
 
 export default Friends;
