@@ -31,6 +31,8 @@ const socket = io(import.meta.env.VITE_SOCKET_URL);
 const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [aboutme, setAboutMe] = useState("");
+  const [profilePicture, setProfilePicture] = useState("");
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
@@ -159,8 +161,9 @@ const Register = () => {
     };
 
     console.log("Key bundle:", keyBundle);
+    console.log("About me:", aboutme, "pfp",profilePicture);
 
-    socket.emit("register", { username, password, keyBundle }, (response) => {
+    socket.emit("register", { username, password, keyBundle, aboutme:"descripcion de prueba", profilePicture:"http://imgur.com/yIZaO0L.jpg" }, (response) => {
       if (response.success) {
         navigate("/login");
       } else {

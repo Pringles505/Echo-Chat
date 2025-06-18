@@ -1,4 +1,4 @@
-import { useLocation, Navigate } from 'react-router-dom';
+import { useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import ParticlesBackground from './HomepageComponents/ParticlesBackground';
 import WaveBackground from './HomepageComponents/WaveBackground';
@@ -6,6 +6,7 @@ import './styles/UserProfile.css';
 
 const UserProfile = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { username, userId, password = '', about = '', profilePic = '' } = location.state || {};
 
     const [currentUsername, setCurrentUsername] = useState(username);
@@ -86,6 +87,20 @@ const UserProfile = () => {
             reader.onload = (ev) => setProfileImage(ev.target.result);
             reader.readAsDataURL(file);
         }
+    };
+
+    // Log out handler
+    const handleLogout = () => {
+        // Clear user info (adjust as needed for your app)
+        localStorage.clear();
+        sessionStorage.clear();
+        // If using context, also clear context here
+        navigate("/login", { replace: true });
+    };
+
+    // Go back handler
+    const handleGoBack = () => {
+        navigate(-1);
     };
 
     return (
@@ -347,6 +362,24 @@ const UserProfile = () => {
                         </div>
                     )}
                 </div>
+            </div>
+            <div className="absolute top-4 right-4 z-20">
+                <button
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold transition hover:bg-red-700"
+                    onClick={handleLogout}
+                    type="button"
+                >
+                    Log out
+                </button>
+            </div>
+            <div className="absolute top-4 left-4 z-20">
+                <button
+                    className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
+                    onClick={handleGoBack}
+                    type="button"
+                >
+                    Go back
+                </button>
             </div>
         </div>
     );
