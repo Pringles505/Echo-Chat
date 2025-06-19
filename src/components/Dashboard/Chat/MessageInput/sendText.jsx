@@ -27,7 +27,6 @@ const SendText = ({ sendMessage }) => {
         placeholder="Type a message..."
         className="send-text-input"
       />
-      <button type="submit" className="send-text-button">Send</button>
     </form>
   );
 };

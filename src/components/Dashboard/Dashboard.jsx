@@ -6,10 +6,10 @@ import {
   MessageCircle,
   User,
   Users,
-  Phone,
-  Video,
   MoreHorizontal,
   Plus,
+  LogOut,
+  Lock // Añadí el icono Lock que faltaba
 } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
@@ -43,13 +43,55 @@ const Dashboard = () => {
     navigate(`/profile/${userId}`, { state: { username, userId } });
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/");
+  };
+
   const handleSearch = () => {
     console.log("Searching for:", searchTerm);
   };
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar - Friends List */}
+      {/* Left Sidebar - Compacto permanentemente */}
+      <div className="left-sidebar compact">
+        {/* Navigation - Solo íconos */}
+        <nav className="vertical-nav">
+          <button className="nav-button">
+            <MessageCircle className="icon" />
+          </button>
+          <button className="nav-button">
+            <Users className="icon" />
+          </button>
+          <button className="nav-button" onClick={handleProfileClick}>
+            <User className="icon" />
+          </button>
+        </nav>
+
+        {/* Bottom Section - Logout y Profile */}
+        <div className="sidebar-bottom">
+          {/* Logout Button - Solo ícono */}
+          <button className="logout-button" onClick={handleLogout}>
+            <LogOut className="icon" />
+          </button>
+
+          {/* Profile Section - Solo ícono */}
+          <div className="profile-section" onClick={handleProfileClick}>
+            <div className="profile-avatar">
+              <img
+                src={profileImage}
+                alt="User Avatar"
+                onError={(e) => {
+                  e.target.src = `https://ui-avatars.com/api/?name=${username}&background=6366f1&color=fff`;
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Middle Section - Friends List */}
       <nav className="dashboard-nav">
         {/* Header */}
         <div className="nav-header">
@@ -89,79 +131,72 @@ const Dashboard = () => {
             onSearch={handleSearch}
           />
         </div>
-
-        {/* Bottom Navigation */}
-        <div className="bottom-nav">
-          <div className="nav-icons">
-            <button className="nav-icon">
-              <User className="icon" />
-            </button>
-            <button className="nav-icon">
-              <MessageCircle className="icon" />
-            </button>
-            <button className="nav-icon">
-              <Users className="icon" />
-            </button>
-          </div>
-          <button className="user-avatar" onClick={handleProfileClick}>
-            <img
-              src={profileImage}
-              alt="User Avatar"
-              onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${username}&background=6366f1&color=fff`;
-              }}
-            />
-          </button>
-        </div>
       </nav>
 
-      {/* Main Chat Area - Solo se muestra si hay un chat activo */}
-      {activeChat ? (
-        <div className="dashboard-content">
-          {/* Chat Header */}
-          <div className="chat-header">
-            <div className="chat-info">
-              <div className="chat-avatar">
-                <img
-                  src={
-                    activeChat.profileImage ||
-                    `https://ui-avatars.com/api/?name=${activeChat.username}&background=6366f1&color=fff`
-                  }
-                  alt={activeChat.username}
-                  onError={(e) => {
-                    e.target.src = `https://ui-avatars.com/api/?name=${activeChat.username}&background=6366f1&color=fff`;
-                  }}
+      {/* Right Section - Chat Area */}
+      <div className="dashboard-content">
+        {activeChat ? (
+          <>
+            {/* Chat Header */}
+            <div className="chat-header">
+              <div className="chat-info">
+                <div className="chat-avatar">
+                  <img
+                    src={
+                      activeChat.profileImage ||
+                      `https://ui-avatars.com/api/?name=${activeChat.username}&background=6366f1&color=fff`
+                    }
+                    alt={activeChat.username}
+                    onError={(e) => {
+                      e.target.src = `https://ui-avatars.com/api/?name=${activeChat.username}&background=6366f1&color=fff`;
+                    }}
+                  />
+                </div>
+                <div className="chat-details">
+                  <h3>{activeChat.username}</h3>
+                  <p>{activeChat.status || "Online"}</p>
+                </div>
+              </div>
+              <div className="chat-actions">
+                <button className="chat-action">
+                  <MoreHorizontal className="icon" />
+                </button>
+              </div>
+            </div>
+
+            {/* Chat Content */}
+            <div className="chat-content">
+              <UserChat token={token} activeChat={activeChat.id} />
+            </div>
+          </>
+        ) : (
+          <div className="empty-state">
+            <div className="empty-chat-container">
+              <div className="empty-chat-icon animate-bounce">
+                <MessageCircle size={64} strokeWidth={1.5} className="text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-700 mt-4">No chat selected</h3>
+              <p className="text-gray-500 max-w-md text-center mt-2">
+                Choose a conversation from the sidebar or start a new one to begin messaging
+              </p>
+              <button className="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                Start New Chat
+              </button>
+              
+              {/* Footer de encriptación */}
+              <div className="encryption-footer mt-auto pt-8 pb-4 flex items-center justify-center text-xs text-gray-400">
+                <Lock className="w-4 h-4 mr-1.5" />
+                <span>Your messages are encrypted using</span>
+                <img 
+                  src="/EchoProtocolLogo.png" 
+                  alt="Echo Protocol" 
+                  className="h-4 ml-1.5" 
                 />
               </div>
-              <div className="chat-details">
-                <h3>{activeChat.username}</h3>
-                <p>{activeChat.status || "Online"}</p>
-              </div>
-            </div>
-            <div className="chat-actions">
-              <button className="chat-action">
-                <MoreHorizontal className="icon" />
-              </button>
             </div>
           </div>
-
-          {/* Chat Content */}
-          <div className="chat-content">
-            <UserChat token={token} activeChat={activeChat.id} />
-          </div>
-        </div>
-      ) : (
-        /* Estado cuando no hay chat seleccionado */
-        <div className="dashboard-content empty-state">
-          <div className="empty-chat-container">
-            <div className="empty-chat-icon">
-              <MessageCircle size={48} />
-            </div>
-            <h3>Select a chat</h3>
-            <p>Choose a friend from the list to start messaging</p>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

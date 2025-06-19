@@ -1,38 +1,55 @@
 .send-text-form {
   display: flex;
   align-items: center;
-  padding: 1rem;
-  background-color: #1e1e1e;
-  border-top: 1px solid #333;
+  padding: 16px;
+  background-color: #000000; /* Fondo negro puro */
+  border-top: 1px solid #ffffff; /* Línea blanca */
   position: sticky;
   bottom: 0;
   z-index: 10;
+  gap: 12px; /* Espacio entre elementos */
 }
 
 .send-text-input {
   flex: 1;
-  padding: 0.75rem 1rem;
-  margin-right: 0.5rem;
-  border-radius: 8px;
-  border: 1px solid #444;
-  background-color: #2a2a2a;
-  color: #ffffff;
+  padding: 12px 16px;
+  border-radius: 24px; /* Bordes más redondeados */
+  border: 1px solid #ffffff; /* Borde blanco */
+  background-color: #000000; /* Fondo negro */
+  color: #ffffff; /* Texto blanco */
   font-size: 1rem;
   outline: none;
+  transition: all 0.2s ease;
+}
+
+.send-text-input:focus {
+  border-color: #6366f1; /* Color de acento al enfocar */
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3); /* Sutil glow */
 }
 
 .send-text-button {
-  padding: 0.75rem 1.25rem;
-  background-color: #514b96;
+  padding: 12px 20px;
+  background-color: #6366f1; /* Color de acento */
   color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: 24px; /* Bordes más redondeados */
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
   font-size: 1rem;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .send-text-button:hover {
-  background-color: #6a64b9;
+  background-color: #514B96; /* Color más oscuro al hover */
+  transform: translateY(-1px); /* Efecto sutil de elevación */
+}
+
+/* Opcional: Estilo para el ícono dentro del botón */
+.send-text-button .icon {
+  width: 20px;
+  height: 20px;
 }
