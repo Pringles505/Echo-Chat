@@ -520,3 +520,176 @@
 .animate-bounce {
   animation: bounce 2s infinite;
 }
+/* Agrega esto a tu Dashboard.css */
+.nav-button.active {
+  background-color: #6366f1;
+  color: white;
+}
+
+.nav-button.active .icon {
+  color: white;
+}
+
+.content-container {
+  flex: 1;
+  overflow-y: auto;
+}
+/* Dashboard.css - Versión oscura (estilo Friends) */
+
+:root {
+  --bg-primary: #000000;
+  --bg-secondary: #1a1a1a;
+  --bg-hover: #333333;
+  --bg-active: #252525;
+  --border-color: #333333;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --text-time: #999999;
+  --accent-color: #6366f1;
+  --accent-hover: #4f46e5;
+  --border-radius: 8px;
+}
+
+/* Badges */
+.unread-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: var(--accent-color);
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  border: 1px solid var(--bg-primary);
+}
+
+.message-badge {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  background-color: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  border: 1px solid var(--bg-primary);
+}
+
+.chat-avatar-container {
+  position: relative;
+  margin-right: 12px;
+}
+
+/* Lista de conversaciones */
+.conversations-list {
+  overflow-y: auto;
+  height: calc(100% - 40px);
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  padding: 8px;
+}
+
+/* Items de chat */
+.chat-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  cursor: pointer;
+  border-radius: var(--border-radius);
+  margin-bottom: 8px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-color);
+}
+
+.chat-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.chat-item.active {
+  background-color: var(--bg-active);
+  border-color: var(--accent-color);
+}
+
+.chat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.chat-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-time {
+  font-size: 11px;
+  color: var(--text-time);
+  font-weight: 400;
+}
+
+.last-message {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Estado vacío */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  color: var(--text-secondary);
+  text-align: center;
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius);
+  border: 1px dashed var(--border-color);
+}
+
+.no-chats {
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+/* Efectos de focus */
+.chat-item:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* Transiciones */
+.chat-avatar-container img {
+  transition: border-color 0.2s ease;
+  border: 2px solid var(--accent-color);
+  border-radius: 50%;
+}
+
+.chat-item:hover .chat-avatar-container img {
+  border-color: var(--text-primary);
+}
