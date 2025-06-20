@@ -9,15 +9,15 @@
   --dashboard-color-text-primary: #ffffff;
   --dashboard-color-text-secondary: #ffffff;
   --dashboard-color-border: #ffffff;
+  --dashboard-color-hover: #333333;
+  --dashboard-color-active: #252525;
 }
 
 /* Base Styles */
+/* Contenedor principal - similar a friends */
 .dashboard-container {
-  display: flex;
-  height: 100vh;
-  background-color: var(--dashboard-color-black);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: var(--dashboard-color-text-primary);
+  background-color: #000;
+  color: #fff;
 }
 
 /* Left Sidebar - Compact Styles */
@@ -257,11 +257,39 @@
 
 .chat-header {
   padding: 1rem;
-  border-bottom: 1px solid var(--dashboard-color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
   background-color: var(--dashboard-color-black);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border-bottom: 1px solid var(--dashboard-color-border);
+}
+
+/* Nuevos estilos para el chat-header */
+.chat-header.active {
+  background-color: var(--dashboard-color-active);
+  border-bottom: 2px solid var(--dashboard-color-accent);
+}
+
+.chat-header.hovered {
+  background-color: var(--dashboard-color-hover);
+}
+
+.chat-header:hover {
+  background-color: var(--dashboard-color-hover);
+}
+
+.chat-header:hover .chat-details h3 {
+  color: var(--dashboard-color-white);
+}
+
+.chat-header:hover .chat-details p {
+  color: var(--dashboard-color-text-secondary);
+}
+
+.chat-header:hover .chat-action {
+  color: var(--dashboard-color-white);
 }
 
 .chat-info {
@@ -592,30 +620,30 @@
 
 /* Lista de conversaciones */
 .conversations-list {
-  overflow-y: auto;
-  height: calc(100% - 40px);
-  background-color: var(--bg-primary);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border-color);
-  padding: 8px;
+  list-style: none;
+  padding: 10px;
+  margin: 0;
 }
 
 /* Items de chat */
+/* Items de chat - estilo friends pero con posición relativa para la hora */
 .chat-item {
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-bottom: 5px;
+  color: #fff;
+  background-color: #000;
+  transition: all 0.2s ease;
+  border: 1px solid #333;
+  position: relative; /* Para posicionar la hora absolutamente */
   display: flex;
   align-items: center;
-  padding: 12px;
-  cursor: pointer;
-  border-radius: var(--border-radius);
-  margin-bottom: 8px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  transition: all 0.2s ease;
-  border: 1px solid var(--border-color);
+  gap: 10px;
 }
 
 .chat-item:hover {
-  background-color: var(--bg-hover);
+  background-color: #333;
 }
 
 .chat-item.active {
@@ -647,6 +675,9 @@
   font-size: 11px;
   color: var(--text-time);
   font-weight: 400;
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
 }
 
 .last-message {
@@ -683,13 +714,26 @@
   outline-offset: 2px;
 }
 
-/* Transiciones */
-.chat-avatar-container img {
-  transition: border-color 0.2s ease;
-  border: 2px solid var(--accent-color);
+/* Avatar - igual que friends */
+.chat-avatar img {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #6366f1;
+  transition: border-color 0.2s ease;
 }
 
-.chat-item:hover .chat-avatar-container img {
-  border-color: var(--text-primary);
+.chat-item:hover .chat-avatar img {
+  border-color: #fff;
+}
+
+/* Nuevos estilos para la relación chat-item -> chat-header */
+.chat-item.active ~ .chat-header {
+  background-color: var(--dashboard-color-active);
+  border-bottom: 2px solid var(--dashboard-color-accent);
+}
+
+.chat-item:hover ~ .chat-header {
+  background-color: var(--dashboard-color-hover);
 }
