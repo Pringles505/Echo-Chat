@@ -42,66 +42,7 @@
   padding: 10px 20px;
 }
 
-.friends-container {
-  display: flex;
-  flex-direction: column;
-  width: 250px;
-  height: 100vh;
-  background-color: #f8f9fa;
-  padding: 10px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.search-container {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.search-container input {
-  flex: 1;
-  padding: 5px;
-}
-
-.search-container button {
-  padding: 5px 10px;
-}
-
-.conversations-container {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.conversations-container ul {
-  list-style: none;
-  padding: 0;
-}
-
-.conversations-container li {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-}
-
 .dashboard-container {
   display: flex;
   height: 100vh;
-}
-
-.sidebar {
-  width: 250px;
-  background-color: #f8f9fa;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.main-content {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.particle {
-  position: absolute;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.5);
-  pointer-events: none;
 }
