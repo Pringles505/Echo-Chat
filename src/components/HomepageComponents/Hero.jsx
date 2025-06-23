@@ -18,8 +18,7 @@ const Hero = () => {
           transition={{ duration: 0.8 }}
           className="max-w-3xl mx-auto"
         >
-
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)]  bg-clip-text">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] bg-clip-text text-transparent">
             ECHO
           </h1>
           <p className="text-xl md:text-2xl mb-12 text-[var(--color-text)]/80">
@@ -30,7 +29,7 @@ const Hero = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 bg-[var(--color-primary)] rounded-lg font-semibold text-white shadow-lg hover:bg-[var(--color-primary)]/90 transition-colors"
+              className="px-8 py-4 bg-[var(--color-primary)] text-white rounded-lg font-semibold shadow-lg hover:bg-[var(--color-primary)]/90 transition-colors"
               onClick={() => window.location.href = '/register'}
             >
               Get Started Free
@@ -38,7 +37,7 @@ const Hero = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 border-2 border-[var(--color-secondary)] rounded-lg font-semibold text-[var(--color-secondary)] hover:bg-[var(--color-secondary)]/10 transition-colors"
+              className="px-8 py-4 border-2 border-[var(--color-secondary)] text-[var(--color-secondary)] rounded-lg font-semibold hover:bg-[var(--color-secondary)]/10 transition-colors"
               onClick={() => window.location.href = '/login'}
             >
               Sign In

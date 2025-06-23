@@ -1,11 +1,11 @@
-import Navbar from './HomepageComponents/Navbar';
-import Hero from './HomepageComponents/Hero';
-import Features from './HomepageComponents/Features';
-import Testimonials from './HomepageComponents/Testimonials';
-import Pricing from './HomepageComponents/Pricing';
-import Footer from './HomepageComponents/Footer';
-import WaveBackground from './HomepageComponents/WaveBackground';
-import ParticlesBackground from './HomepageComponents/ParticlesBackground';
+import Navbar from './HomepageComponents/Navbar.jsx';
+import Hero from './HomepageComponents/Hero.jsx';
+import Features from './HomepageComponents/Features.jsx';
+import Testimonials from './HomepageComponents/Testimonials.jsx';
+import Pricing from './HomepageComponents/Pricing.jsx';
+import Footer from './HomepageComponents/Footer.jsx';
+import WaveBackground from './HomepageComponents/WaveBackground.jsx';
+import ParticlesBackground from './HomepageComponents/ParticlesBackground.jsx';
 
 function HomePage() {
   return (

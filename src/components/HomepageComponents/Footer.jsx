@@ -101,6 +101,6 @@ const Footer = () => {
       </motion.div>
     </footer>
   );
-}
+};
 
 export default React.memo(Footer);

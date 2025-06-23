@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
-const WaveBackground: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const WaveBackground = () => {
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -24,7 +24,7 @@ const WaveBackground: React.FC = () => {
       { offset: 0.2, length: 0.4, amplitude: 0.06, speed: 0.05, color: '#5750a1' }
     ];
 
-    let animationFrameId: number;
+    let animationFrameId;
     let time = 0;
 
     const animate = () => {

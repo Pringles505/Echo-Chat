@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-const ParticlesBackground: React.FC = () => {
+const ParticlesBackground = () => {
   useEffect(() => {
     const container = document.createElement('div');
     container.id = 'particles-container';
@@ -23,7 +23,7 @@ const ParticlesBackground: React.FC = () => {
       animateParticle(particle);
     };
 
-    const animateParticle = (particle: HTMLElement) => {
+    const animateParticle = (particle) => {
       const posX = Math.random() * 100;
       const posY = Math.random() * 100;
       particle.style.left = `${posX}%`;
