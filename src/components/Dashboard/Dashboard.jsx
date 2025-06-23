@@ -8,7 +8,6 @@ import ChatHeader from "./DashboardComponents/Header/ChatHeader";
 import ConversationList from "./DashboardComponents/Conversations/ConversationList";
 import { useConversations } from "./DashboardComponents/hooks/useConversations";
 import { getUserData } from "./DashboardComponents/utils/helpers";
-import "./Dashboard.css";
 
 const Dashboard = () => {
   const token = localStorage.getItem("token");
@@ -23,9 +22,10 @@ const Dashboard = () => {
   });
   const [conversationsSearchTerm, setConversationsSearchTerm] = useState("");
   const [isChatItemHovered, setIsChatItemHovered] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState({});
 
   // Hooks personalizados
-  const { recentConversations, unreadMessages, updateRecentConversations } = useConversations(userId);
+  const { recentConversations, updateRecentConversations } = useConversations(userId);
   const messagesEndRef = useRef(null);
   const conversationsListRef = useRef(null);
 
@@ -84,23 +84,23 @@ const Dashboard = () => {
       unreadCount: unreadMessages[conv.id] || 0
     }));
 
-  // Componente EmptyState
+  // Componente EmptyState con Tailwind
   const EmptyState = ({ activeView }) => (
-    <div className="empty-state">
-      <div className="empty-chat-container">
-        <div className="empty-chat-icon animate-bounce">
-          <MessageCircle size={64} strokeWidth={1.5} className="text-gray-400" />
+    <div className="flex justify-center items-center h-full p-8">
+      <div className="text-center max-w-[300px]">
+        <div className="animate-bounce mb-6">
+          <MessageCircle size={64} strokeWidth={1.5} className="text-gray-400 mx-auto" />
         </div>
-        <h3 className="text-xl font-semibold text-gray-700 mt-4">
+        <h3 className="text-xl font-semibold text-white mt-4 mb-2">
           {activeView === 'chats' ? 'Select a conversation' : 'No chat selected'}
         </h3>
-        <p className="text-gray-500 max-w-md text-center mt-2">
+        <p className="text-gray-300 max-w-md text-center">
           {activeView === 'chats' 
             ? 'Choose a conversation from the list or start a new chat with a friend'
             : 'Search for a friend to start a new conversation'}
         </p>
         
-        <div className="encryption-footer mt-auto pt-8 pb-4 flex items-center justify-center text-xs text-gray-400">
+        <div className="flex items-center justify-center text-xs text-gray-400 mt-8 pt-8 pb-4 border-t border-gray-700">
           <Lock className="w-4 h-4 mr-1.5" />
           <span>Your messages are encrypted using</span>
           <img 
@@ -114,7 +114,8 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="dashboard-container">
+    <div className="flex h-screen bg-black text-white">
+      {/* Sidebar */}
       <Sidebar
         activeView={activeView}
         handleViewChange={handleViewChange}
@@ -125,19 +126,20 @@ const Dashboard = () => {
         unreadMessages={unreadMessages}
       />
 
-      <nav className="dashboard-nav">
-        <div className="nav-header">
-          <div className="logo-container">
+      {/* Navigation Panel */}
+      <div className="w-80 bg-black border-r border-gray-700 flex flex-col">
+        <div className="p-4 border-b border-gray-700">
+          <div className="flex items-center gap-3 mb-4">
             <img
               src="./echo-logo-text.png"
               alt="ECHO Logo"
-              className="header-logo"
+              className="h-8"
             />
           </div>
 
-          <div className="search-container">
-            <div className="search-input-container">
-              <Search className="search-icon" />
+          <div className="flex gap-2 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <input
                 type="text"
                 placeholder={
@@ -145,7 +147,7 @@ const Dashboard = () => {
                     ? "Search for friends..." 
                     : "Search conversations..."
                 }
-                className="search-input"
+                className="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:bg-gray-800 placeholder-gray-400"
                 value={activeView === 'friends' ? searchTerm : conversationsSearchTerm}
                 onChange={(e) => 
                   activeView === 'friends' 
@@ -156,14 +158,17 @@ const Dashboard = () => {
               />
             </div>
             {activeView === 'friends' && (
-              <button className="search-button" onClick={handleSearch}>
-                <Plus className="icon" />
+              <button 
+                className="px-4 bg-indigo-600 text-white rounded-lg flex items-center justify-center hover:bg-indigo-700 transition-colors"
+                onClick={handleSearch}
+              >
+                <Plus className="w-5 h-5" />
               </button>
             )}
           </div>
         </div>
 
-        <div className="content-container">
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-black">
           {activeView === 'friends' ? (
             <Friends
               token={token}
@@ -172,7 +177,7 @@ const Dashboard = () => {
               onSearch={handleSearch}
             />
           ) : (
-            <div className="recent-chats-view">
+            <div>
               {filteredConversations.length > 0 ? (
                 <ConversationList
                   conversations={filteredConversations}
@@ -182,7 +187,7 @@ const Dashboard = () => {
                   ref={conversationsListRef}
                 />
               ) : (
-                <p className="no-chats">
+                <p className="text-gray-400 text-sm p-4">
                   {conversationsSearchTerm 
                     ? 'No conversations match your search'
                     : 'No recent conversations'}
@@ -191,13 +196,14 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-      </nav>
+      </div>
 
-      <div className="dashboard-content">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col bg-black">
         {activeChat ? (
-          <div className="chat-container">
+          <div className="flex flex-col h-full">
             <ChatHeader activeChat={activeChat} isHovered={isChatItemHovered} />
-            <div className="messages-container">
+            <div className="flex-1 overflow-hidden">
               <Chat 
                 token={token} 
                 activeChat={activeChat.id} 

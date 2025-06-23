@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import PropTypes from 'prop-types';
-import './Friends.css';
-import '../Dashboard.css';
 import { jwtDecode } from 'jwt-decode';
 
 const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
-  console.log('Rendering Friends component');
   const [chatList, setSearchList] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
@@ -20,7 +17,6 @@ const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
     });
 
     socket.on('notification', (notification) => {
-      console.log('Received notification:', notification);
       setNotifications((prevNotifications) => [...prevNotifications, {
         ...notification,
         messageData: {
@@ -41,17 +37,15 @@ const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
   }, [token]);
 
   useEffect(() => {
-    // Realizar búsqueda automáticamente cuando searchTerm cambia
     if (searchTerm && searchTerm.trim() !== '') {
       handleSearch();
     } else {
-      setSearchList([]); // Limpiar resultados si el searchTerm está vacío
+      setSearchList([]);
     }
   }, [searchTerm]);
 
   const handleSearch = () => {
     const user = token ? jwtDecode(token) : '';
-    console.log('Searching for:', searchTerm);
     const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
 
     tempSocket.on('connect', () => {
@@ -59,13 +53,11 @@ const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
     });
 
     if (!searchTerm || searchTerm === user.username) {
-      console.log('Search term is empty or the same as the user');
       tempSocket.disconnect();
       return;
     }
 
     tempSocket.emit('searchUser', { searchTerm }, (response) => {
-      console.log('Search response:', response);
       const targetUser = {
         ...response.user,
         profileImage: response.user.profileImage || `https://ui-avatars.com/api/?name=${response.user.username}&background=6366f1&color=fff`,
@@ -76,8 +68,8 @@ const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
   };
 
   return (
-    <div className="friends-container">
-      <ul className="chat-list">
+    <div className="h-full overflow-y-auto">
+      <ul className="divide-y divide-gray-700">
         {chatList.map((targetUser, index) => (
           <li 
             key={index} 
@@ -87,43 +79,56 @@ const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
               profileImage: targetUser.profileImage,
               status: targetUser.status
             })}
+            className="p-3 hover:bg-gray-800 cursor-pointer transition-colors"
           >
-            <div className="friend-item">
-              <img 
-                src={targetUser.profileImage} 
-                alt={targetUser.username}
-                className="friend-avatar"
-                onError={(e) => {
-                  e.target.src = `https://ui-avatars.com/api/?name=${targetUser.username}&background=6366f1&color=fff`;
-                }}
-              />
-              <span>{targetUser.username}</span>
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <img 
+                  src={targetUser.profileImage} 
+                  alt={targetUser.username}
+                  className="w-10 h-10 rounded-full object-cover border-2 border-indigo-500"
+                  onError={(e) => {
+                    e.target.src = `https://ui-avatars.com/api/?name=${targetUser.username}&background=6366f1&color=fff`;
+                  }}
+                />
+                <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-gray-800 ${targetUser.status === 'online' ? 'bg-green-500' : 'bg-gray-500'}`}></span>
+              </div>
+              <div>
+                <p className="text-white font-medium">{targetUser.username}</p>
+                <p className="text-xs text-gray-400">{targetUser.status}</p>
+              </div>
             </div>
           </li>
         ))}
+        
         {notifications.map((notification, index) => (
           <li 
-            key={index} 
-            className="notification-item" 
+            key={`notif-${index}`} 
             onClick={() => onActiveChatChange({
               id: notification.messageData.userId,
               username: notification.messageData.username,
               profileImage: notification.messageData.profileImage,
               status: notification.messageData.status
             })}
+            className="p-3 hover:bg-gray-800 cursor-pointer transition-colors bg-gray-800/50"
           >
-            <div className="friend-item">
-              <img 
-                src={notification.messageData.profileImage} 
-                alt={notification.messageData.username}
-                className="friend-avatar"
-                onError={(e) => {
-                  e.target.src = `https://ui-avatars.com/api/?name=${notification.messageData.username}&background=6366f1&color=fff`;
-                }}
-              />
-              <div>
-                <strong>{notification.message}</strong>
-                <span>{notification.messageData.username}</span>
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <img 
+                  src={notification.messageData.profileImage} 
+                  alt={notification.messageData.username}
+                  className="w-10 h-10 rounded-full object-cover border-2 border-indigo-500"
+                  onError={(e) => {
+                    e.target.src = `https://ui-avatars.com/api/?name=${notification.messageData.username}&background=6366f1&color=fff`;
+                  }}
+                />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  !
+                </span>
+              </div>
+              <div className="flex-1">
+                <p className="text-white font-medium">{notification.messageData.username}</p>
+                <p className="text-sm text-gray-300 truncate">{notification.message}</p>
               </div>
             </div>
           </li>
