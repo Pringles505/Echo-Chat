@@ -27,6 +27,7 @@ const DisplayText = ({ messages = [], currentUserId }) => {
               className={`max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl rounded-lg p-3 ${message.userId === currentUserId 
                 ? 'bg-indigo-600 text-white rounded-br-none' 
                 : 'bg-gray-700 text-white rounded-bl-none'}`}
+              style={{ wordWrap: 'break-word', whiteSpace: 'pre-wrap' }}
             >
               <div className="flex items-baseline justify-between space-x-2">
                 {message.userId !== currentUserId && (

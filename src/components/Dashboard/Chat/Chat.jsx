@@ -405,9 +405,6 @@ function Chat({ token, activeChat }) {
 
   return (
     <div className="app-container">
-      <div className="logo-container">
-        <Logo />
-      </div>
       <div className="chat-container">
         <div className="messages-container">
           <DisplayText messages={messages} currentUserId={userId} />
