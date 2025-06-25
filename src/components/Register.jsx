@@ -31,9 +31,38 @@ const socket = io(import.meta.env.VITE_SOCKET_URL);
 const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const navigate = useNavigate();
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState(null);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [passwordTips, setPasswordTips] = useState([]);
+
+  const navigate = useNavigate();
+  const validateUsername = (username) => {
+    const validChars = /^[a-zA-Z0-9_]+$/;
+    const letterMatch = username.match(/[a-zA-Z]/g) || [];
+    return (
+      username.length >= 3 &&
+      validChars.test(username) &&
+      letterMatch.length >= 2
+    );
+  };
+
+  const getPasswordStrength = (password) => {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/\d/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    return strength;
+  };
+
+  const isPasswordValid = (password) => {
+    return getPasswordStrength(password) >= 5;
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -170,22 +199,47 @@ const Register = () => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[var(--color-background)]">
+    <div className="relative min-h-screen overflow-hidden bg-primary-1000">
       <Navbar />
       <ParticlesBackground />
       <WaveBackground />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <div className="form-container w-full max-w-md bg-[var(--color-background)]/50 backdrop-blur-md rounded-xl p-6 border border-[var(--color-primary)]/30 shadow-xl relative z-10">
-          <h2 className="text-2xl font-bold text-center mb-6 text-[var(--color-secondary)]">
+          <h2 className="text-2xl font-bold text-center mb-6 text-white">
             Register
           </h2>
 
-          <form onSubmit={handleRegister} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+
+              if (!validateUsername(username)) {
+                setError(
+                  "Invalid username. Use only letters, numbers, underscores, and at least 2 letters."
+                );
+                return;
+              }
+
+              if (!isPasswordValid(password)) {
+                setError("Password does not meet complexity requirements.");
+                return;
+              }
+
+              if (password !== confirmPassword) {
+                setError("Passwords do not match.");
+                return;
+              }
+
+              setError("");
+              handleRegister(e);
+            }}
+            className="space-y-4"
+          >
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-[var(--color-text)]/80 mb-2"
+                className="block text-sm font-medium text-white mb-2"
               >
                 Username
               </label>
@@ -199,11 +253,10 @@ const Register = () => {
                 required
               />
             </div>
-
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-[var(--color-text)]/80 mb-2"
+                className="block text-sm font-medium text-white mb-2"
               >
                 Password
               </label>
@@ -212,16 +265,19 @@ const Register = () => {
                   type={showPassword ? "text" : "password"}
                   id="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setPassword(value);
+                    setPasswordStrength(getPasswordStrength(value));
+                  }}
                   className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all pr-10"
                   placeholder="Enter password"
                   required
                 />
-
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute top-1/2 right-3 transform -translate-y-1/2 text-black hover:text-[#514b96]"
+                  className="absolute top-1/2 right-3 transform -translate-y-1/2 text-black/60 hover:text-[#514b96]"
                   aria-label="Toggle password visibility"
                 >
                   {showPassword ? (
@@ -281,20 +337,129 @@ const Register = () => {
                   )}
                 </button>
               </div>
+
+              {password && (
+                <>
+                  <div className="mt-2 h-2 w-1/2 rounded bg-gray-300">
+                    <div
+                      className={`h-2 rounded transition-all duration-300 ${
+                        passwordStrength === 0
+                          ? "w-0"
+                          : passwordStrength <= 2
+                          ? "w-1/3 bg-red-500"
+                          : passwordStrength === 3
+                          ? "w-2/3 bg-yellow-400"
+                          : "w-full bg-green-500"
+                      }`}
+                    />
+                  </div>
+
+                  <p className="mt-1 text-xs text-white">
+                    {passwordStrength <= 2 ? "Weak password" : ""}
+                    {passwordStrength === 3 ? "Moderate password" : ""}
+                    {passwordStrength >= 4 ? "Strong password" : ""}
+                  </p>
+                </>
+              )}
             </div>
 
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-white mb-2"
+              >
+                Confirm Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all pr-10"
+                  placeholder="Repeat password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute top-1/2 right-3 transform -translate-y-1/2 text-black/60 hover:text-[#514b96]"
+                  aria-label="Toggle confirm password visibility"
+                >
+                  {showConfirmPassword ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 3l18 18"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10.477 10.477a3 3 0 104.046 4.046"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 5c4.477 0 8.268 2.943 9.542 7-1.18 3.753-4.614 6.518-8.665 6.902"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6.343 6.343A9.957 9.957 0 003 12c1.274 4.057 5.065 7 9.542 7"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-red-300 mt-1">
+                  Passwords do not match
+                </p>
+              )}
+            </div>
 
+            {error && <p className="text-sm text-red-300">{error}</p>}
             <button
               type="submit"
               className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-[#514b96] to-[#8e79f2] text-white font-medium rounded-lg hover:opacity-90 transition-all active:scale-[0.98] shadow-md"
             >
               Create Account
             </button>
-
-            <p className="text-center text-sm text-[var(--color-text)]/60 mt-4">
+            <p className="text-center text-sm text-white mt-4">
               Already have an account?{" "}
-              <a href="/login" className="register-link">
+              <a href="/login" className="text-white hover:text-[#514b96]">
                 Sign in
               </a>
             </p>

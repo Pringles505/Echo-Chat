@@ -37,14 +37,14 @@ const Login = () => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[var(--color-background)]">
+    <div className="relative min-h-screen overflow-hidden bg-primary-1000">
       <Navbar />
       <ParticlesBackground />
       <WaveBackground />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <div className="form-container w-full max-w-md bg-[var(--color-background)]/50 backdrop-blur-md rounded-xl p-6 border border-[var(--color-primary)]/30 shadow-xl relative z-10">
-          <h2 className="text-2xl font-bold text-center mb-6 text-[var(--color-secondary)]">
+          <h2 className="text-2xl font-bold text-center mb-6 text-white">
             Login
           </h2>
 
@@ -52,7 +52,7 @@ const Login = () => {
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-[var(--color-text)]/80 mb-2"
+                className="block text-sm font-medium text-white mb-2"
               >
                 Username
               </label>
@@ -70,7 +70,7 @@ const Login = () => {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-[var(--color-text)]/80 mb-2"
+                className="block text-sm font-medium text-white mb-2"
               >
                 Password
               </label>
@@ -88,7 +88,7 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute top-1/2 right-3 transform -translate-y-1/2 text-black hover:text-[#514b96]"
+                  className="absolute top-1/2 right-3 transform -translate-y-1/2 text-black/60 hover:text-[#514b96]"
                   aria-label="Toggle password visibility"
                 >
                   {showPassword ? (
@@ -150,7 +150,7 @@ const Login = () => {
               </div>
             </div>
 
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm text-white">{error}</p>}
 
             <button
               type="submit"
@@ -159,9 +159,9 @@ const Login = () => {
               Sign In
             </button>
 
-            <p className="text-center text-sm text-[var(--color-text)]/60 mt-4">
+            <p className="text-center text-sm text-white mt-4">
               Don't have an account?{" "}
-              <a href="/register" className="register-link">
+              <a href="/register" className="text-white hover:text-[#514b96]">
                 Register now
               </a>
             </p>

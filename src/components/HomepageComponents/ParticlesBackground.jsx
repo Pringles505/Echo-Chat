@@ -1,21 +1,15 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 
 const ParticlesBackground = () => {
   useEffect(() => {
     const container = document.createElement('div');
     container.id = 'particles-container';
-    container.style.position = 'fixed';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.width = '100%';
-    container.style.height = '100%';
-    container.style.zIndex = '1';
-    container.style.pointerEvents = 'none';
+    container.className = 'fixed inset-0 z-[1] pointer-events-none';
     document.body.appendChild(container);
 
     const createParticle = () => {
       const particle = document.createElement('div');
-      particle.className = 'particle';
+      particle.className = 'particle absolute rounded-full bg-white opacity-0 transition-all';
       const size = Math.random() * 3 + 1;
       particle.style.width = `${size}px`;
       particle.style.height = `${size}px`;
@@ -31,7 +25,6 @@ const ParticlesBackground = () => {
       particle.style.opacity = '0';
 
       const duration = Math.random() * 10 + 10;
-      const delay = Math.random() * 5;
 
       setTimeout(() => {
         particle.style.transition = `all ${duration}s linear`;
@@ -39,10 +32,10 @@ const ParticlesBackground = () => {
         particle.style.left = `${posX + (Math.random() * 20 - 10)}%`;
         particle.style.top = `${posY - Math.random() * 30}%`;
         setTimeout(() => animateParticle(particle), duration * 1000);
-      }, delay * 1000);
+      });
     };
 
-    Array.from({ length: 80 }).forEach(createParticle);
+    Array.from({ length: 100 }).forEach(createParticle);
 
     return () => {
       container.remove();

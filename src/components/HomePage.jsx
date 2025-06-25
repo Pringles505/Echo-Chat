@@ -9,7 +9,7 @@ import ParticlesBackground from './HomepageComponents/ParticlesBackground.jsx';
 
 function HomePage() {
   return (
-    <div className="relative min-h-screen bg-primary-150 text-white font-sans">
+    <div className="min-h-screen bg-primary-1000 text-white font-sans">
       <ParticlesBackground />
       <Navbar />
       <WaveBackground />
