@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import io from 'socket.io-client';
+// import io from "socket.io-client";
+import socket from '../../socket';
 import PropTypes from 'prop-types';
 import './Friends.css';
 import './Dashboard.css';
@@ -14,26 +15,24 @@ const Friends = ({ token, onActiveChatChange}) => {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      auth: { token },
-    });
+    const newSocket = socket(token);
 
-    socket.on('connect', () => {
+    newSocket.on('connect', () => {
       console.log('Socket connected');
     });
 
     // When the user receives a notification
-    socket.on('notification', (notification) => {
+    newSocket.on('notification', (notification) => {
       console.log('Received notification:', notification);
       setNotifications((prevNotifications) => [...prevNotifications, notification]);
     });
 
-    socket.on('disconnect', () => {
+    newSocket.on('disconnect', () => {
       console.log('Socket disconnected');
     });
 
     return () => {
-      socket.disconnect();
+      newSocket.disconnect();
     };
   }, [token]);
 
@@ -41,21 +40,21 @@ const Friends = ({ token, onActiveChatChange}) => {
   const handleSearch = () => {
     const user = token ? jwtDecode(token) : '';
     console.log('Searching for:', searchTerm);
-    const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
+    // const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
 
-    tempSocket.on('connect', () => {
-      console.log('TempSocket connected');
-    });
+    // tempSocket.on('connect', () => {
+    //   console.log('TempSocket connected');
+    // });
 
     // Disconnect if the search term is empty or the same as the user
     if (!searchTerm || searchTerm === user.username) {
       console.log('Search term is empty or the same as the user');
-      tempSocket.disconnect();
+      // tempSocket.disconnect();
       return;
     }
 
     // Search for the user in the db and add to the chat list
-    tempSocket.emit('searchUser', { searchTerm }, (response) => {
+    socket.emit('searchUser', { searchTerm }, (response) => {
       console.log('Search response:', response);
       const targetUser = response.user;
       setSearchList((prevChatList) => [...prevChatList, targetUser]); 

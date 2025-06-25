@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
-import io from 'socket.io-client';
+import { getSocket } from '../../socket';
 import CryptoJS from 'crypto-js'; 
 
 import SendText from './sendText';
@@ -9,15 +9,11 @@ import DisplayText from './displayText';
 
 import PropTypes from 'prop-types';
 
-//Make sure to use env var SO IT DOESNT CONNECT TO PROD DURING DEV
-const socket = io(import.meta.env.VITE_SOCKET_URL);
-
 // Secret key for encryption/decryption. Replace with future mechanic to change key 
 //Currently Static
 const secretKey = 'xrTcxoWDqztoar40ePgiBdzif1wuIADYbdeJ3QVIooneAHPNhpvo5XgHAK/zlv5j';
 
 import Logo from '../canLogo/logo';
-
 
 const encrypt = (text) => {
     return CryptoJS.AES.encrypt(text, secretKey).toString();
@@ -31,6 +27,7 @@ const decrypt = (text) => {
 function Chat({token}) {
   const userId = token ? jwtDecode(token).id : '';
   const [messages, setMessages] = useState([]);
+  const socket = getSocket();
 
   useEffect(() => {
     // Decrypt and set the messages when received
@@ -59,7 +56,7 @@ function Chat({token}) {
       socket.off('init', handleInitMessages);
       socket.off('chat message', handleChatMessage);
     };
-  }, []);
+  }, [socket]);
 
   const sendMessage = (text) => {
     console.log('Sending message:', text);

@@ -18,6 +18,7 @@ const Dashboard = () => {
     const decodedToken = jwtDecode(token);
     username = decodedToken.username;
     userId = decodedToken.id;
+    localStorage.setItem('userId', userId);
   }
 
   const [activeChat, setActiveChat] = useState('');

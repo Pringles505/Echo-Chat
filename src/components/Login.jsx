@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import io from "socket.io-client";
-import { Buffer } from "buffer";
+import { getSocket } from '../socket';
+// import { Buffer } from "buffer";
 import init from "/dh-wasm/pkg";
 import Navbar from "../components/HomepageComponents/Navbar";
 import ParticlesBackground from "../components/HomepageComponents/ParticlesBackground";
@@ -24,16 +24,28 @@ const Login = () => {
     }
 
     await init();
-    const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
+    const socket = getSocket();
 
-    tempSocket.emit("login", { username, password }, (response) => {
-      if (response.success) {
-        localStorage.setItem("token", response.token);
-        navigate("/dashboard");
-      } else {
-        setError(response.error || "Login failed");
-      }
-      tempSocket.disconnect();
+    // If socket is already connected, disconnect first
+    if (socket.connected) {
+      socket.disconnect();
+    }
+
+    // Connect without token for login
+    socket.auth = {};
+    socket.connect();
+
+    socket.once("connect", () => {
+      socket.emit("login", { username, password }, (response) => {
+        if (response.success) {
+          localStorage.setItem("token", response.token);
+          localStorage.setItem("userId", response.userId);
+          navigate("/dashboard");
+        } else {
+          setError(response.error || "Login failed");
+          socket.disconnect();
+        }
+      });
     });
   };
 

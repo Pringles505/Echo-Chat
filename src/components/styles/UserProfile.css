@@ -128,10 +128,38 @@
     color: var(--color-white);
     font-size: 1rem;
     outline: none;
+    transition: background 0.2s, color 0.2s, border 0.2s;
 }
 
 .user-profile-input:focus {
     border-color: var(--color-white);
+}
+
+.user-profile-input-active {
+    background: #fff !important;
+    color: #222 !important;
+    border: 2px solid var(--color-primary) !important;
+    box-shadow: 0 0 0 2px var(--color-primary)33;
+}
+
+.user-profile-input-disabled {
+    background: rgba(255,255,255,0.08) !important;
+    color: #fff !important;
+    border: 1px solid #fff2 !important;
+    opacity: 0.7 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+    transition: background 0.2s, color 0.2s, border 0.2s, opacity 0.2s;
+}
+
+.user-profile-input-readonly {
+    background: rgba(255,255,255,0.08) !important;
+    color: #fff !important;
+    border: 1px solid #fff2 !important;
+    opacity: 0.7 !important;
+    cursor: pointer !important;
+    pointer-events: auto;
+    transition: background 0.2s, color 0.2s, border 0.2s, opacity 0.2s;
 }
 
 .user-profile-password-fields {

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import io from "socket.io-client";
 import { Buffer } from "buffer";
 import Navbar from "../components/HomepageComponents/Navbar";
 import ParticlesBackground from "../components/HomepageComponents/ParticlesBackground";
@@ -25,8 +24,7 @@ import init_xeddsa, {
   verify_signature,
   test_sign_and_verify,
 } from "/xeddsa-wasm/pkg";
-
-const socket = io(import.meta.env.VITE_SOCKET_URL);
+import { getSocket } from '../socket';
 
 const Register = () => {
   const [username, setUsername] = useState("");
@@ -36,6 +34,7 @@ const Register = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
+  const socket = getSocket();
   const handleRegister = async (e) => {
     e.preventDefault();
 

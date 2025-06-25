@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import io from 'socket.io-client';
+// import io from 'socket.io-client';
+import { getSocket } from '../../socket';
 import PropTypes from 'prop-types';
 import Logo from '../canLogo/logo';
 import './UserChat.css';
@@ -140,9 +141,7 @@ const getNextSharedMessageNumber = (userId, targetUserId) => {
 
 // Main chat component
 function Chat({ token, activeChat }) {
-  const socket = io(import.meta.env.VITE_SOCKET_URL, {
-    auth: { token },
-  });
+  const socket = getSocket();
 
   // Convert the Base64 string into a Uint8Array
   // Used when extracting the private key from localstorage, localstorage only stores strings

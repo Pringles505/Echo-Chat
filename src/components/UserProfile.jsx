@@ -1,40 +1,73 @@
-import { useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
 import ParticlesBackground from './HomepageComponents/ParticlesBackground';
 import WaveBackground from './HomepageComponents/WaveBackground';
 import './styles/UserProfile.css';
+import { getSocket } from '../socket';
+import { jwtDecode } from 'jwt-decode';
 
-const UserProfile = () => {
+const UserProfile = ({ user, onChangePassword }) => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { username, userId, password = '', about = '', profilePic = '' } = location.state || {};
+    const params = useParams();
+    const socket = getSocket();
 
-    const [currentUsername, setCurrentUsername] = useState(username);
+    let userId =
+        params.userId ||
+        (location.state && location.state.userId) ||
+        (user && user.id);
+
+    let loggedInUserId = '';
+    const token = localStorage.getItem('token');
+    if (token) {
+        try {
+            const decoded = jwtDecode(token);
+            loggedInUserId = decoded.id || decoded.userId || decoded._id;
+        } catch {}
+    }
+    if (!userId && loggedInUserId) userId = loggedInUserId;
+
+    const isOwnProfile = userId === loggedInUserId;
+
+    const [loading, setLoading] = useState(true);
+    const [currentUsername, setCurrentUsername] = useState('');
+    const [aboutMe, setAboutMe] = useState('');
+    const [profileImage, setProfileImage] = useState('');
+    const [originalProfileImage, setOriginalProfileImage] = useState('');
     const [editingUsername, setEditingUsername] = useState(false);
     const [editingAbout, setEditingAbout] = useState(false);
     const [showPasswordChange, setShowPasswordChange] = useState(false);
+    const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
+    const [showMoreAbout, setShowMoreAbout] = useState(false);
+    const fileInputRef = useRef(null);
+    const [copied, setCopied] = useState('');
+    const [infoMsg, setInfoMsg] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const [aboutMe, setAboutMe] = useState('');
-    const [profileImage, setProfileImage] = useState('');
-    const [showMoreAbout, setShowMoreAbout] = useState(false);
-    const fileInputRef = useRef(null);
-    const [copied, setCopied] = useState('');
-
-    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&bold=true`;
+    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUsername)}&background=random&color=fff&bold=true`;
 
     useEffect(() => {
-        setProfileImage(localStorage.getItem(`profileImage-${userId}`) || profilePic || defaultAvatar);
-        setAboutMe(localStorage.getItem(`aboutMe-${userId}`) ?? about);
-    }, [userId, profilePic, about, defaultAvatar]);
-
-    if (!username || !userId) return <Navigate to="/login" />;
+        if (!userId) {
+            navigate('/login');
+            return;
+        }
+        setLoading(true);
+        socket.emit('getUserInfo', { userId }, (response) => {
+            if (response && response.success && response.user) {
+                setCurrentUsername(response.user.username || '');
+                setAboutMe(response.user.aboutme || '');
+                setProfileImage(response.user.profilePicture || '');
+                setOriginalProfileImage(response.user.profilePicture || '');
+            }
+            setLoading(false);
+        });
+    }, [userId, socket, navigate]);
 
     const handleCopy = (value, label) => {
         navigator.clipboard.writeText(value);
@@ -42,30 +75,67 @@ const UserProfile = () => {
         setTimeout(() => setCopied(''), 1200);
     };
 
-    const handleActionButton = () => {
+    const handleSave = async () => {
+        if (!isOwnProfile) return;
         if (showPasswordChange) {
-            if (!newPassword || !confirmPassword) {
-                setPasswordError('Please fill all fields.');
+            if (!oldPassword || !newPassword || !confirmPassword) {
+                setPasswordError('Please fill all password fields.');
+                setInfoMsg('');
                 return;
             }
             if (newPassword !== confirmPassword) {
                 setPasswordError('Passwords do not match.');
+                setInfoMsg('');
                 return;
             }
-            setPasswordError('');
-            setShowPasswordChange(false);
-            setNewPassword('');
-            setConfirmPassword('');
-            setSuccessMsg('Password changed!');
-            setTimeout(() => setSuccessMsg(''), 2000);
-        } else {
-            setEditingUsername(false);
-            setEditingAbout(false);
-            setSuccessMsg('Profile updated!');
-            setTimeout(() => setSuccessMsg(''), 2000);
-            if (profileImage) localStorage.setItem(`profileImage-${userId}`, profileImage);
-            localStorage.setItem(`aboutMe-${userId}`, aboutMe);
         }
+
+        let dataToSend = { userId };
+        if (editingUsername) dataToSend.username = currentUsername;
+        if (editingAbout) dataToSend.aboutme = aboutMe;
+        if (showPasswordChange && oldPassword && newPassword === confirmPassword) {
+            dataToSend.oldPassword = oldPassword;
+            dataToSend.newPassword = newPassword;
+        }
+        let isImageChanged = profileImage && profileImage !== originalProfileImage && profileImage !== defaultAvatar;
+        if (isImageChanged) {
+            dataToSend.profilePicture = profileImage;
+        }
+
+        if (Object.keys(dataToSend).length === 1 && !isImageChanged) {
+            setSuccessMsg('');
+            setPasswordError('');
+            setInfoMsg('No changes to save.');
+            setTimeout(() => setInfoMsg(''), 2000);
+            return;
+        }
+
+        setSuccessMsg('');
+        setPasswordError('');
+        setInfoMsg('');
+        setEditingUsername(false);
+        setEditingAbout(false);
+        setShowPasswordChange(false);
+        socket.emit('updateUserInfo', dataToSend, (response) => {
+            if (response && response.success) {
+                setSuccessMsg('');
+                setPasswordError('');
+                setShowPasswordChange(false);
+                setOldPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setEditingUsername(false);
+                setEditingAbout(false);
+                setInfoMsg('Profile updated');
+                setTimeout(() => setInfoMsg(''), 2000);
+                if (response.user && response.user.profilePicture) localStorage.setItem(`profileImage-${userId}`, response.user.profilePicture);
+                if (response.user && response.user.aboutme) localStorage.setItem(`aboutMe-${userId}`, response.user.aboutme);
+            } else {
+                setPasswordError((response && response.error) || 'Error updating profile');
+                setInfoMsg('');
+                setTimeout(() => setPasswordError(''), 2000);
+            }
+        });
     };
 
     const handleCancel = () => {
@@ -73,14 +143,16 @@ const UserProfile = () => {
         setEditingAbout(false);
         setShowPasswordChange(false);
         setPasswordError('');
+        setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        setCurrentUsername(username);
-        setProfileImage(localStorage.getItem(`profileImage-${userId}`) || profilePic || defaultAvatar);
-        setAboutMe(localStorage.getItem(`aboutMe-${userId}`) ?? about);
+        setCurrentUsername('');
+        setProfileImage(originalProfileImage);
+        setAboutMe('');
     };
 
     const handleImageChange = (e) => {
+        if (!isOwnProfile) return;
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
@@ -89,53 +161,78 @@ const UserProfile = () => {
         }
     };
 
-    // Log out handler
     const handleLogout = () => {
-        // Clear user info (adjust as needed for your app)
         localStorage.clear();
         sessionStorage.clear();
-        // If using context, also clear context here
         navigate("/login", { replace: true });
     };
 
-    // Go back handler
     const handleGoBack = () => {
         navigate(-1);
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-[var(--color-background)]">
+                <div className="text-white text-xl font-bold">Loading profile...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen overflow-hidden bg-[var(--color-background)]">
             <ParticlesBackground />
             <WaveBackground />
             <div className="absolute inset-0 flex items-center justify-center p-4">
-                <div className="w-full max-w-xl bg-black/60 backdrop-blur-md rounded-xl p-8 border border-[var(--color-primary)]/30 shadow-xl relative z-10">
-                    <h2 className="text-2xl font-bold text-center mb-6 text-[var(--color-secondary)]">
-                        User Profile
-                    </h2>
+                <div className="w-full max-w-xl bg-black/60 backdrop-blur-md rounded-xl p-8 border border-[var(--color-primary)]/30 shadow-xl relative z-10 overflow-y-auto max-h-[80vh]">
+                    <div className="flex justify-between items-start mb-2">
+                        <h2 className="text-2xl font-bold text-center mb-6 text-[var(--color-secondary)]">
+                            User Profile
+                        </h2>
+                        {isOwnProfile && (
+                            <button
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold transition hover:bg-red-700"
+                                onClick={handleLogout}
+                                type="button"
+                            >
+                                Log out
+                            </button>
+                        )}
+                    </div>
                     <div className="flex flex-col gap-8 items-center w-full">
                         <div className="flex flex-col items-center">
                             <div className="relative">
                                 <img
-                                    src={profileImage || '/echo-logo.svg'}
+                                    src={
+                                        profileImage
+                                            ? profileImage.startsWith('/uploads/')
+                                                ? `http://localhost:3001${profileImage}`
+                                                : profileImage
+                                            : defaultAvatar
+                                    }
                                     alt="Profile"
                                     className="user-profile-picture"
                                 />
-                                <button
-                                    className="user-profile-pencil-btn"
-                                    type="button"
-                                    onClick={() => fileInputRef.current.click()}
-                                    disabled={editingUsername || editingAbout || showPasswordChange}
-                                    title="Change Picture"
-                                >
-                                    ✏️
-                                </button>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    ref={fileInputRef}
-                                    style={{ display: 'none' }}
-                                    onChange={handleImageChange}
-                                />
+                                {isOwnProfile && (
+                                    <>
+                                        <button
+                                            className="user-profile-pencil-btn"
+                                            type="button"
+                                            onClick={() => fileInputRef.current.click()}
+                                            disabled={editingUsername || editingAbout || showPasswordChange}
+                                            title="Change Picture"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            ref={fileInputRef}
+                                            style={{ display: 'none' }}
+                                            onChange={handleImageChange}
+                                        />
+                                    </>
+                                )}
                             </div>
                         </div>
                         <div className="w-full max-w-md mx-auto">
@@ -144,9 +241,9 @@ const UserProfile = () => {
                                 <span className="block text-white font-semibold mb-1">
                                     Username:
                                 </span>
-                                {editingUsername ? (
+                                {isOwnProfile && editingUsername ? (
                                     <input
-                                        className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                        className="user-profile-input user-profile-input-active"
                                         value={currentUsername}
                                         onChange={e => setCurrentUsername(e.target.value)}
                                         autoFocus
@@ -154,7 +251,7 @@ const UserProfile = () => {
                                 ) : (
                                     <div className="flex items-center w-full">
                                         <input
-                                            className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                            className="user-profile-input user-profile-input-readonly"
                                             type="text"
                                             value={currentUsername}
                                             readOnly
@@ -162,7 +259,7 @@ const UserProfile = () => {
                                             onDoubleClick={() => handleCopy(currentUsername, 'Username')}
                                             title="Double click to copy"
                                         />
-                                        {!editingAbout && !editingUsername && !showPasswordChange && (
+                                        {isOwnProfile && !editingAbout && !editingUsername && !showPasswordChange && (
                                             <button
                                                 className="ml-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
                                                 onClick={() => setEditingUsername(true)}
@@ -181,7 +278,7 @@ const UserProfile = () => {
                                     User ID:
                                 </span>
                                 <input
-                                    className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                    className="user-profile-input user-profile-input-readonly"
                                     type="text"
                                     value={userId}
                                     readOnly
@@ -195,9 +292,9 @@ const UserProfile = () => {
                                 <span className="block text-white font-semibold mb-1">
                                     About me:
                                 </span>
-                                {editingAbout ? (
+                                {isOwnProfile && editingAbout ? (
                                     <textarea
-                                        className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all resize-none"
+                                        className="user-profile-input user-profile-input-active"
                                         value={aboutMe}
                                         onChange={e => setAboutMe(e.target.value)}
                                         rows={3}
@@ -210,7 +307,7 @@ const UserProfile = () => {
                                 ) : (
                                     <div className="flex items-center w-full">
                                         <input
-                                            className="w-full px-4 py-3 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black font-medium transition-all"
+                                            className="user-profile-input user-profile-input-readonly"
                                             style={{
                                                 minHeight: 34,
                                                 maxHeight: showMoreAbout ? 200 : 34,
@@ -242,7 +339,7 @@ const UserProfile = () => {
                                                 menos
                                             </button>
                                         )}
-                                        {!editingAbout && !editingUsername && !showPasswordChange && (
+                                        {isOwnProfile && !editingAbout && !editingUsername && !showPasswordChange && (
                                             <button
                                                 className="ml-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
                                                 onClick={() => setEditingAbout(true)}
@@ -257,16 +354,26 @@ const UserProfile = () => {
                             </label>
                             {/* Password */}
                             <label className="block mb-6 w-full">
-                                {showPasswordChange ? (
+                                {isOwnProfile && !editingUsername && !editingAbout && !showPasswordChange && (
+                                    <button
+                                        className="inline-block px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)] mt-2"
+                                        onClick={() => setShowPasswordChange(true)}
+                                        type="button"
+                                        style={{width: 'auto'}}>
+                                        Change Password
+                                    </button>
+                                )}
+                                {isOwnProfile && showPasswordChange ? (
                                     <div>
-                                        {/* Current password */}
+                                        {/* Old password */}
                                         <div className="relative mb-3">
                                             <input
                                                 className="w-full px-4 py-3 pr-10 bg-[var(--color-background)]/20 border border-[var(--color-primary)]/30 rounded-lg text-black placeholder-black/60 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
                                                 type={showPassword ? "text" : "password"}
                                                 placeholder="Current password"
-                                                value={password}
-                                                onChange={e => setNewPassword(e.target.value)}
+                                                value={oldPassword}
+                                                onChange={e => setOldPassword(e.target.value)}
+                                                autoFocus
                                             />
                                             <button
                                                 type="button"
@@ -327,34 +434,45 @@ const UserProfile = () => {
                                         </div>
                                         {passwordError && <div className="user-profile-error">{passwordError}</div>}
                                     </div>
-                                ) : (
-                                    <button
-                                        className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)] mt-2"
-                                        onClick={() => setShowPasswordChange(true)}
-                                        type="button"
-                                    >
-                                        Change Password
-                                    </button>
-                                )}
+                                ) : null}
                             </label>
                         </div>
                     </div>
-                    <div className="flex justify-end gap-4 mt-8 w-full max-w-md mx-auto">
+                    <div className="flex justify-between items-end mt-8 w-full max-w-md mx-auto">
+                        {/* Only show "Go back" if not editing or changing password */}
                         <button
                             className="px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
-                            onClick={handleActionButton}
+                            onClick={handleGoBack}
                             type="button"
                         >
-                            Save
+                            Go back
                         </button>
-                        <button
-                            className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold border border-red-700 transition hover:bg-red-700 hover:text-white"
-                            onClick={handleCancel}
-                            type="button"
-                        >
-                            Cancel
-                        </button>
+                        {isOwnProfile && (
+                            <div className="flex gap-4">
+                                {(editingUsername || editingAbout || showPasswordChange) ? (
+                                    <button
+                                        className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold border border-red-700 transition hover:bg-red-700 hover:text-white"
+                                        onClick={handleCancel}
+                                        type="button"
+                                    >
+                                        Cancel
+                                    </button>
+                                ) : null}
+                                <button
+                                    className="px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
+                                    onClick={handleSave}
+                                    type="button"
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        )}
                     </div>
+                    {infoMsg && (
+                        <div className="user-profile-success" style={{ color: '#a0ffa0', marginTop: 8 }}>
+                            {infoMsg}
+                        </div>
+                    )}
                     {successMsg && <div className="user-profile-success">{successMsg}</div>}
                     {copied && (
                         <div className="user-profile-success" style={{ color: '#a0ffa0' }}>
@@ -362,24 +480,6 @@ const UserProfile = () => {
                         </div>
                     )}
                 </div>
-            </div>
-            <div className="absolute top-4 right-4 z-20">
-                <button
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold transition hover:bg-red-700"
-                    onClick={handleLogout}
-                    type="button"
-                >
-                    Log out
-                </button>
-            </div>
-            <div className="absolute top-4 left-4 z-20">
-                <button
-                    className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
-                    onClick={handleGoBack}
-                    type="button"
-                >
-                    Go back
-                </button>
             </div>
         </div>
     );
