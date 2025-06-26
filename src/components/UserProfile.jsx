@@ -5,40 +5,8 @@ import WaveBackground from './HomepageComponents/WaveBackground';
 import './styles/UserProfile.css';
 import { getSocket } from '../socket';
 import { jwtDecode } from 'jwt-decode';
-
-function Toast({ message, type = "success", onClose }) {
-    if (!message) return null;
-    let icon, title;
-    switch (type) {
-        case "success":
-            icon = <span className="user-profile-toast-icon" style={{color:"#1a7f37"}}>✔️</span>;
-            title = "Success";
-            break;
-        case "warning":
-            icon = <span className="user-profile-toast-icon" style={{color:"#b68400"}}>⚠️</span>;
-            title = "Warning";
-            break;
-        case "error":
-            icon = <span className="user-profile-toast-icon" style={{color:"#c00"}}>❌</span>;
-            title = "Error";
-            break;
-        case "info":
-        default:
-            icon = <span className="user-profile-toast-icon" style={{color:"#2563eb"}}>ℹ️</span>;
-            title = "Info";
-    }
-
-    return (
-        <div className={`user-profile-toast user-profile-toast-${type}`}>
-            {icon}
-            <div className="user-profile-toast-content">
-                <span className="user-profile-toast-title">{title}</span>
-                <span>{message}</span>
-            </div>
-            <button className="user-profile-toast-close" onClick={onClose}>×</button>
-        </div>
-    );
-}
+import { Pencil, CheckCircle, AlertTriangle, XCircle, Info } from "lucide-react";
+import Toast from './Toast';
 
 const UserProfile = ({ user, onChangePassword }) => {
     const location = useLocation();
@@ -78,7 +46,6 @@ const UserProfile = ({ user, onChangePassword }) => {
     const [passwordError, setPasswordError] = useState('');
     const [showMoreAbout, setShowMoreAbout] = useState(false);
     const fileInputRef = useRef(null);
-    const [copied, setCopied] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -128,8 +95,8 @@ const UserProfile = ({ user, onChangePassword }) => {
 
     const handleCopy = (value, label) => {
         navigator.clipboard.writeText(value);
-        setCopied(label);
-        setTimeout(() => setCopied(''), 1200);
+        setPopupMsg(`${label} copied!`);
+        setTimeout(() => setPopupMsg(''), 1200);
     };
 
     const handleSave = async () => {
@@ -187,8 +154,27 @@ const UserProfile = ({ user, onChangePassword }) => {
                     })
                 );
             } else {
-                setPasswordError((response && response.error) || 'Error updating profile');
-                setTimeout(() => setPasswordError(''), 2000);
+                // If username is taken, reset the input to the original value and show toast
+                if (response && response.error === "Username already taken") {
+                    setCurrentUsername(prev => {
+                        // Use the value from localStorage or previous state
+                        const cachedProfile = localStorage.getItem(`profile-${userId}`);
+                        if (cachedProfile) {
+                            try {
+                                const parsed = JSON.parse(cachedProfile);
+                                return parsed.username || prev;
+                            } catch {
+                                return prev;
+                            }
+                        }
+                        return prev;
+                    });
+                    setPopupMsg("Username already taken");
+                    setTimeout(() => setPopupMsg(''), 2000);
+                } else {
+                    setPasswordError((response && response.error) || 'Error updating profile');
+                    setTimeout(() => setPasswordError(''), 2000);
+                }
             }
         });
     };
@@ -246,8 +232,14 @@ const UserProfile = ({ user, onChangePassword }) => {
             <WaveBackground />
             <Toast
                 message={popupMsg}
-                type={popupMsg.toLowerCase().includes("no changes") ? "info" : "success"}
-                onClose={() => setPopupMsg('')}
+                type={
+                    popupMsg.toLowerCase().includes("no changes")
+                        ? "info"
+                        : popupMsg.toLowerCase().includes("saved") || popupMsg.toLowerCase().includes("copied")
+                            ? "success"
+                            : "warning"
+                }
+                onClose={() => setPopupMsg("")}
             />
             <div className="absolute inset-0 flex items-center justify-center p-4">
                 <div className="w-full max-w-xl bg-black/60 backdrop-blur-md rounded-xl p-8 border border-[var(--color-primary)]/30 shadow-xl relative z-10 overflow-y-auto max-h-[80vh]">
@@ -288,7 +280,7 @@ const UserProfile = ({ user, onChangePassword }) => {
                                             disabled={editingUsername || editingAbout || showPasswordChange}
                                             title="Change Picture"
                                         >
-                                            ✏️
+                                            <Pencil size={20} color="#514b96" />
                                         </button>
                                         <input
                                             type="file"
@@ -322,8 +314,23 @@ const UserProfile = ({ user, onChangePassword }) => {
                                             value={currentUsername}
                                             readOnly
                                             tabIndex={-1}
-                                            onDoubleClick={() => handleCopy(currentUsername, 'Username')}
-                                            title="Double click to copy"
+                                            onDoubleClick={
+                                                !editingUsername && !editingAbout && !showPasswordChange
+                                                    ? () => handleCopy(currentUsername, 'Username')
+                                                    : undefined
+                                            }
+                                            title={
+                                                !editingUsername && !editingAbout && !showPasswordChange
+                                                    ? "Double click to copy"
+                                                    : ""
+                                            }
+                                            style={{
+                                                cursor:
+                                                    !editingUsername && !editingAbout && !showPasswordChange
+                                                        ? "copy"
+                                                        : "not-allowed",
+                                                background: "#e5e7eb"
+                                            }}
                                         />
                                         {isOwnProfile && !editingAbout && !editingUsername && !showPasswordChange && (
                                             <button
@@ -338,6 +345,7 @@ const UserProfile = ({ user, onChangePassword }) => {
                                     </div>
                                 )}
                             </label>
+
                             {/* User ID */}
                             <label className="block mb-6 w-full">
                                 <span className="block text-white font-semibold mb-1">
@@ -349,8 +357,23 @@ const UserProfile = ({ user, onChangePassword }) => {
                                     value={userId}
                                     readOnly
                                     tabIndex={-1}
-                                    onDoubleClick={() => handleCopy(userId, 'User ID')}
-                                    title="Double click to copy"
+                                    onDoubleClick={
+                                        !editingUsername && !editingAbout && !showPasswordChange
+                                            ? () => handleCopy(userId, 'User ID')
+                                            : undefined
+                                    }
+                                    title={
+                                        !editingUsername && !editingAbout && !showPasswordChange
+                                            ? "Double click to copy"
+                                            : ""
+                                    }
+                                    style={{
+                                        cursor:
+                                            !editingUsername && !editingAbout && !showPasswordChange
+                                                ? "copy"
+                                                : "not-allowed",
+                                        background: "#e5e7eb"
+                                    }}
                                 />
                             </label>
                             {/* About me */}
@@ -381,10 +404,13 @@ const UserProfile = ({ user, onChangePassword }) => {
                                                 whiteSpace: showMoreAbout ? 'pre-wrap' : 'nowrap',
                                                 textOverflow: showMoreAbout ? 'clip' : 'ellipsis',
                                                 wordBreak: 'break-word',
-                                                transition: 'max-height 0.2s'
+                                                transition: 'max-height 0.2s',
+                                                cursor: "not-allowed",
+                                                background: "#e5e7eb"
                                             }}
                                             value={aboutMe}
                                             readOnly
+                                            disabled
                                             title="Description"
                                         />
                                         {!editingAbout && !editingUsername && !showPasswordChange && !showMoreAbout && aboutMe && aboutMe.length > 60 && (
@@ -533,11 +559,6 @@ const UserProfile = ({ user, onChangePassword }) => {
                             </div>
                         )}
                     </div>
-                    {copied && (
-                        <div className="user-profile-success" style={{ color: '#a0ffa0' }}>
-                            {copied} copied!
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

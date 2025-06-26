@@ -4,6 +4,7 @@ import { Buffer } from "buffer";
 import Navbar from "../components/HomepageComponents/Navbar";
 import ParticlesBackground from "../components/HomepageComponents/ParticlesBackground";
 import WaveBackground from "../components/HomepageComponents/WaveBackground";
+import Toast from "./Toast";
 import "./styles/SignIn.css";
 
 import init, {
@@ -34,6 +35,7 @@ const Register = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
+  const [toast, setToast] = useState({ message: "", type: "success" });
   const socket = getSocket();
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -160,13 +162,14 @@ const Register = () => {
     };
 
     console.log("Key bundle:", keyBundle);
-    console.log("About me:", aboutme, "pfp",profilePicture);
 
-    socket.emit("register", { username, password, keyBundle, aboutme:"descripcion de prueba", profilePicture:"http://imgur.com/yIZaO0L.jpg" }, (response) => {
+    socket.emit("register", { username, password, keyBundle, aboutme, profilePicture }, (response) => {
+      console.log("register response:", response)
       if (response.success) {
-        navigate("/login");
+        setToast({ message: "Registration successful!", type: "success" });
+        setTimeout(() => navigate("/login"), 1200);
       } else {
-        console.error("Registration failed:", response.error);
+        setToast({ message: response.error || "Registration failed", type: "error" });
       }
     });
   };
@@ -176,6 +179,12 @@ const Register = () => {
       <Navbar />
       <ParticlesBackground />
       <WaveBackground />
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, message: "" })}
+      />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <div className="form-container w-full max-w-md bg-[var(--color-background)]/50 backdrop-blur-md rounded-xl p-6 border border-[var(--color-primary)]/30 shadow-xl relative z-10">
