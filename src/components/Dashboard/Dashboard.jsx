@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, Lock, MessageCircle } from "lucide-react";
 import Friends from "./Friends/Friends";
@@ -8,6 +8,7 @@ import ChatHeader from "./DashboardComponents/Header/ChatHeader";
 import ConversationList from "./DashboardComponents/Conversations/ConversationList";
 import { useConversations } from "./DashboardComponents/hooks/useConversations";
 import { getUserData } from "./DashboardComponents/utils/helpers";
+import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
 
 const Dashboard = () => {
   const token = localStorage.getItem("token");
@@ -23,6 +24,27 @@ const Dashboard = () => {
   const [conversationsSearchTerm, setConversationsSearchTerm] = useState("");
   const [isChatItemHovered, setIsChatItemHovered] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState({});
+  const [currentWallpaper, setCurrentWallpaper] = useState(() => {
+    const saved = localStorage.getItem('chatWallpaper');
+    return saved && WALLPAPER_PREVIEWS[saved] ? saved : 'default';
+  });
+
+  // Precarga los recursos de los wallpapers
+  useEffect(() => {
+    Object.values(WALLPAPER_PREVIEWS).forEach(wp => {
+      if (wp.type === 'image' && wp.imageUrl) {
+        new Image().src = wp.imageUrl;
+      }
+      if (wp.type === 'video' && wp.posterUrl) {
+        new Image().src = wp.posterUrl;
+      }
+      if (wp.type === 'video' && wp.videoUrl) {
+        // Precargar video (opcional)
+        const video = document.createElement('video');
+        video.src = wp.videoUrl;
+      }
+    });
+  }, []);
 
   // Hooks personalizados
   const { recentConversations, updateRecentConversations } = useConversations(userId);
@@ -37,6 +59,13 @@ const Dashboard = () => {
       [conversation.id]: 0
     }));
     localStorage.setItem(`unread-${userId}-${conversation.id}`, 0);
+  };
+
+  const handleWallpaperChange = (wallpaper) => {
+    if (WALLPAPER_PREVIEWS[wallpaper]) {
+      setCurrentWallpaper(wallpaper);
+      localStorage.setItem('chatWallpaper', wallpaper);
+    }
   };
 
   const handleActiveChatChange = (friendData) => {
@@ -84,7 +113,7 @@ const Dashboard = () => {
       unreadCount: unreadMessages[conv.id] || 0
     }));
 
-  // Componente EmptyState con Tailwind
+  // Componente EmptyState
   const EmptyState = ({ activeView }) => (
     <div className="flex justify-center items-center h-full p-8">
       <div className="text-center max-w-[300px]">
@@ -124,6 +153,8 @@ const Dashboard = () => {
         profileImage={profileImage}
         username={username}
         unreadMessages={unreadMessages}
+        onWallpaperChange={handleWallpaperChange}
+        currentWallpaper={currentWallpaper}
       />
 
       {/* Navigation Panel */}
@@ -202,12 +233,13 @@ const Dashboard = () => {
       <div className="flex-1 flex flex-col bg-black">
         {activeChat ? (
           <div className="flex flex-col h-full">
-            <ChatHeader activeChat={activeChat} isHovered={isChatItemHovered} />
+            <ChatHeader activeChat={activeChat} />
             <div className="flex-1 overflow-hidden">
               <Chat 
                 token={token} 
                 activeChat={activeChat.id} 
                 onNewMessage={handleNewMessage}
+                currentWallpaper={currentWallpaper}
               />
               <div ref={messagesEndRef} />
             </div>

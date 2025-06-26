@@ -30,7 +30,7 @@ const ChatHeader = ({ activeChat, isHovered }) => {
         </button>
         
         <div className="relative">
-          <div className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden border-2 border-indigo-500">
+          <div className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden border-2 border-black">
             <img
               src={
                 activeChat.profileImage ||

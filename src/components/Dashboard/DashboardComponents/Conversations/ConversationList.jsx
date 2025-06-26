@@ -10,9 +10,9 @@ const ConversationList = ({
   return (
     <div 
       ref={ref}
-      className="h-full overflow-y-auto"  // Eliminé el padding para que ocupe todo el espacio
+      className="h-full overflow-y-auto"
     >
-      <ul className="divide-y divide-gray-700">  {/* Contenedor UL con divisores como en friends */}
+      <ul className="divide-y divide-gray-700">
         {conversations.length > 0 ? (
           conversations.map(conversation => (
             <ConversationItem

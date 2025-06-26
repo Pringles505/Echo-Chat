@@ -4,7 +4,6 @@ const ConversationItem = ({
   onSelect,
   setIsHovered
 }) => {
-  // Función para generar color consistente basado en el username
   const getConsistentColor = (str) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
