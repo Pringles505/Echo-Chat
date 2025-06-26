@@ -6,6 +6,40 @@ import './styles/UserProfile.css';
 import { getSocket } from '../socket';
 import { jwtDecode } from 'jwt-decode';
 
+function Toast({ message, type = "success", onClose }) {
+    if (!message) return null;
+    let icon, title;
+    switch (type) {
+        case "success":
+            icon = <span className="user-profile-toast-icon" style={{color:"#1a7f37"}}>✔️</span>;
+            title = "Success";
+            break;
+        case "warning":
+            icon = <span className="user-profile-toast-icon" style={{color:"#b68400"}}>⚠️</span>;
+            title = "Warning";
+            break;
+        case "error":
+            icon = <span className="user-profile-toast-icon" style={{color:"#c00"}}>❌</span>;
+            title = "Error";
+            break;
+        case "info":
+        default:
+            icon = <span className="user-profile-toast-icon" style={{color:"#2563eb"}}>ℹ️</span>;
+            title = "Info";
+    }
+
+    return (
+        <div className={`user-profile-toast user-profile-toast-${type}`}>
+            {icon}
+            <div className="user-profile-toast-content">
+                <span className="user-profile-toast-title">{title}</span>
+                <span>{message}</span>
+            </div>
+            <button className="user-profile-toast-close" onClick={onClose}>×</button>
+        </div>
+    );
+}
+
 const UserProfile = ({ user, onChangePassword }) => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -29,6 +63,7 @@ const UserProfile = ({ user, onChangePassword }) => {
 
     const isOwnProfile = userId === loggedInUserId;
 
+    // State
     const [loading, setLoading] = useState(true);
     const [currentUsername, setCurrentUsername] = useState('');
     const [aboutMe, setAboutMe] = useState('');
@@ -41,16 +76,30 @@ const UserProfile = ({ user, onChangePassword }) => {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
-    const [successMsg, setSuccessMsg] = useState('');
     const [showMoreAbout, setShowMoreAbout] = useState(false);
     const fileInputRef = useRef(null);
     const [copied, setCopied] = useState('');
-    const [infoMsg, setInfoMsg] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [popupMsg, setPopupMsg] = useState('');
 
     const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUsername)}&background=random&color=fff&bold=true`;
+
+    useEffect(() => {
+        if (!userId) return;
+        const cachedProfile = localStorage.getItem(`profile-${userId}`);
+        if (cachedProfile) {
+            try {
+                const parsed = JSON.parse(cachedProfile);
+                setCurrentUsername(parsed.username || '');
+                setAboutMe(parsed.aboutme || '');
+                setProfileImage(parsed.profilePicture || '');
+                setOriginalProfileImage(parsed.profilePicture || '');
+                setLoading(false);
+            } catch {}
+        }
+    }, [userId]);
 
     useEffect(() => {
         if (!userId) {
@@ -64,6 +113,14 @@ const UserProfile = ({ user, onChangePassword }) => {
                 setAboutMe(response.user.aboutme || '');
                 setProfileImage(response.user.profilePicture || '');
                 setOriginalProfileImage(response.user.profilePicture || '');
+                localStorage.setItem(
+                    `profile-${userId}`,
+                    JSON.stringify({
+                        username: response.user.username || '',
+                        aboutme: response.user.aboutme || '',
+                        profilePicture: response.user.profilePicture || ''
+                    })
+                );
             }
             setLoading(false);
         });
@@ -80,12 +137,10 @@ const UserProfile = ({ user, onChangePassword }) => {
         if (showPasswordChange) {
             if (!oldPassword || !newPassword || !confirmPassword) {
                 setPasswordError('Please fill all password fields.');
-                setInfoMsg('');
                 return;
             }
             if (newPassword !== confirmPassword) {
                 setPasswordError('Passwords do not match.');
-                setInfoMsg('');
                 return;
             }
         }
@@ -102,42 +157,43 @@ const UserProfile = ({ user, onChangePassword }) => {
             dataToSend.profilePicture = profileImage;
         }
 
+        // Show info toast if nothing changed
         if (Object.keys(dataToSend).length === 1 && !isImageChanged) {
-            setSuccessMsg('');
-            setPasswordError('');
-            setInfoMsg('No changes to save.');
-            setTimeout(() => setInfoMsg(''), 2000);
+            setPopupMsg('No changes to be made');
+            setTimeout(() => setPopupMsg(''), 2000);
             return;
         }
 
-        setSuccessMsg('');
         setPasswordError('');
-        setInfoMsg('');
         setEditingUsername(false);
         setEditingAbout(false);
         setShowPasswordChange(false);
         socket.emit('updateUserInfo', dataToSend, (response) => {
             if (response && response.success) {
-                setSuccessMsg('');
-                setPasswordError('');
                 setShowPasswordChange(false);
                 setOldPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
                 setEditingUsername(false);
                 setEditingAbout(false);
-                setInfoMsg('Profile updated');
-                setTimeout(() => setInfoMsg(''), 2000);
-                if (response.user && response.user.profilePicture) localStorage.setItem(`profileImage-${userId}`, response.user.profilePicture);
-                if (response.user && response.user.aboutme) localStorage.setItem(`aboutMe-${userId}`, response.user.aboutme);
+                setPopupMsg('Changes saved successfully');
+                setTimeout(() => setPopupMsg(''), 2000);
+                localStorage.setItem(
+                    `profile-${userId}`,
+                    JSON.stringify({
+                        username: response.user.username || '',
+                        aboutme: response.user.aboutme || '',
+                        profilePicture: response.user.profilePicture || ''
+                    })
+                );
             } else {
                 setPasswordError((response && response.error) || 'Error updating profile');
-                setInfoMsg('');
                 setTimeout(() => setPasswordError(''), 2000);
             }
         });
     };
 
+    // Restore original values on cancel
     const handleCancel = () => {
         setEditingUsername(false);
         setEditingAbout(false);
@@ -146,9 +202,9 @@ const UserProfile = ({ user, onChangePassword }) => {
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        setCurrentUsername('');
+        setCurrentUsername(currentUsername);
         setProfileImage(originalProfileImage);
-        setAboutMe('');
+        setAboutMe(aboutMe);
     };
 
     const handleImageChange = (e) => {
@@ -173,8 +229,13 @@ const UserProfile = ({ user, onChangePassword }) => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-[var(--color-background)]">
-                <div className="text-white text-xl font-bold">Loading profile...</div>
+            <div className="user-profile-loading-bg">
+                <ParticlesBackground />
+                <WaveBackground />
+                <div className="user-profile-loading-container">
+                    <div className="user-profile-spinner"></div>
+                    <div className="user-profile-loading-text">Loading profile...</div>
+                </div>
             </div>
         );
     }
@@ -183,6 +244,11 @@ const UserProfile = ({ user, onChangePassword }) => {
         <div className="relative min-h-screen overflow-hidden bg-[var(--color-background)]">
             <ParticlesBackground />
             <WaveBackground />
+            <Toast
+                message={popupMsg}
+                type={popupMsg.toLowerCase().includes("no changes") ? "info" : "success"}
+                onClose={() => setPopupMsg('')}
+            />
             <div className="absolute inset-0 flex items-center justify-center p-4">
                 <div className="w-full max-w-xl bg-black/60 backdrop-blur-md rounded-xl p-8 border border-[var(--color-primary)]/30 shadow-xl relative z-10 overflow-y-auto max-h-[80vh]">
                     <div className="flex justify-between items-start mb-2">
@@ -439,7 +505,6 @@ const UserProfile = ({ user, onChangePassword }) => {
                         </div>
                     </div>
                     <div className="flex justify-between items-end mt-8 w-full max-w-md mx-auto">
-                        {/* Only show "Go back" if not editing or changing password */}
                         <button
                             className="px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
                             onClick={handleGoBack}
@@ -468,12 +533,6 @@ const UserProfile = ({ user, onChangePassword }) => {
                             </div>
                         )}
                     </div>
-                    {infoMsg && (
-                        <div className="user-profile-success" style={{ color: '#a0ffa0', marginTop: 8 }}>
-                            {infoMsg}
-                        </div>
-                    )}
-                    {successMsg && <div className="user-profile-success">{successMsg}</div>}
                     {copied && (
                         <div className="user-profile-success" style={{ color: '#a0ffa0' }}>
                             {copied} copied!

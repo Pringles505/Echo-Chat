@@ -1,63 +1,46 @@
 import { useState, useEffect } from 'react';
-// import io from "socket.io-client";
-import socket from '../../socket';
+import { getSocket } from '../../socket';
 import PropTypes from 'prop-types';
 import './Friends.css';
 import './Dashboard.css';
+import { jwtDecode } from 'jwt-decode';
 
-//Always keep in braces
-import {jwtDecode} from 'jwt-decode';
-
-const Friends = ({ token, onActiveChatChange}) => {
-  console.log('Rendering Friends component');
+const Friends = ({ onActiveChatChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [chatList, setSearchList] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const socket = getSocket();
 
   useEffect(() => {
-    const newSocket = socket(token);
+    if (!socket) return;
 
-    newSocket.on('connect', () => {
-      console.log('Socket connected');
-    });
-
-    // When the user receives a notification
-    newSocket.on('notification', (notification) => {
+    const handleConnect = () => console.log('Socket connected');
+    const handleNotification = (notification) => {
       console.log('Received notification:', notification);
-      setNotifications((prevNotifications) => [...prevNotifications, notification]);
-    });
+      setNotifications((prev) => [...prev, notification]);
+    };
+    const handleDisconnect = () => console.log('Socket disconnected');
 
-    newSocket.on('disconnect', () => {
-      console.log('Socket disconnected');
-    });
+    socket.on('connect', handleConnect);
+    socket.on('notification', handleNotification);
+    socket.on('disconnect', handleDisconnect);
 
     return () => {
-      newSocket.disconnect();
+      socket.off('connect', handleConnect);
+      socket.off('notification', handleNotification);
+      socket.off('disconnect', handleDisconnect);
     };
-  }, [token]);
+  }, [socket]);
 
-  // Search for a user when adding a friend
   const handleSearch = () => {
+    const token = localStorage.getItem('token');
     const user = token ? jwtDecode(token) : '';
-    console.log('Searching for:', searchTerm);
-    // const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
-
-    // tempSocket.on('connect', () => {
-    //   console.log('TempSocket connected');
-    // });
-
-    // Disconnect if the search term is empty or the same as the user
     if (!searchTerm || searchTerm === user.username) {
-      console.log('Search term is empty or the same as the user');
-      // tempSocket.disconnect();
       return;
     }
-
-    // Search for the user in the db and add to the chat list
     socket.emit('searchUser', { searchTerm }, (response) => {
-      console.log('Search response:', response);
       const targetUser = response.user;
-      setSearchList((prevChatList) => [...prevChatList, targetUser]); 
+      setSearchList((prevChatList) => [...prevChatList, targetUser]);
     });
   };
 
@@ -87,9 +70,7 @@ const Friends = ({ token, onActiveChatChange}) => {
 };
 
 Friends.propTypes = {
-  token: PropTypes.string.isRequired,
   onActiveChatChange: PropTypes.func.isRequired,
-  notifications: PropTypes.array,
 };
 
 export default Friends;
