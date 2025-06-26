@@ -5,7 +5,7 @@ import WaveBackground from './HomepageComponents/WaveBackground';
 import './styles/UserProfile.css';
 import { getSocket } from '../socket';
 import { jwtDecode } from 'jwt-decode';
-import { Pencil, CheckCircle, AlertTriangle, XCircle, Info } from "lucide-react";
+import { Pencil } from "lucide-react";
 import Toast from './Toast';
 
 const UserProfile = ({ user, onChangePassword }) => {
@@ -25,7 +25,7 @@ const UserProfile = ({ user, onChangePassword }) => {
         try {
             const decoded = jwtDecode(token);
             loggedInUserId = decoded.id || decoded.userId || decoded._id;
-        } catch {}
+        } catch { }
     }
     if (!userId && loggedInUserId) userId = loggedInUserId;
 
@@ -50,6 +50,7 @@ const UserProfile = ({ user, onChangePassword }) => {
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [popupMsg, setPopupMsg] = useState('');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUsername)}&background=random&color=fff&bold=true`;
 
@@ -64,7 +65,7 @@ const UserProfile = ({ user, onChangePassword }) => {
                 setProfileImage(parsed.profilePicture || '');
                 setOriginalProfileImage(parsed.profilePicture || '');
                 setLoading(false);
-            } catch {}
+            } catch { }
         }
     }, [userId]);
 
@@ -154,7 +155,7 @@ const UserProfile = ({ user, onChangePassword }) => {
                     })
                 );
             } else {
-                // If username is taken, reset the input to the original value and show toast
+                // If username is taken, reset the input to the original value and show warning
                 if (response && response.error === "Username already taken") {
                     setCurrentUsername(prev => {
                         // Use the value from localStorage or previous state
@@ -213,6 +214,24 @@ const UserProfile = ({ user, onChangePassword }) => {
         navigate(-1);
     };
 
+    const handleDeleteAccount = () => {
+        console.log("Attempting to delete account for userId:", userId);
+        socket.emit('deleteAccount', { userId }, (response) => {
+            console.log("Delete account response:", response);
+            if (response && response.success) {
+                setPopupMsg("Account deleted successfully");
+                setTimeout(() => {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    navigate("/login", { replace: true });
+                }, 1500);
+            } else {
+                setPopupMsg((response && response.error) || "Error deleting account");
+                setTimeout(() => setPopupMsg(''), 2000);
+            }
+        });
+    };
+
     if (loading) {
         return (
             <div className="user-profile-loading-bg">
@@ -235,7 +254,9 @@ const UserProfile = ({ user, onChangePassword }) => {
                 type={
                     popupMsg.toLowerCase().includes("no changes")
                         ? "info"
-                        : popupMsg.toLowerCase().includes("saved") || popupMsg.toLowerCase().includes("copied")
+                        : popupMsg.toLowerCase().includes("saved") ||
+                            popupMsg.toLowerCase().includes("copied") ||
+                            popupMsg.toLowerCase().includes("deleted")
                             ? "success"
                             : "warning"
                 }
@@ -451,7 +472,7 @@ const UserProfile = ({ user, onChangePassword }) => {
                                         className="inline-block px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)] mt-2"
                                         onClick={() => setShowPasswordChange(true)}
                                         type="button"
-                                        style={{width: 'auto'}}>
+                                        style={{ width: 'auto' }}>
                                         Change Password
                                     </button>
                                 )}
@@ -559,6 +580,43 @@ const UserProfile = ({ user, onChangePassword }) => {
                             </div>
                         )}
                     </div>
+                    {isOwnProfile && (
+                        <div className="mt-4">
+                            <button
+                                className="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-bold transition hover:bg-red-700"
+                                onClick={() => setShowDeleteConfirm(true)}
+                                type="button"
+                            >
+                                Delete Account
+                            </button>
+                            {showDeleteConfirm && (
+                                <div className="mt-4 p-4 bg-red-500/10 border border-red-500 rounded-lg">
+                                    <p className="text-red-500 font-semibold mb-2">
+                                        Are you sure you want to delete your account?
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-bold transition hover:bg-red-700"
+                                            onClick={() => {
+                                                setShowDeleteConfirm(false);
+                                                handleDeleteAccount();
+                                            }}
+                                            type="button"
+                                        >
+                                            Yes, delete it
+                                        </button>
+                                        <button
+                                            className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg font-bold transition hover:bg-gray-800"
+                                            onClick={() => setShowDeleteConfirm(false)}
+                                            type="button"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
