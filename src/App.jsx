@@ -56,7 +56,7 @@ function App() {
         {/* Protected Routes */}
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
-        <Route path="/profile/:userId" element={<PrivateRoute><UserProfileRoute /></PrivateRoute>} />
+        <Route path="/profile/:userId" element={<UserProfileRoute />} />
       </Routes>
     </Router>
   );

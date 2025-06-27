@@ -39,7 +39,6 @@ const Register = () => {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [passwordTips, setPasswordTips] = useState([]);
 
-  const navigate = useNavigate();
   const validateUsername = (username) => {
     const validChars = /^[a-zA-Z0-9_]+$/;
     const letterMatch = username.match(/[a-zA-Z]/g) || [];
