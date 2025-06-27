@@ -30,6 +30,7 @@ import { getSocket } from '../socket';
 const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [aboutme, setAboutMe] = useState("");
   const [profilePicture, setProfilePicture] = useState("");
   const navigate = useNavigate();
@@ -64,28 +65,34 @@ const Register = () => {
   };
 
   const [toast, setToast] = useState({ message: "", type: "success" });
-  const socket = getSocket();
+  
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    if (!username || !password) {
-      console.error("Username and password cannot be empty");
-      return;
-    }
+    try {
+      if (!username || !password) {
+        console.error("Username and password cannot be empty");
+        setError("Username and password cannot be empty");
+        return;
+      }
 
-    // Initialize the WASM module
-    await init();
-    await init_xeddsa();
+      console.log("Starting registration process...");
 
-    // Generate the identity pair
-    const randomBytes_IK = crypto.getRandomValues(new Uint8Array(32));
-    const randomBytes_SPK = crypto.getRandomValues(new Uint8Array(32));
+      // Initialize the WASM module
+      await init();
+      await init_xeddsa();
 
-    const privateKey = generate_ed25519_private_key(randomBytes_IK);
-    const publicKey = generate_ed25519_public_key(privateKey);
+      console.log("WASM modules initialized");
 
-    const privatePreKey = generate_private_prekey(randomBytes_SPK);
-    const publicPreKey = generate_public_prekey(privatePreKey);
+      // Generate the identity pair
+      const randomBytes_IK = crypto.getRandomValues(new Uint8Array(32));
+      const randomBytes_SPK = crypto.getRandomValues(new Uint8Array(32));
+
+      const privateKey = generate_ed25519_private_key(randomBytes_IK);
+      const publicKey = generate_ed25519_public_key(privateKey);
+
+      const privatePreKey = generate_private_prekey(randomBytes_SPK);
+      const publicPreKey = generate_public_prekey(privatePreKey);
 
     console.log("Private Key: Ed25519", new Uint8Array(privateKey));
     console.log("Public Key Ed25519:", new Uint8Array(publicKey));
@@ -189,6 +196,7 @@ const Register = () => {
 
     console.log("Key bundle:", keyBundle);
 
+    const socket = getSocket();
     socket.emit("register", { username, password, keyBundle, aboutme, profilePicture }, (response) => {
       console.log("register response:", response)
       if (response.success) {
@@ -198,6 +206,12 @@ const Register = () => {
         setToast({ message: response.error || "Registration failed", type: "error" });
       }
     });
+    
+    } catch (error) {
+      console.error("Registration error:", error);
+      setError("Registration failed. Please try again.");
+      setToast({ message: "Registration failed. Please try again.", type: "error" });
+    }
   };
 
   return (
