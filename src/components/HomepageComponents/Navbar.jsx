@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -37,7 +37,7 @@ const Navbar = () => {
           <nav className="hidden md:flex items-center space-x-8">
             <a href="#features" className="text-white hover:text-[#514b96] transition-colors">Features</a>
             <a href="#security" className="text-white hover:text-[#514b96] transition-colors">Security</a>
-            <a href="#pricing" className="text-white hover:text-[#514b96] transition-colors">Pricing</a>
+            <a href="#pricing" className="text-white hover:text-[#514b96] transition-colors">About Us</a>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
