@@ -73,8 +73,6 @@ const Register = () => {
       return;
     }
 
-    console.log("Registering with", username, password);
-
     // Initialize the WASM module
     await init();
     await init_xeddsa();
