@@ -5,8 +5,6 @@
     max-width: 700px;
     margin: 2.5rem auto;
     box-shadow: 0 4px 32px rgba(0, 0, 0, 0.18);
-    display: flex;
-    flex-direction: column;
     align-items: center;
     color: var(--color-white);
 }
@@ -18,15 +16,14 @@
 }
 
 .user-profile-details {
-    background-color: var(--color-black);
+    background-color: transparent;
     padding: 2rem 2.5rem;
     border-radius: 12px;
     width: 100%;
     margin-bottom: 2rem;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-    display: flex;
-    flex-direction: column;
     gap: 1.5rem;
+    display: block;
 }
 
 .user-profile-details-flex {
@@ -131,10 +128,38 @@
     color: var(--color-white);
     font-size: 1rem;
     outline: none;
+    transition: background 0.2s, color 0.2s, border 0.2s;
 }
 
 .user-profile-input:focus {
     border-color: var(--color-white);
+}
+
+.user-profile-input-active {
+    background: #fff !important;
+    color: #222 !important;
+    border: 2px solid var(--color-primary) !important;
+    box-shadow: 0 0 0 2px var(--color-primary)33;
+}
+
+.user-profile-input-disabled {
+    background: rgba(255,255,255,0.08) !important;
+    color: #fff !important;
+    border: 1px solid #fff2 !important;
+    opacity: 0.7 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+    transition: background 0.2s, color 0.2s, border 0.2s, opacity 0.2s;
+}
+
+.user-profile-input-readonly {
+    background: rgba(255,255,255,0.08) !important;
+    color: #fff !important;
+    border: 1px solid #fff2 !important;
+    opacity: 0.7 !important;
+    cursor: pointer !important;
+    pointer-events: auto;
+    transition: background 0.2s, color 0.2s, border 0.2s, opacity 0.2s;
 }
 
 .user-profile-password-fields {
@@ -207,7 +232,6 @@
     color: var(--color-accent);
     font-size: 1.2rem;
     cursor: pointer;
-    margin-left: 0.5rem;
     position: absolute;
     right: 0.75rem;
     top: 50%;
@@ -272,14 +296,53 @@
 }
 
 .user-profile-hover-btn-wrapper {
-    pointer-events: none; /* bloquea interacciones por defecto */
+    pointer-events: none;
+    /* bloquea interacciones por defecto */
 }
 
 .user-profile-hover-row:hover .user-profile-hover-btn-wrapper {
-    pointer-events: auto; /* activa cuando se hace hover */
+    pointer-events: auto;
+    /* activa cuando se hace hover */
 }
 
 .user-profile-hover-btn-wrapper .user-profile-action-btn {
     cursor: pointer;
 }
 
+.user-profile-loading-bg {
+    min-height: 100vh;
+    width: 100vw;
+    position: fixed;
+    inset: 0;
+    background: var(--color-background, #18181b);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.user-profile-loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 40vh;
+}
+.user-profile-spinner {
+    border: 6px solid #333;
+    border-top: 6px solid var(--color-primary, #514b96);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    animation: user-profile-spin 1s linear infinite;
+    margin-bottom: 1.5rem;
+}
+@keyframes user-profile-spin {
+    0% { transform: rotate(0deg);}
+    100% { transform: rotate(360deg);}
+}
+.user-profile-loading-text {
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+}

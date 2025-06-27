@@ -14,6 +14,7 @@ const Dashboard = () => {
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const { username, userId, profileImage } = getUserData(token);
+  localStorage.setItem('userId', userId);
   
   // Estados
   const [activeChat, setActiveChat] = useState(null);

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import io from "socket.io-client";
 import { Buffer } from "buffer";
 import Navbar from "../components/HomepageComponents/Navbar";
 import ParticlesBackground from "../components/HomepageComponents/ParticlesBackground";
 import WaveBackground from "../components/HomepageComponents/WaveBackground";
+import Toast from "./Toast";
 import "./styles/SignIn.css";
 
 import init, {
@@ -25,13 +25,14 @@ import init_xeddsa, {
   verify_signature,
   test_sign_and_verify,
 } from "/xeddsa-wasm/pkg";
-
-const socket = io(import.meta.env.VITE_SOCKET_URL);
+import { getSocket } from '../socket';
 
 const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [aboutme, setAboutMe] = useState("");
+  const [profilePicture, setProfilePicture] = useState("");
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
@@ -63,6 +64,8 @@ const Register = () => {
     return getPasswordStrength(password) >= 5;
   };
 
+  const [toast, setToast] = useState({ message: "", type: "success" });
+  const socket = getSocket();
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -189,11 +192,13 @@ const Register = () => {
 
     console.log("Key bundle:", keyBundle);
 
-    socket.emit("register", { username, password, keyBundle }, (response) => {
+    socket.emit("register", { username, password, keyBundle, aboutme, profilePicture }, (response) => {
+      console.log("register response:", response)
       if (response.success) {
-        navigate("/login");
+        setToast({ message: "Registration successful!", type: "success" });
+        setTimeout(() => navigate("/login"), 1200);
       } else {
-        console.error("Registration failed:", response.error);
+        setToast({ message: response.error || "Registration failed", type: "error" });
       }
     });
   };
@@ -203,6 +208,12 @@ const Register = () => {
       <Navbar />
       <ParticlesBackground />
       <WaveBackground />
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, message: "" })}
+      />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <div className="form-container w-full max-w-md bg-[var(--color-background)]/50 backdrop-blur-md rounded-xl p-6 border border-[var(--color-primary)]/30 shadow-xl relative z-10">
