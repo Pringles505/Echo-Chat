@@ -1,40 +1,70 @@
 import { useState, useRef, useEffect } from "react";
 import { MoreHorizontal, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import io from "socket.io-client";
 
-const ChatHeader = ({ activeChat, isHovered }) => {
+const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isFriend, setIsFriend] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const menuRef = useRef(null);
+  const [socket, setSocket] = useState(null);
 
-  if (!activeChat) return null;
+  // Initialize socket connection
+  useEffect(() => {
+    const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
+      auth: { token },
+      withCredentials: true,
+      transports: ['websocket']
+    });
+    setSocket(newSocket);
+
+    return () => newSocket.disconnect();
+  }, [token]);
 
   const getConsistentColor = (username) => {
     const colors = ['FF5733', '33FF57', '3357FF', 'F033FF', 'FF33F0'];
-    const index = username.length % colors.length;
-    return colors[index];
+    return colors[username.length % colors.length];
   };
 
-  // Determinar el estado de conexión
+  const handleAddFriend = () => {
+    if (!socket || !socket.connected) {
+      alert("Not connected to server. Please refresh the page.");
+      return;
+    }
+
+    if (!userId) {
+      alert("You need to be logged in to add friends");
+      return;
+    }
+
+    if (!activeChat?.id) {
+      alert("No user selected to add as friend");
+      return;
+    }
+
+    setIsLoading(true);
+    setMenuOpen(false);
+    
+    socket.emit('addFriend', { 
+      userId: userId, 
+      targetUserId: activeChat.id 
+    }, (response) => {
+      setIsLoading(false);
+      if (response?.success) {
+        setIsFriend(true);
+        alert(`You are now friends with ${activeChat.username}!`);
+      } else {
+        alert(response?.error || "Failed to add friend");
+      }
+    });
+  };
+
+  if (!activeChat) return null;
+
   const isOnline = activeChat.isOnline || activeChat.status === "Online";
   const statusText = activeChat.status || (isOnline ? "Online" : "Offline");
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
-      }
-    }
-    if (menuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [menuOpen]);
 
   return (
     <div className={`p-4 flex justify-between items-center transition-all border-b
@@ -63,7 +93,6 @@ const ChatHeader = ({ activeChat, isHovered }) => {
               }}
             />
           </div>
-          {/* Punto de estado - ahora usa la variable isOnline */}
           <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black
             ${isOnline ? 'bg-green-500' : 'bg-gray-500'}
           `}></span>
@@ -88,6 +117,7 @@ const ChatHeader = ({ activeChat, isHovered }) => {
         >
           <MoreHorizontal className="w-5 h-5 text-gray-400" />
         </button>
+        
         {menuOpen && (
           <div className="absolute right-0 mt-12 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
             <button
@@ -99,21 +129,32 @@ const ChatHeader = ({ activeChat, isHovered }) => {
             >
               Profile
             </button>
-            <button
-              className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white"
-              onClick={() => {
-                setMenuOpen(false);
-                // Add your add friend logic here
-                alert("Add friend clicked!");
-              }}
-            >
-              Add Friend
-            </button>
+            
+            {!isFriend && (
+              <button
+                className={`w-full text-left px-4 py-2 hover:bg-gray-700 text-white ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                onClick={handleAddFriend}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Adding...' : 'Add Friend'}
+              </button>
+            )}
+            
+            {isFriend && (
+              <button
+                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-green-400"
+                disabled
+              >
+                Friends ✓
+              </button>
+            )}
+            
             <button
               className="w-full text-left px-4 py-2 hover:bg-gray-700 text-red-400"
               onClick={() => {
                 setMenuOpen(false);
-                // Add your block logic here
                 alert("Block clicked!");
               }}
             >
