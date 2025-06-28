@@ -1,9 +1,12 @@
+import { useState, useRef, useEffect } from "react";
 import { MoreHorizontal, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const ChatHeader = ({ activeChat, isHovered }) => {
   const navigate = useNavigate();
-  
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
   if (!activeChat) return null;
 
   const getConsistentColor = (username) => {
@@ -15,6 +18,23 @@ const ChatHeader = ({ activeChat, isHovered }) => {
   // Determinar el estado de conexión
   const isOnline = activeChat.isOnline || activeChat.status === "Online";
   const statusText = activeChat.status || (isOnline ? "Online" : "Offline");
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen]);
 
   return (
     <div className={`p-4 flex justify-between items-center transition-all border-b
@@ -60,13 +80,47 @@ const ChatHeader = ({ activeChat, isHovered }) => {
         </div>
       </div>
       
-      <div className="flex gap-4">
+      <div className="flex gap-4 relative" ref={menuRef}>
         <button 
           className="p-2 rounded-full hover:bg-gray-700 transition-colors"
           aria-label="More options"
+          onClick={() => setMenuOpen((open) => !open)}
         >
           <MoreHorizontal className="w-5 h-5 text-gray-400" />
         </button>
+        {menuOpen && (
+          <div className="absolute right-0 mt-12 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
+            <button
+              className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white"
+              onClick={() => {
+                setMenuOpen(false);
+                navigate(`/profile/${activeChat.id}`);
+              }}
+            >
+              Profile
+            </button>
+            <button
+              className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white"
+              onClick={() => {
+                setMenuOpen(false);
+                // Add your add friend logic here
+                alert("Add friend clicked!");
+              }}
+            >
+              Add Friend
+            </button>
+            <button
+              className="w-full text-left px-4 py-2 hover:bg-gray-700 text-red-400"
+              onClick={() => {
+                setMenuOpen(false);
+                // Add your block logic here
+                alert("Block clicked!");
+              }}
+            >
+              Block
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
