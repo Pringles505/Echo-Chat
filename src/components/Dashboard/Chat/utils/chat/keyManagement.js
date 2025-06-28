@@ -80,6 +80,7 @@ const updateSavedMessages = (userId, targetUserId, message, setMessages) => {
     savedMessages,
   };
   localStorage.setItem(savedSessionKey, JSON.stringify(updatedSession));
+  window.dispatchEvent(new Event('localStorageUpdated'));
   console.log('📂 Updated saved messages:', savedMessages);
 
   setMessages(savedMessages);
