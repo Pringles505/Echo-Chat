@@ -418,7 +418,7 @@ const UserProfile = ({ user, onChangePassword }) => {
                                     <div className="flex items-start w-full">
                                     <div className="flex-1">
                                         <div
-                                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-lg border border-transparent whitespace-pre-wrap break-words"
+                                        className="user-profile-input user-profile-input-readonly"
                                         style={{
                                             minHeight: '40px',
                                             wordBreak: 'break-word'

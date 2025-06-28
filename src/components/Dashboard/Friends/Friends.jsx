@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import io from 'socket.io-client';
 import PropTypes from 'prop-types';
 import { jwtDecode } from 'jwt-decode';
+import { formatProfileImage } from '../DashboardComponents/utils/helpers';
 
-const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
+const Friends = ({ token, onActiveChatChange, searchTerm }) => {
   const [chatList, setSearchList] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
@@ -17,11 +18,16 @@ const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
     });
 
     socket.on('notification', (notification) => {
+      const formattedProfileImage = formatProfileImage(
+        notification.messageData.profileImage, 
+        notification.messageData.username
+      );
+      
       setNotifications((prevNotifications) => [...prevNotifications, {
         ...notification,
         messageData: {
           ...notification.messageData,
-          profileImage: notification.messageData.profileImage || `https://ui-avatars.com/api/?name=${notification.messageData.username}&background=6366f1&color=fff`,
+          profileImage: formattedProfileImage,
           status: 'online'
         }
       }]);
@@ -36,15 +42,7 @@ const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
     };
   }, [token]);
 
-  useEffect(() => {
-    if (searchTerm && searchTerm.trim() !== '') {
-      handleSearch();
-    } else {
-      setSearchList([]);
-    }
-  }, [searchTerm]);
-
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     const user = token ? jwtDecode(token) : '';
     const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
 
@@ -58,14 +56,43 @@ const Friends = ({ token, onActiveChatChange, searchTerm, onSearch }) => {
     }
 
     tempSocket.emit('searchUser', { searchTerm }, (response) => {
-      const targetUser = {
-        ...response.user,
-        profileImage: response.user.profileImage || `https://ui-avatars.com/api/?name=${response.user.username}&background=6366f1&color=fff`,
-        status: 'online'
-      };
-      setSearchList((prevChatList) => [...prevChatList, targetUser]); 
+      if (response && response.user) {
+        // First, get the basic user info from search
+        const basicUser = response.user;
+        
+        // Then fetch complete profile info including profile picture
+        tempSocket.emit('getUserInfo', { userId: basicUser.id }, (profileResponse) => {
+          let profilePicture = basicUser.profileImage;
+          
+          // If we got profile data, use the profile picture from there
+          if (profileResponse && profileResponse.success && profileResponse.user) {
+            profilePicture = profileResponse.user.profilePicture;
+          }
+          
+          const formattedProfileImage = formatProfileImage(profilePicture, basicUser.username);
+          
+          const targetUser = {
+            ...basicUser,
+            profileImage: formattedProfileImage,
+            status: 'online'
+          };
+          
+          setSearchList((prevChatList) => [...prevChatList, targetUser]);
+          tempSocket.disconnect();
+        });
+      } else {
+        tempSocket.disconnect();
+      }
     });
-  };
+  }, [searchTerm, token]);
+
+  useEffect(() => {
+    if (searchTerm && searchTerm.trim() !== '') {
+      handleSearch();
+    } else {
+      setSearchList([]);
+    }
+  }, [searchTerm, handleSearch]);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -142,7 +169,6 @@ Friends.propTypes = {
   token: PropTypes.string.isRequired,
   onActiveChatChange: PropTypes.func.isRequired,
   searchTerm: PropTypes.string,
-  onSearch: PropTypes.func,
 };
 
 export default Friends;

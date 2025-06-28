@@ -7,8 +7,9 @@ import Sidebar from "./DashboardComponents/Sidebar/Sidebar";
 import ChatHeader from "./DashboardComponents/Header/ChatHeader";
 import ConversationList from "./DashboardComponents/Conversations/ConversationList";
 import { useConversations } from "./DashboardComponents/hooks/useConversations";
-import { getUserData } from "./DashboardComponents/utils/helpers";
+import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatProfileImage } from "./DashboardComponents/utils/helpers";
 import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
+import io from 'socket.io-client';
 
 const Dashboard = () => {
   const token = localStorage.getItem("token");
@@ -29,8 +30,61 @@ const Dashboard = () => {
     const saved = localStorage.getItem('chatWallpaper');
     return saved && WALLPAPER_PREVIEWS[saved] ? saved : 'default';
   });
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [userProfileImage, setUserProfileImage] = useState(profileImage);
+  const [socket, setSocket] = useState(null);
 
+  // Initialize socket connection and fetch user profile
+  useEffect(() => {
+    if (!token || !userId) return;
+
+    console.log('Initializing socket connection for profile fetching...');
+    const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
+      auth: { token },
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Socket connected for profile fetching');
+      setSocket(newSocket);
+      
+      // Fetch user profile immediately after connection
+      fetchUserProfileFromSocket(newSocket, userId)
+        .then((profileData) => {
+          console.log('Profile data fetched:', profileData);
+          if (profileData.profilePicture) {
+            const formattedImage = formatProfileImage(profileData.profilePicture, username);
+            setUserProfileImage(formattedImage);
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching user profile:', error);
+        });
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Socket disconnected');
+      setSocket(null);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [token, userId, username]);
+
+  // Listen for profile updates from localStorage
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      if (userId) {
+        const cachedProfile = getCachedUserProfile(userId);
+        if (cachedProfile && cachedProfile.profilePicture) {
+          const formattedImage = formatProfileImage(cachedProfile.profilePicture, username);
+          setUserProfileImage(formattedImage);
+        }
+      }
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+  }, [userId, username]);
 
   // Precarga los recursos de los wallpapers
   useEffect(() => {
@@ -91,7 +145,11 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    // Clear all cached data
+    localStorage.clear();
+    if (socket) {
+      socket.disconnect();
+    }
     navigate("/");
   };
 
@@ -153,7 +211,7 @@ const Dashboard = () => {
         handleViewChange={handleViewChange}
         handleProfileClick={handleProfileClick}
         handleLogout={handleLogout}
-        profileImage={profileImage}
+        profileImage={userProfileImage}
         username={username}
         unreadMessages={unreadMessages}
         onWallpaperChange={handleWallpaperChange}
@@ -208,7 +266,6 @@ const Dashboard = () => {
               token={token}
               onActiveChatChange={handleActiveChatChange}
               searchTerm={searchTerm}
-              onSearch={handleSearch}
             />
           ) : (
             <div>
@@ -236,7 +293,7 @@ const Dashboard = () => {
       <div className="flex-1 flex flex-col bg-black">
         {activeChat ? (
           <div className="flex flex-col h-full">
-            <ChatHeader activeChat={activeChat} userId={userId} />
+            <ChatHeader activeChat={activeChat} />
             <div className="flex-1 overflow-hidden">
               <Chat 
                 token={token} 
