@@ -29,7 +29,7 @@ const BlogPage = () => {
       date: "June 3, 2025",
       excerpt:
         "Learn how Echo implements the Extended Triple Diffie-Hellman protocol to establish secure shared secrets between users.",
-      imageUrl: "https://example.com/x3dh-explained.jpg",
+      imageUrl: "/blog/X3DH.png",
       link: "#",
       category: "Technical",
     },
@@ -39,7 +39,7 @@ const BlogPage = () => {
       date: "June 5, 2025",
       excerpt:
         "Exploring the benefits of Rust for security-critical applications and how it powers Echo's cryptographic modules.",
-      imageUrl: "/blog/rust-seeklogo.png",
+      imageUrl: "/blog/rust-logo.png",
       link: "#",
       category: "Development",
     },
@@ -49,7 +49,7 @@ const BlogPage = () => {
       date: "June 8, 2025",
       excerpt:
         "A comprehensive guide to XEdDSA and how it enables secure authentication in the Echo protocol.",
-      imageUrl: "https://example.com/xeddsa-guide.jpg",
+      imageUrl: "echo-logo-text.png",
       link: "#",
       category: "Technical",
     },
@@ -316,68 +316,67 @@ const BlogPage = () => {
               )}
 
               {/* Blog Posts Grid */}
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-                {(searchTerm
-                  ? filteredPosts
-                  : currentPosts.slice(searchTerm ? 0 : 1)
-                ).map((post, index) => (
-                  <motion.div
-                    key={post.id}
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={inView ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.8, delay: 0.1 * index }}
-                    className="bg-white/10 rounded-xl shadow-lg overflow-hidden border border-gray-700 hover:border-gray-500 transition-all backdrop-blur-sm"
-                  >
-                    <img
-                      className="h-48 w-full object-cover"
-                      src={post.imageUrl}
-                      alt={post.title}
-                    />
-                    <div className="p-6">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="px-2 py-1 text-xs font-semibold bg-white/10 text-gray-200 rounded">
-                          {post.category}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {post.date}
-                        </span>
-                      </div>
-                      <a
-                        href={post.link}
-                        className="block text-xl font-bold text-white hover:text-gray-300 mb-2"
-                      >
-                        {post.title}
-                      </a>
-                      <p className="text-gray-300 text-sm mb-4">
-                        {post.excerpt}
-                      </p>
-                      <a
-                        href={post.link}
-                        className="inline-flex items-center text-gray-300 hover:text-white text-sm font-medium transition-colors"
-                      >
-                        Read more
-                        <svg
-                          className="w-4 h-4 ml-1"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </a>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+  {(searchTerm ? filteredPosts : currentPosts.slice(searchTerm ? 0 : 1)).map((post, index) => (
+    <motion.div
+      key={post.id}
+      initial={{ opacity: 0, y: 50 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.8, delay: 0.1 * index }}
+      className="bg-white/10 rounded-xl shadow-lg overflow-hidden border border-gray-700 hover:border-gray-500 transition-all backdrop-blur-sm"
+    >
+      {/* Contenedor de imagen ajustado (más pequeño y centrado) */}
+      <div className="w-full h-40 flex items-center justify-center bg-black/10 p-4">  
+        <img
+          className="max-h-[90%] max-w-[90%] object-contain"  
+          src={post.imageUrl}
+          alt={post.title}
+        />
+      </div>
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-3">
+          <span className="px-2 py-1 text-xs font-semibold bg-white/10 text-gray-200 rounded">
+            {post.category}
+          </span>
+          <span className="text-xs text-gray-400">
+            {post.date}
+          </span>
+        </div>
+        <a
+          href={post.link}
+          className="block text-xl font-bold text-white hover:text-gray-300 mb-2"
+        >
+          {post.title}
+        </a>
+        <p className="text-gray-300 text-sm mb-4">
+          {post.excerpt}
+        </p>
+        <a
+          href={post.link}
+          className="inline-flex items-center text-gray-300 hover:text-white text-sm font-medium transition-colors"
+        >
+          Read more
+          <svg
+            className="w-4 h-4 ml-1"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </a>
+      </div>
+    </motion.div>
+  ))}
+</div>
             </>
           )}
 
-          {/* Pagination */}
           {filteredPosts.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
