@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import io from "socket.io-client";
 import PropTypes from "prop-types";
-import "./Chat.css";
 import SendText from "./MessageInput/sendText";
 import DisplayText from "./MessageDisplay/displayText";
 import {
@@ -70,6 +69,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
   const [messages, setMessages] = useState([]);
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const [autoScroll, setAutoScroll] = useState(true);
 
   // useEffect to handle the socket connection and message fetching
   useEffect(() => {
@@ -279,23 +279,6 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       socket.off("newMessage");
     };
   }, [userId, targetUserId]);
-
-  useEffect(() => {
-    // Solo hacer scroll si hay mensajes
-    if (messages.length > 0) {
-      // Pequeño delay para asegurar que el DOM se ha actualizado
-      const timer = setTimeout(() => {
-        if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest'
-          });
-        }
-      }, 50);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [messages.length]); 
 
   // Send message function
   const sendMessage = async (text) => {
@@ -514,31 +497,47 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
     );
   });
 
-  return (
-    <div className="app-container h-full flex flex-col">
-      <div className="chat-container flex-1 flex flex-col relative overflow-hidden">
-        <div
-          ref={messagesContainerRef}
-          className={`messages-container flex-1 overflow-y-auto relative ${getWallpaperClasses(
-            currentWallpaper
-          )}`}
-        >
-          {getWallpaperComponent(currentWallpaper)}
+useEffect(() => {
+  if (autoScroll && messagesEndRef.current) {
+    messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+  }
+}, [messages, autoScroll]);
 
-          <div className="relative z-10 h-full flex flex-col">
-            <DisplayText
-              messages={messages}
-              currentUserId={userId}
-              wallpaperType={currentWallpaper}
-            />
-            <div ref={messagesEndRef} />
-          </div>
+const handleScroll = () => {
+  if (messagesContainerRef.current) {
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isNearBottom = scrollHeight - scrollTop <= clientHeight + 100; 
+   
+    setAutoScroll(isNearBottom);
+  }
+};
+
+return (
+  <div className="app-container h-full flex flex-col">
+    <div className="chat-container flex-1 flex flex-col relative overflow-y-auto">
+      <div
+        ref={messagesContainerRef}
+        className={`messages-container flex-1 relative ${getWallpaperClasses(
+          currentWallpaper
+        )}`}
+        onScroll={handleScroll}
+      >
+        {getWallpaperComponent(currentWallpaper)}
+
+        <div className="relative z-10 h-full flex flex-col">
+          <DisplayText
+            messages={messages}
+            currentUserId={userId}
+            wallpaperType={currentWallpaper}
+          />
+          <div ref={messagesEndRef} />
         </div>
       </div>
-      <SendText sendMessage={sendMessage} />
     </div>
-  );
-}
+    <SendText sendMessage={sendMessage} />
+  </div>
+);
+};
 
 Chat.propTypes = {
   token: PropTypes.string.isRequired,
