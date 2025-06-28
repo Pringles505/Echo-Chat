@@ -273,6 +273,7 @@ const Dashboard = () => {
                 <ConversationList
                   conversations={filteredConversations}
                   activeChat={activeChat}
+                  userId={userId}
                   handleChatSelect={handleChatSelect}
                   setIsHovered={setIsChatItemHovered}
                   ref={conversationsListRef}

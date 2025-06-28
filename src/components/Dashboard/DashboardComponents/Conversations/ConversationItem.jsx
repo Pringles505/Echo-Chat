@@ -1,9 +1,15 @@
+import { useEffect, useState } from "react";
+
 const ConversationItem = ({
   conversation,
   isActive,
   onSelect,
-  setIsHovered
+  setIsHovered,
+  userId,
+  activeChat
 }) => {
+  const [latestMessage, setLatestMessage] = useState('');
+
   const getConsistentColor = (str) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -14,6 +20,51 @@ const ConversationItem = ({
   };
 
   const avatarBgColor = getConsistentColor(conversation.username);
+
+  useEffect(() => {
+  const fetchLatest = () => {
+    const targetUserId = conversation.targetUserId || conversation.id;
+    const messagesKey = `chatSession-${userId}-${targetUserId}`;
+    const messagesRaw = localStorage.getItem(messagesKey);
+
+    if (!messagesRaw) {
+      setLatestMessage('No messages yet');
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(messagesRaw);
+      const messages = parsed.savedMessages;
+
+      if (!Array.isArray(messages) || messages.length === 0) {
+        setLatestMessage('No messages yet');
+        return;
+      }
+
+      const lastMsg = messages[messages.length - 1];
+      setLatestMessage(lastMsg?.text || 'No messages yet');
+    } catch (err) {
+      console.error("Error parsing messages:", err);
+      setLatestMessage('No messages yet');
+    }
+  };
+
+  // Initial fetch
+  fetchLatest();
+
+  // Listener for localStorage updates
+  const handleStorageUpdate = () => {
+    fetchLatest();
+  };
+
+  window.addEventListener('localStorageUpdated', handleStorageUpdate);
+
+  // Cleanup
+  return () => {
+    window.removeEventListener('localStorageUpdated', handleStorageUpdate);
+  };
+}, [conversation, userId]);
+
 
   return (
     <li 
@@ -41,7 +92,6 @@ const ConversationItem = ({
             <p className="text-white font-medium truncate">
               {conversation.username}
             </p>
-            
             <span className="text-xs text-gray-400 whitespace-nowrap">
               {conversation.lastMessageTime 
                 ? new Date(conversation.lastMessageTime).toLocaleTimeString([], { 
@@ -51,13 +101,10 @@ const ConversationItem = ({
                 : ''}
             </span>
           </div>
-          
           <p className="text-sm truncate text-gray-400">
-            {conversation.lastMessage 
-              ? conversation.lastMessage.length > 30 
-                ? `${conversation.lastMessage.substring(0, 30)}...` 
-                : conversation.lastMessage
-              : 'No messages yet'}
+            {latestMessage.length > 30 
+              ? `${latestMessage.substring(0, 30)}...` 
+              : latestMessage}
           </p>
         </div>
       </div>

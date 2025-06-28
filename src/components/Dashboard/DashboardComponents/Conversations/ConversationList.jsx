@@ -5,7 +5,8 @@ const ConversationList = ({
   activeChat,
   handleChatSelect,
   setIsHovered,
-  ref
+  ref,
+  userId
 }) => {
   return (
     <div 
@@ -21,6 +22,8 @@ const ConversationList = ({
               isActive={activeChat?.id === conversation.id}
               onSelect={handleChatSelect}
               setIsHovered={setIsHovered}
+              activeChat={activeChat}
+              userId={userId} 
             />
           ))
         ) : (
