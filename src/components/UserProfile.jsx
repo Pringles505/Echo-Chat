@@ -246,7 +246,7 @@ const UserProfile = ({ user, onChangePassword }) => {
     }
 
     return (
-        <div className="relative min-h-screen overflow-hidden bg-[var(--color-background)]">
+        <div className="relative min-h-screen overflow-hidden bg-black">
             <ParticlesBackground />
             <WaveBackground />
             <Toast
@@ -398,73 +398,48 @@ const UserProfile = ({ user, onChangePassword }) => {
                                 />
                             </label>
                             {/* About me */}
-                            <label className="block mb-6 w-full">
+                                <label className="block mb-6 w-full">
                                 <span className="block text-white font-semibold mb-1">
                                     About me:
                                 </span>
                                 {isOwnProfile && editingAbout ? (
                                     <textarea
-                                        className="user-profile-input user-profile-input-active"
-                                        value={aboutMe}
-                                        onChange={e => setAboutMe(e.target.value)}
-                                        rows={3}
-                                        autoFocus
-                                        onInput={e => {
-                                            e.target.style.height = 'auto';
-                                            e.target.style.height = e.target.scrollHeight + 'px';
-                                        }}
+                                    className="w-full px-4 py-2 bg-white text-black rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
+                                    value={aboutMe}
+                                    onChange={e => setAboutMe(e.target.value)}
+                                    rows={3}
+                                    autoFocus
+                                    onInput={e => {
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = e.target.scrollHeight + 'px';
+                                    }}
                                     />
                                 ) : (
-                                    <div className="flex items-center w-full">
-                                        <input
-                                            className="user-profile-input user-profile-input-readonly"
-                                            style={{
-                                                minHeight: 34,
-                                                maxHeight: showMoreAbout ? 200 : 34,
-                                                overflow: 'hidden',
-                                                whiteSpace: showMoreAbout ? 'pre-wrap' : 'nowrap',
-                                                textOverflow: showMoreAbout ? 'clip' : 'ellipsis',
-                                                wordBreak: 'break-word',
-                                                transition: 'max-height 0.2s',
-                                                cursor: "not-allowed",
-                                                background: "#e5e7eb"
-                                            }}
-                                            value={aboutMe}
-                                            readOnly
-                                            disabled
-                                            title="Description"
-                                        />
-                                        {!editingAbout && !editingUsername && !showPasswordChange && !showMoreAbout && aboutMe && aboutMe.length > 60 && (
-                                            <button
-                                                type="button"
-                                                className="ml-2 px-2 py-1 bg-transparent text-[var(--color-primary)] underline rounded transition hover:text-[var(--color-secondary)]"
-                                                onClick={() => setShowMoreAbout(true)}
-                                            >
-                                                ...más
-                                            </button>
-                                        )}
-                                        {!editingAbout && !editingUsername && !showPasswordChange && showMoreAbout && aboutMe && aboutMe.length > 60 && (
-                                            <button
-                                                type="button"
-                                                className="ml-2 px-2 py-1 bg-transparent text-[var(--color-primary)] underline rounded transition hover:text-[var(--color-secondary)]"
-                                                onClick={() => setShowMoreAbout(false)}
-                                            >
-                                                menos
-                                            </button>
-                                        )}
-                                        {isOwnProfile && !editingAbout && !editingUsername && !showPasswordChange && (
-                                            <button
-                                                className="ml-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
-                                                onClick={() => setEditingAbout(true)}
-                                                type="button"
-                                                disabled={editingUsername || showPasswordChange}
-                                            >
-                                                Edit
-                                            </button>
-                                        )}
+                                    <div className="flex items-start w-full">
+                                    <div className="flex-1">
+                                        <div
+                                        className="w-full px-4 py-2 bg-gray-200 text-black rounded-lg border border-transparent whitespace-pre-wrap break-words"
+                                        style={{
+                                            minHeight: '40px',
+                                            wordBreak: 'break-word'
+                                        }}
+                                        >
+                                        {aboutMe || <span className="text-gray-500 italic">No description yet</span>}
+                                        </div>
+                                    </div>
+                                    {isOwnProfile && !editingAbout && !editingUsername && !showPasswordChange && (
+                                        <button
+                                        className="ml-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-bold transition hover:bg-[var(--color-secondary)]"
+                                        onClick={() => setEditingAbout(true)}
+                                        type="button"
+                                        disabled={editingUsername || showPasswordChange}
+                                        >
+                                        Edit
+                                        </button>
+                                    )}
                                     </div>
                                 )}
-                            </label>
+                                </label>
                             {/* Password */}
                             <label className="block mb-6 w-full">
                                 {isOwnProfile && !editingUsername && !editingAbout && !showPasswordChange && (
