@@ -8,6 +8,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isFriend, setIsFriend] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const menuRef = useRef(null);
   const [socket, setSocket] = useState(null);
 
@@ -18,8 +19,21 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
       withCredentials: true,
       transports: ['websocket']
     });
-    setSocket(newSocket);
 
+    // Receive full online users list on initial connect
+    newSocket.on('onlineUsersList', ({ onlineUsers }) => {
+      setOnlineUsers(onlineUsers);
+    });
+
+    newSocket.on('userOnline', ({ userId }) => {
+      setOnlineUsers(prev => [...prev, userId]);
+    });
+
+    newSocket.on('userOffline', ({ userId }) => {
+      setOnlineUsers(prev => prev.filter(id => id !== userId));
+    });
+
+    setSocket(newSocket);
     return () => newSocket.disconnect();
   }, [token]);
 
@@ -46,10 +60,10 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
 
     setIsLoading(true);
     setMenuOpen(false);
-    
-    socket.emit('addFriend', { 
-      userId: userId, 
-      targetUserId: activeChat.id 
+
+    socket.emit('addFriend', {
+      userId: userId,
+      targetUserId: activeChat.id
     }, (response) => {
       setIsLoading(false);
       if (response?.success) {
@@ -63,8 +77,8 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
 
   if (!activeChat) return null;
 
-  const isOnline = activeChat.isOnline || activeChat.status === "Online";
-  const statusText = activeChat.status || (isOnline ? "Online" : "Offline");
+  const isOnline = onlineUsers.includes(activeChat.id);
+  const statusText = isOnline ? "Online" : "Offline";
 
   return (
     <div className={`p-4 flex justify-between items-center transition-all border-b
@@ -72,13 +86,13 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
       ${activeChat ? 'border-indigo-500' : 'border-gray-800'}
     `}>
       <div className="flex items-center gap-4">
-        <button 
+        <button
           className="md:hidden p-1 rounded-full hover:bg-gray-700 transition-colors mr-2"
           onClick={() => navigate(-1)}
         >
           <ArrowLeft className="w-5 h-5 text-gray-400" />
         </button>
-        
+
         <div className="relative">
           <div className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden border-2 border-black">
             <img
@@ -97,7 +111,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
             ${isOnline ? 'bg-green-500' : 'bg-gray-500'}
           `}></span>
         </div>
-        
+
         <div>
           <h3 className="font-semibold text-white">{activeChat.username}</h3>
           <p className="text-sm text-gray-400">
@@ -108,16 +122,16 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
           </p>
         </div>
       </div>
-      
+
       <div className="flex gap-4 relative" ref={menuRef}>
-        <button 
+        <button
           className="p-2 rounded-full hover:bg-gray-700 transition-colors"
           aria-label="More options"
           onClick={() => setMenuOpen((open) => !open)}
         >
           <MoreHorizontal className="w-5 h-5 text-gray-400" />
         </button>
-        
+
         {menuOpen && (
           <div className="absolute right-0 mt-12 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
             <button
@@ -129,7 +143,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
             >
               Profile
             </button>
-            
+
             {!isFriend && (
               <button
                 className={`w-full text-left px-4 py-2 hover:bg-gray-700 text-white ${
@@ -141,7 +155,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
                 {isLoading ? 'Adding...' : 'Add Friend'}
               </button>
             )}
-            
+
             {isFriend && (
               <button
                 className="w-full text-left px-4 py-2 hover:bg-gray-700 text-green-400"
@@ -150,7 +164,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
                 Friends ✓
               </button>
             )}
-            
+
             <button
               className="w-full text-left px-4 py-2 hover:bg-gray-700 text-red-400"
               onClick={() => {

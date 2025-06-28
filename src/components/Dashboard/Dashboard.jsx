@@ -29,6 +29,8 @@ const Dashboard = () => {
     const saved = localStorage.getItem('chatWallpaper');
     return saved && WALLPAPER_PREVIEWS[saved] ? saved : 'default';
   });
+  const [onlineUsers, setOnlineUsers] = useState([]);
+
 
   // Precarga los recursos de los wallpapers
   useEffect(() => {
