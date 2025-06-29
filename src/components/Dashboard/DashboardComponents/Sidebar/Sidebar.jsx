@@ -27,7 +27,6 @@ const getConsistentColor = (username) => {
 const WallpaperThumbnail = ({ wp, isActive, onClick }) => {
   const videoRef = useRef(null);
 
-  // Maneja el hover para los videos
   const handleMouseEnter = () => {
     if (videoRef.current && wp.type === "video") {
       videoRef.current.currentTime = 0;
@@ -40,11 +39,10 @@ const WallpaperThumbnail = ({ wp, isActive, onClick }) => {
       onClick={onClick}
       onMouseEnter={handleMouseEnter}
       className={`group relative overflow-hidden rounded-md aspect-square ${
-        isActive ? 'ring-2 ring-indigo-500' : ''
+        isActive ? 'ring-2 ring-[#8e79f2]' : ''
       }`}
       title={wp.name}
     >
-      {/* Renderizado condicional según el tipo de wallpaper */}
       {wp.type === "video" ? (
         <div className="w-full h-full relative">
           <video
@@ -110,7 +108,11 @@ const Sidebar = ({
       <nav className="flex flex-col items-center space-y-6 flex-grow">
         {/* Botón de chats */}
         <button 
-          className={`relative p-3 rounded-xl transition-all ${activeView === 'chats' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}
+          className={`relative p-3 rounded-xl transition-colors duration-200 ${
+            activeView === 'chats' 
+              ? 'bg-[#8e79f2] text-white' 
+              : 'text-gray-400 hover:bg-[#c7b9ff] hover:text-[#4a3a8a]'
+          }`}
           onClick={() => handleViewChange('chats')}
         >
           <MessageCircle className="w-5 h-5" />
@@ -123,7 +125,11 @@ const Sidebar = ({
 
         {/* Botón de amigos */}
         <button 
-          className={`p-3 rounded-xl transition-all ${activeView === 'friends' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}
+          className={`p-3 rounded-xl transition-colors duration-200 ${
+            activeView === 'friends' 
+              ? 'bg-[#8e79f2] text-white' 
+              : 'text-gray-400 hover:bg-[#c7b9ff] hover:text-[#4a3a8a]'
+          }`}
           onClick={() => handleViewChange('friends')}
         >
           <Users className="w-5 h-5" />
@@ -132,7 +138,11 @@ const Sidebar = ({
         {/* Botón de wallpapers */}
         <div className="relative" ref={wallpaperMenuRef}>
           <button 
-            className={`p-3 rounded-xl transition-all ${showWallpaperMenu ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-700'}`}
+            className={`p-3 rounded-xl transition-colors duration-200 ${
+              showWallpaperMenu 
+                ? 'bg-[#8e79f2] text-white' 
+                : 'text-gray-400 hover:bg-[#c7b9ff] hover:text-[#4a3a8a]'
+            }`}
             onClick={() => setShowWallpaperMenu(!showWallpaperMenu)}
           >
             <PaintbrushVertical className="w-5 h-5" />
@@ -143,7 +153,6 @@ const Sidebar = ({
               <div className="p-2 border-b border-gray-600">
                 <h3 className="text-xs font-semibold text-gray-300">Wallpapers</h3>
               </div>
-              
               <div className="grid grid-cols-2 gap-2 p-2">
                 {Object.entries(WALLPAPER_PREVIEWS).map(([id, wp]) => (
                   <WallpaperThumbnail
@@ -166,7 +175,7 @@ const Sidebar = ({
       <div className="flex flex-col items-center space-y-6">
         {/* Botón de logout */}
         <button 
-          className="p-3 rounded-xl text-gray-400 hover:bg-red-600 hover:text-white transition-all"
+          className="p-3 rounded-xl text-gray-400 hover:bg-red-600 hover:text-white transition-colors duration-200"
           onClick={handleLogout}
         >
           <LogOut className="w-5 h-5" />
@@ -174,7 +183,7 @@ const Sidebar = ({
 
         {/* Avatar de usuario */}
         <div 
-          className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-500 cursor-pointer"
+          className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-black cursor-pointer"
           onClick={handleProfileClick}
         >
           <img

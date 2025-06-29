@@ -196,7 +196,7 @@ const Dashboard = () => {
           <img 
             src="/EchoProtocolLogo.png" 
             alt="Echo Protocol" 
-            className="h-4 ml-1.5" 
+            className="h-12 ml-1.5" 
           />
         </div>
       </div>
@@ -230,8 +230,7 @@ const Dashboard = () => {
           </div>
 
           <div className="flex gap-2 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <div className="relative w-full">
               <input
                 type="text"
                 placeholder={
@@ -239,7 +238,7 @@ const Dashboard = () => {
                     ? "Search for friends..." 
                     : "Search conversations..."
                 }
-                className="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:bg-gray-800 placeholder-gray-400"
+                className="w-full px-6 py-3 bg-white/10 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8e79f2] focus:border-[#8e79f2] text-white placeholder-gray-400 backdrop-blur-sm transition-all duration-300"
                 value={activeView === 'friends' ? searchTerm : conversationsSearchTerm}
                 onChange={(e) => 
                   activeView === 'friends' 
@@ -248,15 +247,13 @@ const Dashboard = () => {
                 }
                 onKeyPress={(e) => e.key === "Enter" && handleSearch()}
               />
-            </div>
-            {activeView === 'friends' && (
               <button 
-                className="px-4 bg-indigo-600 text-white rounded-lg flex items-center justify-center hover:bg-indigo-700 transition-colors"
+                className="absolute right-4 top-3 text-gray-400 hover:text-white"
                 onClick={handleSearch}
               >
-                <Plus className="w-5 h-5" />
+                <Search className="h-6 w-6" />
               </button>
-            )}
+            </div>
           </div>
         </div>
 

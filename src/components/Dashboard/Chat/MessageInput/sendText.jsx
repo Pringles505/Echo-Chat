@@ -27,12 +27,12 @@ const SendText = ({ sendMessage }) => {
         value={text}
         onChange={handleChange}
         placeholder="Type a message..."
-        className="flex-1 py-3 px-5 bg-gray-800 text-white rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 border border-gray-700"
+        className="flex-1 py-3 px-5 bg-white/10 text-white rounded-full focus:outline-none focus:ring-2 focus:ring-[#8e79f2] placeholder-gray-500 border border-gray-700"
       />
       <button
         type="submit"
         disabled={!text.trim()}
-        className={`ml-3 p-3 rounded-full ${text.trim() ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-700 text-gray-500 cursor-not-allowed'} transition-colors`}
+        className={`ml-3 p-3 rounded-full ${text.trim() ? 'bg-indigo-700 text-white hover:bg-[#8e79f2]' : 'bg-gray-700 text-gray-500 cursor-not-allowed'} transition-colors`}
       >
         <Send className="w-5 h-5" />
       </button>

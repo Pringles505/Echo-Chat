@@ -68,7 +68,7 @@ const ConversationItem = ({
 
   return (
     <li 
-      className={`p-3 hover:bg-gray-800 cursor-pointer transition-colors ${isActive ? 'bg-gray-800' : ''}`}
+      className={`p-3 hover:bg-[#8e79f2]/20 cursor-pointer transition-colors ${isActive ? 'bg-[#8e79f2]/20' : ''}`}
       onClick={() => onSelect(conversation)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -79,7 +79,7 @@ const ConversationItem = ({
             src={conversation.profileImage || 
                  `https://ui-avatars.com/api/?name=${conversation.username}&background=${avatarBgColor}&color=fff`}
             alt={conversation.username}
-            className="w-10 h-10 rounded-full object-cover border-2 border-indigo-500"
+            className="w-10 h-10 rounded-full object-cover border-2 border-black"
             onError={(e) => {
               e.target.src = `https://ui-avatars.com/api/?name=${conversation.username}&background=${avatarBgColor}&color=fff`;
               e.target.onerror = null;

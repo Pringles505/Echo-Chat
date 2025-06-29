@@ -26,7 +26,6 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
     };
   }, [menuOpen]);
 
-  // Cerrar menú cuando cambia el chat activo
   useEffect(() => {
     setMenuOpen(false);
   }, [activeChat]);
@@ -102,7 +101,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
   return (
     <div className={`p-4 flex justify-between items-center transition-all border-b
       ${isHovered ? 'bg-gray-800' : 'bg-black'}
-      ${activeChat ? 'border-indigo-500' : 'border-gray-800'}
+      ${activeChat ? 'border-black' : 'border-black'}
     `}>
       <div className="flex items-center gap-4">
         <button
@@ -152,7 +151,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
         </button>
 
         {menuOpen && (
-          <div className="absolute right-0 mt-12 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
+          <div className="absolute right-0 mt-12 w-40 bg-black border border-gray-700 rounded-lg shadow-lg z-50">
             <button
               className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white"
               onClick={() => {
@@ -180,7 +179,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
                 className="w-full text-left px-4 py-2 hover:bg-gray-700 text-green-400"
                 disabled
               >
-                Friends ✓
+                Your Friend
               </button>
             )}
 
