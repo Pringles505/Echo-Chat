@@ -129,7 +129,7 @@ const CommunityPage = () => {
       id: 3,
       name: "Gonzalo de la Lastra",
       role: "Quality Assurance Lead",
-      avatar: "/community/miguel.jpg",
+      avatar: "/community/gonchu.jpeg",
       joined: "Oct 2024",
     }
   ];
