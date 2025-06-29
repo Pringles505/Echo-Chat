@@ -59,7 +59,7 @@ const BlogPage = () => {
       date: "June 10, 2025",
       excerpt:
         "How Echo handles the conversion between curve forms for cryptographic operations.",
-      imageUrl: "https://example.com/curve-conversion.jpg",
+      imageUrl: "/blog/programming.jpg",
       link: "#",
       category: "Technical",
     },
@@ -69,7 +69,7 @@ const BlogPage = () => {
       date: "June 12, 2025",
       excerpt:
         "Why Echo implements key clamping and how it protects against subgroup attacks.",
-      imageUrl: "https://example.com/clamping-security.jpg",
+      imageUrl: "/blog/cryptography.jpeg",
       link: "#",
       category: "Security",
     },
@@ -79,7 +79,7 @@ const BlogPage = () => {
       date: "June 15, 2025",
       excerpt:
         "How we compiled Rust cryptographic modules to WebAssembly for use in Echo's web client.",
-      imageUrl: "https://example.com/wasm-guide.jpg",
+      imageUrl: "/blog/wasm.png",
       link: "#",
       category: "Tutorial",
     },
@@ -89,7 +89,7 @@ const BlogPage = () => {
       date: "June 18, 2025",
       excerpt:
         "How Echo ensures that past communications remain secure even if long-term keys are compromised.",
-      imageUrl: "https://example.com/forward-secrecy.jpg",
+      imageUrl: "/blog/programming.jpg",
       link: "#",
       category: "Security",
     },
@@ -109,7 +109,7 @@ const BlogPage = () => {
       date: "June 22, 2025",
       excerpt:
         "How Echo uses OPKs to provide additional protection and forward secrecy.",
-      imageUrl: "https://example.com/opk-security.jpg",
+      imageUrl: "/blog/cybersecurity.jpeg",
       link: "#",
       category: "Security",
     },
@@ -119,7 +119,7 @@ const BlogPage = () => {
       date: "June 25, 2025",
       excerpt:
         "A step-by-step walkthrough of how signature verification works in the Echo protocol.",
-      imageUrl: "https://example.com/signature-verification.jpg",
+      imageUrl: "/blog/office.jpg",
       link: "#",
       category: "Technical",
     },
@@ -129,7 +129,7 @@ const BlogPage = () => {
       date: "June 28, 2025",
       excerpt:
         "Understanding the KDF that combines multiple DH results into a single secure session key.",
-      imageUrl: "https://example.com/kdf-explained.jpg",
+      imageUrl: "/blog/dh.png",
       link: "#",
       category: "Technical",
     },
@@ -139,7 +139,7 @@ const BlogPage = () => {
       date: "July 1, 2025",
       excerpt:
         "The story of how three students developed Echo as part of their IMMUNE Institute program.",
-      imageUrl: "https://example.com/student-journey.jpg",
+      imageUrl: "/blog/office.jpg",
       link: "#",
       category: "Story",
     },
@@ -149,7 +149,7 @@ const BlogPage = () => {
       date: "July 3, 2025",
       excerpt:
         "How Echo's security model differs from and improves upon existing secure messaging protocols.",
-      imageUrl: "https://example.com/protocol-comparison.jpg",
+      imageUrl: "EchoProtocolLogo.png",
       link: "#",
       category: "Analysis",
     },
@@ -159,7 +159,7 @@ const BlogPage = () => {
       date: "July 5, 2025",
       excerpt:
         "A look at planned features and improvements for the Echo secure messaging platform.",
-      imageUrl: "https://example.com/roadmap.jpg",
+      imageUrl: "/blog/roadmap.jpg",
       link: "#",
       category: "Announcement",
     },

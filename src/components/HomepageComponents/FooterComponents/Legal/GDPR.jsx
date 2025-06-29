@@ -54,7 +54,7 @@ function GDPR() {
             <h2 className="text-2xl font-semibold mb-4">5. Contact Us</h2>
             <p>
               For any GDPR-related inquiries or to exercise your rights, please contact our 
-              Data Protection Officer at <span className="text-[#514b96]">dpo@echo.example</span>.
+              Data Protection Officer at <span className="text-[#514b96]">contact@echo</span>.
             </p>
           </section>
         </div>
