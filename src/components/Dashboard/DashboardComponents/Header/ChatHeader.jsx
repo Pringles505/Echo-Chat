@@ -12,6 +12,25 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
   const menuRef = useRef(null);
   const [socket, setSocket] = useState(null);
 
+  // Cerrar menú al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuOpen && menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen]);
+
+  // Cerrar menú cuando cambia el chat activo
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [activeChat]);
+
   // Initialize socket connection
   useEffect(() => {
     const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
