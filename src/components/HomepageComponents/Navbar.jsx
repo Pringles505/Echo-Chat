@@ -15,6 +15,15 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleNavigation = (e, sectionId) => {
+    e.preventDefault();
+    setIsMobileMenuOpen(false);
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
@@ -36,7 +45,7 @@ const Navbar = () => {
 
           <nav className="hidden md:flex items-center space-x-8">
             <a href="/blog" className="text-white hover:text-[#514b96] transition-colors">Blog</a>
-            <a href="#pricing" className="text-white hover:text-[#514b96] transition-colors">Pricing</a>
+            <a href="#pricing" onClick={(e) => handleNavigation(e, 'pricing')} className="text-white hover:text-[#514b96] transition-colors">Pricing</a>
             <a href="/about-us" className="text-white hover:text-[#514b96] transition-colors">About Us</a>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -72,9 +81,9 @@ const Navbar = () => {
         <div className="md:hidden bg-[var(--color-background)] border-t border-[var(--color-primary)]/30">
           <div className="container mx-auto px-4 py-4">
             <nav className="flex flex-col space-y-4">
-              <a href="#features" className="text-white hover:text-[#514b96] py-2 transition-colors">Features</a>
-              <a href="#security" className="text-white hover:text-[#514b96] py-2 transition-colors">Security</a>
-              <a href="#pricing" className="text-white hover:text-[#514b96] py-2 transition-colors">Pricing</a>
+              <a href="#features" onClick={(e) => handleNavigation(e, 'features')} className="text-white hover:text-[#514b96] py-2 transition-colors">Features</a>
+              <a href="#security" onClick={(e) => handleNavigation(e, 'security')} className="text-white hover:text-[#514b96] py-2 transition-colors">Security</a>
+              <a href="#pricing" onClick={(e) => handleNavigation(e, 'pricing')} className="text-white hover:text-[#514b96] py-2 transition-colors">Pricing</a>
               <button
                 className="w-full py-2 text-white hover:text-[#514b96] transition-colors text-left"
                 onClick={() => window.location.href = '/login'}

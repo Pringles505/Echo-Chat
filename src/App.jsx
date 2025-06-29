@@ -22,6 +22,7 @@ import ContactUs from './components/HomepageComponents/FooterComponents/ContactU
 import Documentation from './components/HomepageComponents/FooterComponents/Documentation';
 import AboutUs from './components/HomepageComponents/FooterComponents/AboutUs';
 import BlogPage from './components/HomepageComponents/blog';
+import CommunityPage from './components/HomepageComponents/FooterComponents/Community';
 
 function UserProfileRoute() {
   const { userId } = useParams();
@@ -50,6 +51,7 @@ function App() {
         <Route path="/documentation" element={<Documentation />} />
         <Route path="/about-us" element={<AboutUs />} />
         <Route path="/blog" element={<BlogPage />} />
+        <Route path="/community" element={<CommunityPage />} />
         
         {/* Legal Routes */}
         <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />

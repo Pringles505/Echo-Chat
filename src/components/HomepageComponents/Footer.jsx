@@ -15,12 +15,12 @@ const Footer = () => {
   const footerLinks = {
     explore: [
       { label: 'Features', href: '#features', icon: <ArrowUpRight size={14} /> },
-      { label: 'Pricing', href: '#pricing', icon: <ArrowUpRight size={14} /> },
+      { label: 'Pricing', href: '/#pricing', icon: <ArrowUpRight size={14} /> },
       { label: 'Showcase', href: '#showcase', icon: <ArrowUpRight size={14} /> },
     ],
     support: [
       { label: 'Documentation', href: '/documentation' },
-      { label: 'Community', href: 'https://community.echo.example', target: '_blank', rel: 'noopener noreferrer' },
+      { label: 'Community', href: '/community'},
       { label: 'Contact Us', href: '/contact-us', icon: <Mail size={14} /> },
     ],
     legal: [
@@ -107,7 +107,7 @@ const Footer = () => {
 
             <div>
               <h4 className="font-semibold mb-6 text-white text-lg">Support</h4>
-              {renderLinks(footerLinks.support)} {/* Ahora incluye Documentation */}
+              {renderLinks(footerLinks.support)}
             </div>
 
             <div>
