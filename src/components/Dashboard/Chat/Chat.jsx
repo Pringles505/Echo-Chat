@@ -487,7 +487,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
   };
 
   // Listen for messageSeenUpdatem wehn the target user sees the message
-  // In this case, targetUserId=userId and userId=targetUserId, since its sent from the target user
+  // In this case, targetUserId=userId and userId=targetUserId, since its sent from the target user 
   socket.on("messageSeenUpdate", ({ userId, targetUserId }) => {
     console.log("👀", targetUserId, "Message seen by:", userId);
     setMessages((prevMessages) =>
