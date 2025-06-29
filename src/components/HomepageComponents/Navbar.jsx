@@ -37,7 +37,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20 md:h-24">
           <div className="flex-shrink-0">
-            <a href="/" className="flex items-center space-x-2 text-white font-bold text-xl hover:text-purple-500 transition-colors">
+            <a href="/" className="flex items-center space-x-2 text-white font-bold text-xl">
               <img src="/echo-logo.svg" alt="Echo Logo" className="h-16 w-16 md:h-15 md:w-15" />
               <span>ECHO</span>
             </a>
