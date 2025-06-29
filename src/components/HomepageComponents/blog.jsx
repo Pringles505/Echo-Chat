@@ -26,7 +26,7 @@ const BlogPage = () => {
     {
       id: 2,
       title: "Throwback: Echo's First Logo (When It Was Chat-Tuah)",
-      date: "July 12, 2025",
+      date: "June 2, 2025",
       excerpt:
         "A peek at Echo's original design when it started as Chat-Tuah. Recognize the soda can?",
       imageUrl: "/sodaCan.svg",
@@ -35,7 +35,7 @@ const BlogPage = () => {
       tags: ["history", "design", "throwback"],
     },
     {
-      id: 2,
+      id: 3,
       title: "Deep Dive into X3DH: Echo's Key Exchange Protocol",
       date: "June 3, 2025",
       excerpt:
@@ -45,7 +45,7 @@ const BlogPage = () => {
       category: "Technical",
     },
     {
-      id: 3,
+      id: 4,
       title: "Why We Chose Rust for Cryptographic Operations",
       date: "June 5, 2025",
       excerpt:
@@ -55,7 +55,7 @@ const BlogPage = () => {
       category: "Development",
     },
     {
-      id: 4,
+      id: 5,
       title: "Understanding XEdDSA: Echo's Signature Scheme",
       date: "June 8, 2025",
       excerpt:
@@ -65,7 +65,7 @@ const BlogPage = () => {
       category: "Technical",
     },
     {
-      id: 5,
+      id: 6,
       title: "From Montgomery to Edwards: Key Conversion in Echo",
       date: "June 10, 2025",
       excerpt:
@@ -75,7 +75,7 @@ const BlogPage = () => {
       category: "Technical",
     },
     {
-      id: 6,
+      id: 7,
       title: "The Importance of Clamping in Elliptic Curve Cryptography",
       date: "June 12, 2025",
       excerpt:
@@ -85,7 +85,7 @@ const BlogPage = () => {
       category: "Security",
     },
     {
-      id: 7,
+      id: 8,
       title: "Building WASM Modules for Echo: A Step-by-Step Guide",
       date: "June 15, 2025",
       excerpt:
@@ -95,7 +95,7 @@ const BlogPage = () => {
       category: "Tutorial",
     },
     {
-      id: 8,
+      id: 9,
       title: "Echo's Forward Secrecy Implementation Explained",
       date: "June 18, 2025",
       excerpt:
@@ -105,17 +105,17 @@ const BlogPage = () => {
       category: "Security",
     },
     {
-      id: 9,
+      id: 10,
       title: "Benchmarking Echo's Cryptographic Operations",
       date: "June 20, 2025",
       excerpt:
         "Performance analysis of Echo's Rust cryptographic modules compared to other implementations.",
-      imageUrl: "https://example.com/benchmarks.jpg",
+      imageUrl: "/blog/benchmark.jpg",
       link: "#",
       category: "Performance",
     },
     {
-      id: 10,
+      id: 11,
       title: "The Role of One-Time Prekeys in Echo's Security",
       date: "June 22, 2025",
       excerpt:
@@ -125,7 +125,7 @@ const BlogPage = () => {
       category: "Security",
     },
     {
-      id: 11,
+      id: 12,
       title: "Verifying Signatures in Echo: The XEdDSA Process",
       date: "June 25, 2025",
       excerpt:
@@ -135,7 +135,7 @@ const BlogPage = () => {
       category: "Technical",
     },
     {
-      id: 12,
+      id: 13,
       title: "How Echo's Key Derivation Function Works",
       date: "June 28, 2025",
       excerpt:
@@ -145,7 +145,7 @@ const BlogPage = () => {
       category: "Technical",
     },
     {
-      id: 13,
+      id: 14,
       title: "The Student Journey: Building a Secure Chat App from Scratch",
       date: "July 1, 2025",
       excerpt:
@@ -155,7 +155,7 @@ const BlogPage = () => {
       category: "Story",
     },
     {
-      id: 14,
+      id: 15,
       title: "Comparing Echo's Protocol to Signal and Other Secure Messengers",
       date: "July 3, 2025",
       excerpt:
@@ -165,7 +165,7 @@ const BlogPage = () => {
       category: "Analysis",
     },
     {
-      id: 15,
+      id: 16,
       title: "Future Roadmap for Echo: What's Coming Next",
       date: "July 5, 2025",
       excerpt:
@@ -173,16 +173,6 @@ const BlogPage = () => {
       imageUrl: "/blog/roadmap.jpg",
       link: "#",
       category: "Announcement",
-    },
-    {
-      id: 16,
-      title: "Deep Dive into X3DH: Echo's Key Exchange Protocol",
-      date: "June 3, 2025",
-      excerpt:
-        "Learn how Echo implements the Extended Triple Diffie-Hellman protocol to establish secure shared secrets between users.",
-      imageUrl: "/blog/X3DH.png",
-      link: "#",
-      category: "Technical",
     },
   ];
 
