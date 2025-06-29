@@ -37,20 +37,20 @@ const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20 md:h-24">
           <div className="flex-shrink-0">
-            <a href="/" className="flex items-center space-x-2 text-white font-bold text-xl hover:text-[#514b96] transition-colors">
+            <a href="/" className="flex items-center space-x-2 text-white font-bold text-xl hover:text-purple-500 transition-colors">
               <img src="/echo-logo.svg" alt="Echo Logo" className="h-16 w-16 md:h-15 md:w-15" />
               <span>ECHO</span>
             </a>
           </div>
 
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="/blog" className="text-white hover:text-[#514b96] transition-colors">Blog</a>
-            <a href="#pricing" onClick={(e) => handleNavigation(e, 'pricing')} className="text-white hover:text-[#514b96] transition-colors">Pricing</a>
-            <a href="/about-us" className="text-white hover:text-[#514b96] transition-colors">About Us</a>
+            <a href="/blog" className="text-white hover:text-purple-500 transition-colors">Blog</a>
+            <a href="#pricing" onClick={(e) => handleNavigation(e, 'pricing')} className="text-white hover:text-purple-500 transition-colors">Pricing</a>
+            <a href="/about-us" className="text-white hover:text-purple-500 transition-colors">About Us</a>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 text-white hover:text-[#514b96] transition-colors"
+              className="px-4 py-2 text-white hover:text-purple-500 transition-colors"
               onClick={() => window.location.href = '/login'}
             >
               Login
@@ -58,7 +58,7 @@ const Navbar = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[#514b96] transition-colors"
+              className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-purple-500 transition-colors"
               onClick={() => window.location.href = '/register'}
             >
               Register
@@ -68,7 +68,7 @@ const Navbar = () => {
           <div className="md:hidden">
             <button
               type="button"
-              className="text-white hover:text-[#514b96] transition-colors"
+              className="text-white hover:text-purple-500 transition-colors"
               onClick={toggleMobileMenu}
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -81,17 +81,17 @@ const Navbar = () => {
         <div className="md:hidden bg-[var(--color-background)] border-t border-[var(--color-primary)]/30">
           <div className="container mx-auto px-4 py-4">
             <nav className="flex flex-col space-y-4">
-              <a href="#features" onClick={(e) => handleNavigation(e, 'features')} className="text-white hover:text-[#514b96] py-2 transition-colors">Features</a>
-              <a href="#security" onClick={(e) => handleNavigation(e, 'security')} className="text-white hover:text-[#514b96] py-2 transition-colors">Security</a>
-              <a href="#pricing" onClick={(e) => handleNavigation(e, 'pricing')} className="text-white hover:text-[#514b96] py-2 transition-colors">Pricing</a>
+              <a href="#features" onClick={(e) => handleNavigation(e, 'features')} className="text-white hover:text-purple-500 py-2 transition-colors">Features</a>
+              <a href="#security" onClick={(e) => handleNavigation(e, 'security')} className="text-white hover:text-purple-500 py-2 transition-colors">Security</a>
+              <a href="#pricing" onClick={(e) => handleNavigation(e, 'pricing')} className="text-white hover:text-purple-500 py-2 transition-colors">Pricing</a>
               <button
-                className="w-full py-2 text-white hover:text-[#514b96] transition-colors text-left"
+                className="w-full py-2 text-white hover:text-purple-500 transition-colors text-left"
                 onClick={() => window.location.href = '/login'}
               >
                 Login
               </button>
               <button
-                className="w-full py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[#514b96] transition-colors"
+                className="w-full py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-purple-500 transition-colors"
                 onClick={() => window.location.href = '/register'}
               >
                 Register

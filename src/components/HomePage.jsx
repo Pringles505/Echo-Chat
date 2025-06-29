@@ -1,7 +1,6 @@
 import Navbar from './HomepageComponents/Navbar.jsx';
 import Hero from './HomepageComponents/Hero.jsx';
 import Features from './HomepageComponents/Features.jsx';
-import Testimonials from './HomepageComponents/FeatureUpdates.jsx';
 import Pricing from './HomepageComponents/Pricing.jsx';
 import Footer from './HomepageComponents/Footer.jsx';
 import WaveBackground from './HomepageComponents/WaveBackground.jsx';
@@ -16,7 +15,6 @@ function HomePage() {
       <div className="relative z-10">
         <Hero />
         <Features />
-        <Testimonials />
         <Pricing />
         <Footer />
       </div>

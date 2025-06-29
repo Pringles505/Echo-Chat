@@ -51,7 +51,7 @@ const Documentation = () => {
               security protocol inspired by the{" "}
               <a
                 href="https://signal.org/docs/"
-                className="text-[#514b96] hover:underline"
+                className="text-purple-500 hover:underline"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -85,15 +85,15 @@ const Documentation = () => {
             <p className="mb-6">
               Extended Triple Diffie-Hellman is a key agreement protocol that
               ensures{" "}
-              <span className="font-semibold text-[#514b96]">
+              <span className="font-semibold text-purple-500">
                 forward secrecy
               </span>{" "}
               and{" "}
-              <span className="font-semibold text-[#514b96]">deniability</span>.
+              <span className="font-semibold text-purple-500">deniability</span>.
             </p>
 
             <div className="bg-white/5 p-6 rounded-xl mb-8">
-              <h3 className="text-2xl font-semibold mb-4 text-[#514b96]">
+              <h3 className="text-2xl font-semibold mb-4 text-purple-500">
                 Key Components
               </h3>
               <ul className="list-disc pl-6 space-y-3">
@@ -113,7 +113,7 @@ const Documentation = () => {
             </div>
 
             <div className="bg-white/5 p-6 rounded-xl mb-8">
-              <h3 className="text-2xl font-semibold mb-4 text-[#514b96]">
+              <h3 className="text-2xl font-semibold mb-4 text-purple-500">
                 Key Exchange Process
               </h3>
               <ol className="list-decimal pl-6 space-y-3">
@@ -163,7 +163,7 @@ const Documentation = () => {
 
             <div className="grid md:grid-cols-2 gap-8 mb-8">
               <div className="bg-white/5 p-6 rounded-xl">
-                <h3 className="text-2xl font-semibold mb-4 text-[#514b96]">
+                <h3 className="text-2xl font-semibold mb-4 text-purple-500">
                   Signing Process
                 </h3>
                 <ol className="list-decimal pl-6 space-y-3">
@@ -204,7 +204,7 @@ const Documentation = () => {
               </div>
 
               <div className="bg-white/5 p-6 rounded-xl">
-                <h3 className="text-2xl font-semibold mb-4 text-[#514b96]">
+                <h3 className="text-2xl font-semibold mb-4 text-purple-500">
                   Verification Process
                 </h3>
                 <ol className="list-decimal pl-6 space-y-3">
@@ -235,7 +235,7 @@ const Documentation = () => {
 
             {/* Clamping Table */}
             <div className="bg-white/5 p-6 rounded-xl mb-8">
-              <h3 className="text-2xl font-semibold mb-4 text-[#514b96]">
+              <h3 className="text-2xl font-semibold mb-4 text-purple-500">
                 Clamping Process
               </h3>
               <div className="overflow-x-auto">
@@ -286,7 +286,7 @@ const Documentation = () => {
 
             {/* Key Terminology Table */}
             <div className="bg-white/5 p-6 rounded-xl mt-8">
-              <h3 className="text-2xl font-semibold mb-4 text-[#514b96]">
+              <h3 className="text-2xl font-semibold mb-4 text-purple-500">
                 Key Terminology
               </h3>
               <div className="overflow-x-auto">
@@ -388,7 +388,7 @@ const Documentation = () => {
                 <li key={url}>
                   <a
                     href={url}
-                    className="text-[#514b96] hover:underline flex items-center"
+                    className="text-purple-500 hover:underline flex items-center"
                     target="_blank"
                     rel="noopener noreferrer"
                   >

@@ -16,7 +16,6 @@ const Footer = () => {
     explore: [
       { label: 'Features', href: '#features', icon: <ArrowUpRight size={14} /> },
       { label: 'Pricing', href: '/#pricing', icon: <ArrowUpRight size={14} /> },
-      { label: 'Showcase', href: '#showcase', icon: <ArrowUpRight size={14} /> },
     ],
     support: [
       { label: 'Documentation', href: '/documentation' },
