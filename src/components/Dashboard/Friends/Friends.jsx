@@ -22,10 +22,6 @@ const Friends = ({ token, onActiveChatChange, searchTerm }) => {
       console.log("Socket connected");
     });
 
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
-
     // Cleanup
     return () => {
       socket.disconnect();
