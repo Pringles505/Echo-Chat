@@ -22,24 +22,6 @@ const Friends = ({ token, onActiveChatChange, searchTerm }) => {
       console.log("Socket connected");
     });
 
-    socket.on("notification", (notification) => {
-      const formattedProfileImage = formatProfileImage(
-        notification.messageData.profileImage,
-        notification.messageData.username
-      );
-
-      setNotifications((prevNotifications) => [
-        ...prevNotifications,
-        {
-          ...notification,
-          messageData: {
-            ...notification.messageData,
-            profileImage: formattedProfileImage,
-          },
-        },
-      ]);
-    });
-
     socket.on("disconnect", () => {
       console.log("Socket disconnected");
     });
