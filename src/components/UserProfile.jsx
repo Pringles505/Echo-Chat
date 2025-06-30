@@ -196,8 +196,7 @@ const UserProfile = () => {
       } else {
         // Handle errors
         if (response && response.error === "Username already taken") {
-          // Reset username to original value
-          setCurrentUsername(originalUsername);
+          // Don't reset username - let user modify and try again
           setPopupMsg("Username already taken");
         } else {
           setPasswordError(
