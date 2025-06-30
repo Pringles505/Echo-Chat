@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import io from "socket.io-client";
 import PropTypes from "prop-types";
 import { jwtDecode } from "jwt-decode";
@@ -8,10 +8,15 @@ const Friends = ({ token, onActiveChatChange, searchTerm }) => {
   const [chatList, setSearchList] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
+  const socketRef = useRef(null);
+
   useEffect(() => {
+    // Initialize persistent socket connection
     const socket = io(import.meta.env.VITE_SOCKET_URL, {
       auth: { token },
     });
+
+    socketRef.current = socket;
 
     socket.on("connect", () => {
       console.log("Socket connected");
@@ -39,6 +44,7 @@ const Friends = ({ token, onActiveChatChange, searchTerm }) => {
       console.log("Socket disconnected");
     });
 
+    // Cleanup
     return () => {
       socket.disconnect();
     };
@@ -46,22 +52,18 @@ const Friends = ({ token, onActiveChatChange, searchTerm }) => {
 
   const handleSearch = useCallback(() => {
     const user = token ? jwtDecode(token) : "";
-    const tempSocket = io(import.meta.env.VITE_SOCKET_URL);
-
-    tempSocket.on("connect", () => {
-      console.log("TempSocket connected");
-    });
-
     if (!searchTerm || searchTerm === user.username) {
-      tempSocket.disconnect();
       return;
     }
 
-    tempSocket.emit("searchUser", { searchTerm }, (response) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    socket.emit("searchUser", { searchTerm }, (response) => {
       if (response && response.user) {
         const basicUser = response.user;
 
-        tempSocket.emit(
+        socket.emit(
           "getUserInfo",
           { userId: basicUser.id },
           (profileResponse) => {
@@ -86,18 +88,14 @@ const Friends = ({ token, onActiveChatChange, searchTerm }) => {
             };
 
             setSearchList((prevChatList) => {
-              // Evitar duplicados
+              // Avoid duplicates
               const userExists = prevChatList.some(
                 (user) => user.id === targetUser.id
               );
               return userExists ? prevChatList : [...prevChatList, targetUser];
             });
-            
-            tempSocket.disconnect();
           }
         );
-      } else {
-        tempSocket.disconnect();
       }
     });
   }, [searchTerm, token]);
