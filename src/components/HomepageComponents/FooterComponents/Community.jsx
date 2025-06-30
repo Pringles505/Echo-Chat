@@ -90,23 +90,23 @@ const CommunityPage = () => {
     },
     {
       id: 2,
-      title: "Community Meetup - Berlin",
+      title: "Echo Community Meetup - Madrid",
       date: "July 12, 2025",
       time: "18:00 CET",
-      location: "Berlin, Germany",
+      location: "Madrid, Spain",
       description:
-        "Local meetup for Echo users and developers in the Berlin area.",
-      attendees: 23,
+        "Local meetup for Echo users and developers in the Madrid area. Network with the community and discuss Echo's future.",
+      attendees: 31,
     },
     {
       id: 3,
-      title: "Security Best Practices Webinar",
+      title: "Echo Security & Privacy Workshop",
       date: "July 20, 2025",
       time: "16:00 UTC",
       location: "Online",
       description:
-        "Learn how to maximize your security when using Echo and similar tools.",
-      attendees: 142,
+        "Deep dive into Echo's encryption methods, X3DH protocol implementation, and best practices for secure messaging.",
+      attendees: 156,
     },
   ];
 
