@@ -291,7 +291,7 @@ const Dashboard = () => {
       <div className="flex-1 flex flex-col bg-black">
         {activeChat ? (
           <div className="flex flex-col h-full">
-            <ChatHeader activeChat={activeChat} />
+            <ChatHeader activeChat={activeChat} userId={userId} token={token} />
             <div className="flex-1 overflow-hidden">
               <Chat 
                 token={token} 
