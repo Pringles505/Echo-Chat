@@ -11,9 +11,11 @@ export function getSocket() {
     });
   }
   // Always set the latest token before connecting
-  socket.auth = token ? { token } : {};
-  if (!socket.connected) {
-    socket.connect();
+  if (token) {
+    socket.auth = { token };
+    if (!socket.connected) {
+      socket.connect();
+    }
   }
   return socket;
 }
