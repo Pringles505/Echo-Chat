@@ -388,7 +388,7 @@ const Documentation = () => {
                 <li key={url}>
                   <a
                     href={url}
-                    className="text-purple-500 hover:underline flex items-center"
+                    className="text-white hover:underline flex items-center"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
