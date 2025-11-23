@@ -1,7 +1,62 @@
+import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 
+const extractTenorPostId = (text) => {
+  if (!text) return null;
+
+  // Match data-postid from embed code
+  const embedMatch = text.match(/data-postid="(\d+)"/);
+  if (embedMatch) return embedMatch[1];
+
+  // Match direct tenor.com/view links
+  const linkMatch = text.match(/tenor\.com\/view\/[^"'\s]+-(\d+)/);
+  if (linkMatch) return linkMatch[1];
+
+  return null;
+};
+
+// Component for Tenor GIF
+const TenorGif = ({ postId }) => {
+  const [gifUrl, setGifUrl] = useState(null);
+
+  useEffect(() => {
+    const API_KEY = import.meta.env.VITE_TENOR_API_KEY;
+    fetch(`https://tenor.googleapis.com/v2/posts?ids=${postId}&key=${API_KEY}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.results?.[0]?.media_formats?.gif?.url) {
+          setGifUrl(data.results[0].media_formats.gif.url);
+        }
+      })
+      .catch(console.error);
+  }, [postId]);
+
+  if (!gifUrl) return <p>Loading GIF...</p>;
+
+  return (
+    <img
+      src={gifUrl}
+      alt="Tenor GIF"
+      className="max-w-full rounded-lg cursor-pointer"
+      onClick={() => window.open(`https://tenor.com/view/-${postId}`, '_blank')}
+    />
+  );
+};
+
+// Render message content with Tenor GIF support
+const renderMessageContent = (text) => {
+  if (!text) return null;
+
+  const postId = extractTenorPostId(text);
+
+  if (postId) {
+    return <TenorGif postId={postId} />;
+  }
+
+  return <p>{text}</p>;
+};
 const DisplayText = ({ messages = [], currentUserId }) => {
   const shouldShowDate = (index) => {
     if (index === 0) return true;
@@ -9,6 +64,7 @@ const DisplayText = ({ messages = [], currentUserId }) => {
     const prevDate = new Date(messages[index - 1].createdAt);
     return !isSameDay(currentDate, prevDate);
   };
+
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -28,8 +84,8 @@ const DisplayText = ({ messages = [], currentUserId }) => {
           >
             <div
               className={`max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl rounded-lg p-3 ${message.userId === currentUserId
-                  ? "bg-indigo-600 text-white rounded-br-none"
-                  : "bg-gray-700 text-white rounded-bl-none"
+                ? "bg-indigo-600 text-white rounded-br-none"
+                : "bg-gray-700 text-white rounded-bl-none"
                 }`}
               style={{ wordWrap: "break-word", whiteSpace: "pre-wrap" }}
             >
@@ -68,7 +124,7 @@ const DisplayText = ({ messages = [], currentUserId }) => {
                     onClick={() => window.open(message.image, '_blank')}
                   />
                 )}
-                {message.text && <p>{message.text}</p>}
+                {message.text && renderMessageContent(message.text)}
               </div>
             </div>
           </div>
