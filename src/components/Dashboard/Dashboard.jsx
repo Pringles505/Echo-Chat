@@ -9,13 +9,15 @@ import ConversationList from "./DashboardComponents/Conversations/ConversationLi
 import { useConversations } from "./DashboardComponents/hooks/useConversations";
 import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatProfileImage } from "./DashboardComponents/utils/helpers";
 import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
-import io from 'socket.io-client';
+import { getSocket } from "../../socket";
+import IncomingCallNotification from "../VideoCall/IncomingCallNotification";
 
 const Dashboard = () => {
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const { username, userId, profileImage } = getUserData(token);
   localStorage.setItem('userId', userId);
+  localStorage.setItem('username', username);
   
   // Estados
   const [activeChat, setActiveChat] = useState(null);
@@ -32,22 +34,26 @@ const Dashboard = () => {
   });
   const [userProfileImage, setUserProfileImage] = useState(profileImage);
   const [socket, setSocket] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
+
+  // Hooks personalizados - must be before useEffects that use them
+  const { recentConversations, updateRecentConversations } = useConversations(userId);
+  const messagesEndRef = useRef(null);
+  const conversationsListRef = useRef(null);
 
   // Initialize socket connection and fetch user profile
   useEffect(() => {
     if (!token || !userId) return;
 
     console.log('Initializing socket connection for profile fetching...');
-    const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
-      auth: { token },
-    });
+    const sharedSocket = getSocket();
+    setSocket(sharedSocket);
 
-    newSocket.on('connect', () => {
+    const onConnect = () => {
       console.log('Socket connected for profile fetching');
-      setSocket(newSocket);
-      
+
       // Fetch user profile immediately after connection
-      fetchUserProfileFromSocket(newSocket, userId)
+      fetchUserProfileFromSocket(sharedSocket, userId)
         .then((profileData) => {
           console.log('Profile data fetched:', profileData);
           if (profileData.profilePicture) {
@@ -58,15 +64,30 @@ const Dashboard = () => {
         .catch((error) => {
           console.error('Error fetching user profile:', error);
         });
+    };
+
+    if (sharedSocket.connected) {
+      onConnect();
+    } else {
+      sharedSocket.on('connect', onConnect);
+    }
+
+    sharedSocket.on('disconnect', () => {
+      console.log('Socket disconnected');
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('Socket disconnected');
-      setSocket(null);
+    // Listen for incoming calls
+    sharedSocket.on('incomingCall', (callData) => {
+      console.log('Incoming call:', callData);
+      setIncomingCall(callData);
     });
+
+    console.log('Dashboard socket ID:', sharedSocket.id);
 
     return () => {
-      newSocket.disconnect();
+      sharedSocket.off('connect', onConnect);
+      sharedSocket.off('incomingCall');
+      // Don't disconnect the shared socket here
     };
   }, [token, userId, username]);
 
@@ -102,11 +123,6 @@ const Dashboard = () => {
       }
     });
   }, []);
-
-  // Hooks personalizados
-  const { recentConversations, updateRecentConversations } = useConversations(userId);
-  const messagesEndRef = useRef(null);
-  const conversationsListRef = useRef(null);
 
   // Handlers
   const handleChatSelect = (conversation) => {
@@ -205,6 +221,13 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen bg-black text-white">
+      {/* Incoming Call Notification */}
+      {incomingCall && (
+        <IncomingCallNotification
+          callData={incomingCall}
+          onClose={() => setIncomingCall(null)}
+        />
+      )}
       {/* Sidebar */}
       <Sidebar
         activeView={activeView}

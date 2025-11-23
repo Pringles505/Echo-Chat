@@ -67,7 +67,7 @@ const ConversationItem = ({
 
 
   return (
-    <li 
+    <li
       className={`p-3 hover:bg-[#8e79f2]/20 cursor-pointer transition-colors ${isActive ? 'bg-[#8e79f2]/20' : ''}`}
       onClick={() => onSelect(conversation)}
       onMouseEnter={() => setIsHovered(true)}
@@ -102,8 +102,8 @@ const ConversationItem = ({
             </span>
           </div>
           <p className="text-sm truncate text-gray-400">
-            {latestMessage.length > 30 
-              ? `${latestMessage.substring(0, 30)}...` 
+            {latestMessage.length > 30
+              ? `${latestMessage.substring(0, 30)}...`
               : latestMessage}
           </p>
         </div>

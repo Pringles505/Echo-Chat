@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import io from "socket.io-client";
+import { getSocket } from "../../../socket";
 import PropTypes from "prop-types";
 import { jwtDecode } from "jwt-decode";
 import { formatProfileImage } from "../DashboardComponents/utils/helpers";
@@ -11,25 +11,11 @@ const Friends = ({ token, onActiveChatChange, searchTerm }) => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    // Initialize persistent socket connection
-    const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      auth: { token },
-    });
-
+    // Use shared socket connection
+    const socket = getSocket();
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("Socket connected");
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
-
-    // Cleanup
-    return () => {
-      socket.disconnect();
-    };
+    // No cleanup - don't disconnect shared socket
   }, [token]);
 
   const handleSearch = useCallback(() => {

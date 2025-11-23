@@ -12,6 +12,7 @@ import Dashboard from './components/Dashboard/Dashboard';
 import Chat from './components/Dashboard/Chat/Chat';
 import UserProfile from './components/UserProfile';
 import PrivateRoute from './components/auth/PrivateRoute';
+import VideoCall from './components/VideoCall/VideoCall';
 
 // Footer Components
 import PrivacyPolicy from './components/HomepageComponents/FooterComponents/Legal/PrivacyPolicy';
@@ -62,6 +63,7 @@ function App() {
         {/* Protected Routes */}
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
+        <Route path="/video-call/:odebukiUserId" element={<PrivateRoute><VideoCall /></PrivateRoute>} />
         <Route path="/profile/:userId" element={<UserProfileRoute />} />
       </Routes>
     </Router>

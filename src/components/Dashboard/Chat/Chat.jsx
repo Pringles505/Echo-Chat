@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
-import io from "socket.io-client";
+import { getSocket } from "../../../socket";
 import PropTypes from "prop-types";
 import SendText from "./MessageInput/sendText";
 import DisplayText from "./MessageDisplay/displayText";
@@ -53,10 +53,8 @@ const nonceArray = hexToUint8Array(nonce);
 
 // Main chat component
 function Chat({ token, activeChat, currentWallpaper = "default" }) {
-  // Initialize the socket connection with the provided token
-  const socket = io(import.meta.env.VITE_SOCKET_URL, {
-    auth: { token },
-  });
+  // Use shared socket connection
+  const socket = getSocket();
 
   // Extract the private key from localstorage and convert it to a ByteArray
   const storedPrivateKey = localStorage.getItem("privateKeyX25519");

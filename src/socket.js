@@ -5,9 +5,10 @@ let socket = null;
 export function getSocket() {
   const token = localStorage.getItem('token');
   if (!socket) {
-    socket = io('http://localhost:3001', {
+    socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001', {
       withCredentials: true,
-      autoConnect: false,
+      auth: { token },
+      transports: ['websocket']
     });
   }
   // Always set the latest token before connecting
@@ -16,6 +17,13 @@ export function getSocket() {
     socket.connect();
   }
   return socket;
+}
+
+export function disconnectSocket() {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
 }
 
 export default getSocket;

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { MoreHorizontal, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import io from "socket.io-client";
+import { getSocket } from "../../../../socket";
 
 const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
   const navigate = useNavigate();
@@ -30,29 +30,31 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
     setMenuOpen(false);
   }, [activeChat]);
 
-  // Initialize socket connection
+  // Initialize socket connection using shared socket
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
-      auth: { token },
-      withCredentials: true,
-      transports: ['websocket']
-    });
+    const sharedSocket = getSocket();
 
     // Receive full online users list on initial connect
-    newSocket.on('onlineUsersList', ({ onlineUsers }) => {
+    sharedSocket.on('onlineUsersList', ({ onlineUsers }) => {
       setOnlineUsers(onlineUsers);
     });
 
-    newSocket.on('userOnline', ({ userId }) => {
+    sharedSocket.on('userOnline', ({ userId }) => {
       setOnlineUsers(prev => [...prev, userId]);
     });
 
-    newSocket.on('userOffline', ({ userId }) => {
+    sharedSocket.on('userOffline', ({ userId }) => {
       setOnlineUsers(prev => prev.filter(id => id !== userId));
     });
 
-    setSocket(newSocket);
-    return () => newSocket.disconnect();
+    setSocket(sharedSocket);
+
+    return () => {
+      sharedSocket.off('onlineUsersList');
+      sharedSocket.off('userOnline');
+      sharedSocket.off('userOffline');
+      // Don't disconnect the shared socket
+    };
   }, [token]);
 
   const getConsistentColor = (username) => {
@@ -138,6 +140,23 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
               ` · Last seen ${new Date(activeChat.lastSeen).toLocaleTimeString()}`
             )}
           </p>
+        </div>
+
+        <div className="flex gap-2 ml-4">
+          <button
+            className="p-2 rounded-full hover:bg-gray-700 transition-colors"
+            aria-label="Voice call"
+            onClick={() => alert("Voice call clicked!")}
+          >
+            <i className="fa-solid fa-phone text-gray-400"></i>
+          </button>
+          <button
+            className="p-2 rounded-full hover:bg-gray-700 transition-colors"
+            aria-label="Video call"
+            onClick={() => navigate(`/video-call/${activeChat.id}`)}
+          >
+            <i className="fa-solid fa-video text-gray-400"></i>
+          </button>
         </div>
       </div>
 
