@@ -23,16 +23,14 @@ const DisplayText = ({ messages = [], currentUserId }) => {
           )}
 
           <div
-            className={`flex ${
-              message.userId === currentUserId ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${message.userId === currentUserId ? "justify-end" : "justify-start"
+              }`}
           >
             <div
-              className={`max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl rounded-lg p-3 ${
-                message.userId === currentUserId
+              className={`max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl rounded-lg p-3 ${message.userId === currentUserId
                   ? "bg-indigo-600 text-white rounded-br-none"
                   : "bg-gray-700 text-white rounded-bl-none"
-              }`}
+                }`}
               style={{ wordWrap: "break-word", whiteSpace: "pre-wrap" }}
             >
               <div className="flex items-baseline justify-between space-x-2">
@@ -47,9 +45,8 @@ const DisplayText = ({ messages = [], currentUserId }) => {
                   </span>
                   {message.userId === currentUserId && (
                     <svg
-                      className={`ml-2 h-4 w-4 ${
-                        message.seenStatus ? "text-green-400" : "text-gray-400"
-                      }`}
+                      className={`ml-2 h-4 w-4 ${message.seenStatus ? "text-green-400" : "text-gray-400"
+                        }`}
                       viewBox="0 0 122.88 74.46"
                       fill="currentColor"
                       xmlns="http://www.w3.org/2000/svg"
@@ -62,7 +59,17 @@ const DisplayText = ({ messages = [], currentUserId }) => {
                   )}
                 </div>
               </div>
-              <div className="mt-1 text-sm">{message.text}</div>
+              <div className="mt-1 text-sm">
+                {message.image && (
+                  <img
+                    src={message.image}
+                    alt="Shared image"
+                    className="max-w-full rounded-lg mb-2 cursor-pointer"
+                    onClick={() => window.open(message.image, '_blank')}
+                  />
+                )}
+                {message.text && <p>{message.text}</p>}
+              </div>
             </div>
           </div>
         </div>

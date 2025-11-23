@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+     "tauri": "tauri"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
     "@react-three/drei": "^9.77.1",
     "@react-three/fiber": "^8.13.3",
     "@tailwindcss/forms": "^0.5.10",
@@ -48,6 +50,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@tauri-apps/cli": "^2.9.4",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
