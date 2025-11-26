@@ -83,23 +83,29 @@ const WallpaperThumbnail = ({ wp, isActive, onClick }) => {
   );
 };
 
-const Sidebar = ({ 
-  activeView, 
-  handleViewChange, 
-  handleProfileClick, 
-  handleLogout, 
-  profileImage, 
+const Sidebar = ({
+  activeView,
+  handleViewChange,
+  handleProfileClick,
+  handleLogout,
+  profileImage,
   username,
   unreadMessages,
   onWallpaperChange,
   currentWallpaper
 }) => {
   const [showWallpaperMenu, setShowWallpaperMenu] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const wallpaperMenuRef = useRef(null);
+  const profileMenuRef = useRef(null);
   const totalUnread = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
 
   useClickOutside(wallpaperMenuRef, () => {
     setShowWallpaperMenu(false);
+  });
+
+  useClickOutside(profileMenuRef, () => {
+    setShowProfileMenu(false);
   });
 
   return (
@@ -171,20 +177,12 @@ const Sidebar = ({
         </div>
       </nav>
 
-      {/* Sección inferior */}
-      <div className="flex flex-col items-center space-y-6">
-        {/* Botón de logout */}
-        <button 
-          className="p-3 rounded-xl text-gray-400 hover:bg-red-600 hover:text-white transition-colors duration-200"
-          onClick={handleLogout}
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
-
+      {/* Sección inferior - Profile with dropdown menu */}
+      <div className="relative" ref={profileMenuRef}>
         {/* Avatar de usuario */}
-        <div 
-          className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-black cursor-pointer"
-          onClick={handleProfileClick}
+        <div
+          className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-black cursor-pointer hover:border-[#8e79f2] transition-colors"
+          onClick={() => setShowProfileMenu(!showProfileMenu)}
         >
           <img
             src={profileImage || `https://ui-avatars.com/api/?name=${username}&background=${getConsistentColor(username)}&color=fff`}
@@ -195,6 +193,37 @@ const Sidebar = ({
             }}
           />
         </div>
+
+        {/* Profile dropdown menu */}
+        {showProfileMenu && (
+          <div className="absolute left-full bottom-0 ml-2 w-40 bg-[#404040] rounded-lg shadow-xl z-50 overflow-hidden border border-gray-600">
+            <div className="p-2 border-b border-gray-600">
+              <p className="text-xs font-semibold text-white truncate">{username}</p>
+            </div>
+            <div className="py-1">
+              <button
+                className="w-full px-3 py-2 text-sm text-gray-300 hover:bg-[#8e79f2] hover:text-white flex items-center gap-2 transition-colors"
+                onClick={() => {
+                  handleProfileClick();
+                  setShowProfileMenu(false);
+                }}
+              >
+                <User className="w-4 h-4" />
+                Profile
+              </button>
+              <button
+                className="w-full px-3 py-2 text-sm text-gray-300 hover:bg-red-600 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={() => {
+                  handleLogout();
+                  setShowProfileMenu(false);
+                }}
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

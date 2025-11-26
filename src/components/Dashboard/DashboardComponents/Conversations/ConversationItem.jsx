@@ -6,7 +6,8 @@ const ConversationItem = ({
   onSelect,
   setIsHovered,
   userId,
-  activeChat
+  activeChat,
+  unreadCount = 0
 }) => {
   const [latestMessage, setLatestMessage] = useState('');
 
@@ -68,7 +69,9 @@ const ConversationItem = ({
 
   return (
     <li
-      className={`p-3 hover:bg-[#8e79f2]/20 cursor-pointer transition-colors ${isActive ? 'bg-[#8e79f2]/20' : ''}`}
+      className={`p-3 hover:bg-[#8e79f2]/20 cursor-pointer transition-colors ${
+        isActive ? 'bg-[#8e79f2]/20' : unreadCount > 0 ? 'bg-[#8e79f2]/10' : ''
+      }`}
       onClick={() => onSelect(conversation)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -76,7 +79,7 @@ const ConversationItem = ({
       <div className="flex items-center space-x-3">
         <div className="relative">
           <img
-            src={conversation.profileImage || 
+            src={conversation.profileImage ||
                  `https://ui-avatars.com/api/?name=${conversation.username}&background=${avatarBgColor}&color=fff`}
             alt={conversation.username}
             className="w-10 h-10 rounded-full object-cover border-2 border-black"
@@ -85,23 +88,28 @@ const ConversationItem = ({
               e.target.onerror = null;
             }}
           />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold animate-pulse">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-center">
-            <p className="text-white font-medium truncate">
+            <p className={`text-white truncate ${unreadCount > 0 ? 'font-bold' : 'font-medium'}`}>
               {conversation.username}
             </p>
             <span className="text-xs text-gray-400 whitespace-nowrap">
-              {conversation.lastMessageTime 
-                ? new Date(conversation.lastMessageTime).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
+              {conversation.lastMessageTime
+                ? new Date(conversation.lastMessageTime).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
                   })
                 : ''}
             </span>
           </div>
-          <p className="text-sm truncate text-gray-400">
+          <p className={`text-sm truncate ${unreadCount > 0 ? 'text-white font-semibold' : 'text-gray-400'}`}>
             {latestMessage.length > 30
               ? `${latestMessage.substring(0, 30)}...`
               : latestMessage}

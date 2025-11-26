@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, Lock, MessageCircle } from "lucide-react";
+import { Search, Plus, Lock, MessageCircle, Menu, X, ArrowLeft } from "lucide-react";
 import Friends from "./Friends/Friends";
 import Chat from "./Chat/Chat";
 import Sidebar from "./DashboardComponents/Sidebar/Sidebar";
@@ -27,7 +27,21 @@ const Dashboard = () => {
   });
   const [conversationsSearchTerm, setConversationsSearchTerm] = useState("");
   const [isChatItemHovered, setIsChatItemHovered] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState({});
+  const [unreadMessages, setUnreadMessages] = useState(() => {
+    // Initialize unread messages from localStorage
+    const unread = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(`unread-${userId}-`)) {
+        const senderId = key.replace(`unread-${userId}-`, '');
+        const count = parseInt(localStorage.getItem(key) || '0', 10);
+        if (count > 0) {
+          unread[senderId] = count;
+        }
+      }
+    }
+    return unread;
+  });
   const [currentWallpaper, setCurrentWallpaper] = useState(() => {
     const saved = localStorage.getItem('chatWallpaper');
     return saved && WALLPAPER_PREVIEWS[saved] ? saved : 'default';
@@ -35,6 +49,8 @@ const Dashboard = () => {
   const [userProfileImage, setUserProfileImage] = useState(profileImage);
   const [socket, setSocket] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showMobileChat, setShowMobileChat] = useState(false);
 
   // Hooks personalizados - must be before useEffects that use them
   const { recentConversations, updateRecentConversations } = useConversations(userId);
@@ -82,14 +98,60 @@ const Dashboard = () => {
       setIncomingCall(callData);
     });
 
+    // Listen for new messages to update unread count
+    const handleNewMessageNotification = (messageData) => {
+      console.log('New message received in Dashboard:', messageData);
+
+      // Only process if the message is FROM another user (not sent by current user)
+      // and is not part of the currently active chat
+      if (messageData.userId && messageData.userId !== userId && messageData.userId !== activeChat?.id) {
+        const senderId = messageData.userId;
+
+        setUnreadMessages(prev => {
+          const currentUnread = prev[senderId] || 0;
+          const newCount = currentUnread + 1;
+
+          // Persist to localStorage
+          localStorage.setItem(`unread-${userId}-${senderId}`, newCount);
+
+          return {
+            ...prev,
+            [senderId]: newCount
+          };
+        });
+
+        // Fetch user info to get proper username and profile image
+        sharedSocket.emit('getUserInfo', { userId: senderId }, (response) => {
+          if (response.success && response.user) {
+            const conversationUser = {
+              id: senderId,
+              username: response.user.username,
+              profileImage: response.user.profilePicture
+            };
+
+            // The message preview will be updated automatically by ConversationItem
+            // when localStorage is updated with the decrypted message
+            updateRecentConversations(conversationUser, {
+              text: '',
+              timestamp: messageData.timestamp || new Date().toISOString(),
+              userId: senderId
+            });
+          }
+        });
+      }
+    };
+
+    sharedSocket.on('newMessage', handleNewMessageNotification);
+
     console.log('Dashboard socket ID:', sharedSocket.id);
 
     return () => {
       sharedSocket.off('connect', onConnect);
       sharedSocket.off('incomingCall');
+      sharedSocket.off('newMessage', handleNewMessageNotification);
       // Don't disconnect the shared socket here
     };
-  }, [token, userId, username]);
+  }, [token, userId, username, activeChat, updateRecentConversations]);
 
   // Listen for profile updates from localStorage
   useEffect(() => {
@@ -127,11 +189,16 @@ const Dashboard = () => {
   // Handlers
   const handleChatSelect = (conversation) => {
     setActiveChat(conversation);
+    setShowMobileChat(true); // Show chat on mobile when selected
     setUnreadMessages(prev => ({
       ...prev,
       [conversation.id]: 0
     }));
     localStorage.setItem(`unread-${userId}-${conversation.id}`, 0);
+  };
+
+  const handleMobileBack = () => {
+    setShowMobileChat(false);
   };
 
   const handleWallpaperChange = (wallpaper) => {
@@ -184,11 +251,21 @@ const Dashboard = () => {
       conv.username.toLowerCase().includes(conversationsSearchTerm.toLowerCase()) ||
       (conv.lastMessage && conv.lastMessage.toLowerCase().includes(conversationsSearchTerm.toLowerCase()))
     )
-    .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime))
     .map(conv => ({
       ...conv,
       unreadCount: unreadMessages[conv.id] || 0
-    }));
+    }))
+    .sort((a, b) => {
+      // First, prioritize conversations with unread messages
+      const aHasUnread = a.unreadCount > 0;
+      const bHasUnread = b.unreadCount > 0;
+
+      if (aHasUnread && !bHasUnread) return -1;
+      if (!aHasUnread && bHasUnread) return 1;
+
+      // Then sort by last message time
+      return new Date(b.lastMessageTime) - new Date(a.lastMessageTime);
+    });
 
   // Componente EmptyState
   const EmptyState = ({ activeView }) => (
@@ -228,23 +305,54 @@ const Dashboard = () => {
           onClose={() => setIncomingCall(null)}
         />
       )}
-      {/* Sidebar */}
-      <Sidebar
-        activeView={activeView}
-        handleViewChange={handleViewChange}
-        handleProfileClick={handleProfileClick}
-        handleLogout={handleLogout}
-        profileImage={userProfileImage}
-        username={username}
-        unreadMessages={unreadMessages}
-        onWallpaperChange={handleWallpaperChange}
-        currentWallpaper={currentWallpaper}
-      />
 
-      {/* Navigation Panel */}
-      <div className="w-80 bg-black border-r border-gray-700 flex flex-col">
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - Hidden on mobile, shown via menu */}
+      <div className={`
+        fixed md:relative inset-y-0 left-0 z-50
+        transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:translate-x-0 transition-transform duration-300 ease-in-out
+      `}>
+        <Sidebar
+          activeView={activeView}
+          handleViewChange={(view) => {
+            handleViewChange(view);
+            setIsMobileMenuOpen(false);
+          }}
+          handleProfileClick={() => {
+            handleProfileClick();
+            setIsMobileMenuOpen(false);
+          }}
+          handleLogout={handleLogout}
+          profileImage={userProfileImage}
+          username={username}
+          unreadMessages={unreadMessages}
+          onWallpaperChange={handleWallpaperChange}
+          currentWallpaper={currentWallpaper}
+        />
+      </div>
+
+      {/* Navigation Panel - Full width on mobile when chat not shown */}
+      <div className={`
+        ${showMobileChat ? 'hidden' : 'flex'} md:flex
+        w-full md:w-80 bg-black border-r border-gray-700 flex-col
+      `}>
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center gap-3 mb-4">
+            {/* Mobile menu button */}
+            <button
+              className="md:hidden p-2 -ml-2 text-gray-400 hover:text-white"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
             <img
               src="./echo-logo-text.png"
               alt="ECHO Logo"
@@ -257,20 +365,20 @@ const Dashboard = () => {
               <input
                 type="text"
                 placeholder={
-                  activeView === 'friends' 
-                    ? "Search for friends..." 
+                  activeView === 'friends'
+                    ? "Search for friends..."
                     : "Search conversations..."
                 }
                 className="w-full px-6 py-3 bg-white/10 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8e79f2] focus:border-[#8e79f2] text-white placeholder-gray-400 backdrop-blur-sm transition-all duration-300"
                 value={activeView === 'friends' ? searchTerm : conversationsSearchTerm}
-                onChange={(e) => 
-                  activeView === 'friends' 
-                    ? setSearchTerm(e.target.value) 
+                onChange={(e) =>
+                  activeView === 'friends'
+                    ? setSearchTerm(e.target.value)
                     : setConversationsSearchTerm(e.target.value)
                 }
                 onKeyPress={(e) => e.key === "Enter" && handleSearch()}
               />
-              <button 
+              <button
                 className="absolute right-4 top-3 text-gray-400 hover:text-white"
                 onClick={handleSearch}
               >
@@ -300,7 +408,7 @@ const Dashboard = () => {
                 />
               ) : (
                 <p className="text-gray-400 text-sm p-4">
-                  {conversationsSearchTerm 
+                  {conversationsSearchTerm
                     ? 'No conversations match your search'
                     : 'No recent conversations'}
                 </p>
@@ -310,15 +418,29 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col bg-black">
+      {/* Main Content Area - Full screen on mobile when chat shown */}
+      <div className={`
+        ${showMobileChat ? 'flex' : 'hidden'} md:flex
+        flex-1 flex-col bg-black
+      `}>
         {activeChat ? (
           <div className="flex flex-col h-full">
-            <ChatHeader activeChat={activeChat} userId={userId} token={token} />
+            {/* Mobile back button integrated with ChatHeader */}
+            <div className="flex items-center md:block">
+              <button
+                className="md:hidden p-3 text-gray-400 hover:text-white"
+                onClick={handleMobileBack}
+              >
+                <ArrowLeft className="h-6 w-6" />
+              </button>
+              <div className="flex-1">
+                <ChatHeader activeChat={activeChat} userId={userId} token={token} />
+              </div>
+            </div>
             <div className="flex-1 overflow-hidden">
-              <Chat 
-                token={token} 
-                activeChat={activeChat.id} 
+              <Chat
+                token={token}
+                activeChat={activeChat.id}
                 onNewMessage={handleNewMessage}
                 currentWallpaper={currentWallpaper}
               />

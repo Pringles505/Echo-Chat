@@ -24,7 +24,7 @@ const IncomingCallNotification = ({ callData, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
         <div className="text-center">
           <div className="w-20 h-20 bg-gray-700 rounded-full mx-auto mb-4 flex items-center justify-center">
