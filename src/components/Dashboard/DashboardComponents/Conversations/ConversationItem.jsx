@@ -26,10 +26,17 @@ const ConversationItem = ({
   const fetchLatest = () => {
     const targetUserId = conversation.targetUserId || conversation.id;
     const messagesKey = `chatSession-${userId}-${targetUserId}`;
+    console.log('🔍 ConversationItem fetching latest for key:', messagesKey);
     const messagesRaw = localStorage.getItem(messagesKey);
 
     if (!messagesRaw) {
-      setLatestMessage('No messages yet');
+      console.log('📭 No messages found in localStorage for', messagesKey);
+      // Check if there's an unread message (notification received but not opened yet)
+      if (unreadCount > 0) {
+        setLatestMessage('New message');
+      } else {
+        setLatestMessage('No messages yet');
+      }
       return;
     }
 
@@ -38,15 +45,22 @@ const ConversationItem = ({
       const messages = parsed.savedMessages;
 
       if (!Array.isArray(messages) || messages.length === 0) {
-        setLatestMessage('No messages yet');
+        console.log('📭 Empty messages array for', messagesKey);
+        // Check if there's an unread message
+        if (unreadCount > 0) {
+          setLatestMessage('New message');
+        } else {
+          setLatestMessage('No messages yet');
+        }
         return;
       }
 
       const lastMsg = messages[messages.length - 1];
-      setLatestMessage(lastMsg?.text || 'No messages yet');
+      console.log('✅ Latest message found:', lastMsg?.text);
+      setLatestMessage(lastMsg?.text || (unreadCount > 0 ? 'New message' : 'No messages yet'));
     } catch (err) {
       console.error("Error parsing messages:", err);
-      setLatestMessage('No messages yet');
+      setLatestMessage(unreadCount > 0 ? 'New message' : 'No messages yet');
     }
   };
 
@@ -54,7 +68,9 @@ const ConversationItem = ({
   fetchLatest();
 
   // Listener for localStorage updates
-  const handleStorageUpdate = () => {
+  const handleStorageUpdate = (event) => {
+    console.log('🔔 localStorageUpdated event received in ConversationItem:', event.detail);
+    console.log('🔔 Current conversation:', conversation.id);
     fetchLatest();
   };
 
@@ -64,7 +80,7 @@ const ConversationItem = ({
   return () => {
     window.removeEventListener('localStorageUpdated', handleStorageUpdate);
   };
-}, [conversation, userId]);
+}, [conversation, userId, unreadCount]);
 
 
   return (

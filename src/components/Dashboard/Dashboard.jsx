@@ -11,6 +11,9 @@ import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatPr
 import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
 import { getSocket } from "../../socket";
 import IncomingCallNotification from "../VideoCall/IncomingCallNotification";
+import { clearAllSessionKeys } from "./Chat/utils/chat/keyManagement";
+import { decryptIncomingMessage } from "./Chat/utils/chat/messageDecryption";
+import { base64ToArrayBuffer } from "./Chat/utils/helpers";
 
 const Dashboard = () => {
   const token = localStorage.getItem("token");
@@ -98,46 +101,105 @@ const Dashboard = () => {
       setIncomingCall(callData);
     });
 
-    // Listen for new messages to update unread count
-    const handleNewMessageNotification = (messageData) => {
-      console.log('New message received in Dashboard:', messageData);
+    // Listen for new messages to update unread count and decrypt in background
+    const handleNewMessageNotification = async (messageData) => {
+      console.log('📬 New message received in Dashboard:', messageData);
 
-      // Only process if the message is FROM another user (not sent by current user)
-      // and is not part of the currently active chat
-      if (messageData.userId && messageData.userId !== userId && messageData.userId !== activeChat?.id) {
-        const senderId = messageData.userId;
+      // Handle both single message and array of messages
+      const messages = Array.isArray(messageData) ? messageData : [messageData];
 
-        setUnreadMessages(prev => {
-          const currentUnread = prev[senderId] || 0;
-          const newCount = currentUnread + 1;
+      // Get user's private key for decryption
+      const storedPrivateKey = localStorage.getItem("privateKeyX25519");
+      const privateKeyArray = base64ToArrayBuffer(storedPrivateKey);
 
-          // Persist to localStorage
-          localStorage.setItem(`unread-${userId}-${senderId}`, newCount);
+      // Process each message for notifications
+      for (const message of messages) {
+        console.log('📬 Processing message:', message);
+        console.log('📬 Current userId:', userId);
+        console.log('📬 Message from userId:', message.userId);
+        console.log('📬 Active chat:', activeChat?.id);
+        console.log('📬 Is initial message?:', message.is_initial);
 
-          return {
-            ...prev,
-            [senderId]: newCount
-          };
-        });
+        // Only process if the message is FROM another user (not sent by current user)
+        // and is not part of the currently active chat
+        if (message.userId && message.userId !== userId && message.userId !== activeChat?.id) {
+          const senderId = message.userId;
+          console.log('✅ Processing notification for sender:', senderId);
 
-        // Fetch user info to get proper username and profile image
-        sharedSocket.emit('getUserInfo', { userId: senderId }, (response) => {
-          if (response.success && response.user) {
-            const conversationUser = {
-              id: senderId,
-              username: response.user.username,
-              profileImage: response.user.profilePicture
-            };
-
-            // The message preview will be updated automatically by ConversationItem
-            // when localStorage is updated with the decrypted message
-            updateRecentConversations(conversationUser, {
-              text: '',
-              timestamp: messageData.timestamp || new Date().toISOString(),
-              userId: senderId
-            });
+          // DECRYPT MESSAGE IN BACKGROUND
+          try {
+            console.log('🔐 [Dashboard] Attempting background decryption...');
+            await decryptIncomingMessage(
+              message,
+              userId,
+              senderId,
+              privateKeyArray,
+              sharedSocket,
+              null // No setMessages - we're in background mode
+            );
+            console.log('✅ [Dashboard] Message decrypted in background');
+          } catch (error) {
+            console.error('❌ [Dashboard] Failed to decrypt message in background:', error);
+            // Continue with notification even if decryption fails
           }
-        });
+
+          setUnreadMessages(prev => {
+            const currentUnread = prev[senderId] || 0;
+            const newCount = currentUnread + 1;
+
+            // Persist to localStorage
+            localStorage.setItem(`unread-${userId}-${senderId}`, newCount);
+            console.log(`📊 Unread count for ${senderId}: ${newCount}`);
+
+            return {
+              ...prev,
+              [senderId]: newCount
+            };
+          });
+
+          // Fetch user info to get proper username and profile image
+          console.log('🔍 Fetching user info for:', senderId);
+
+          // IMPORTANT: Add conversation immediately with placeholder data
+          // This ensures the first message shows up in the list right away
+          const placeholderUser = {
+            id: senderId,
+            username: message.username || `User ${senderId}`,
+            profileImage: null
+          };
+
+          // Add to recent conversations immediately so first message appears
+          updateRecentConversations(placeholderUser, {
+            text: '',
+            timestamp: message.timestamp || message.createdAt || new Date().toISOString(),
+            userId: senderId
+          });
+          console.log('✅ Conversation added to recent list (placeholder)');
+
+          // Then fetch proper user info to update with correct data
+          sharedSocket.emit('getUserInfo', { userId: senderId }, (response) => {
+            if (response.success && response.user) {
+              console.log('✅ User info fetched:', response.user);
+              const conversationUser = {
+                id: senderId,
+                username: response.user.username,
+                profileImage: response.user.profilePicture
+              };
+
+              // Update conversation with proper user data
+              updateRecentConversations(conversationUser, {
+                text: '',
+                timestamp: message.timestamp || message.createdAt || new Date().toISOString(),
+                userId: senderId
+              });
+              console.log('✅ Conversation updated with proper user info');
+            } else {
+              console.error('❌ Failed to fetch user info:', response);
+            }
+          });
+        } else {
+          console.log('⏭️ Skipping notification (own message or active chat)');
+        }
       }
     };
 
@@ -228,6 +290,10 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
+    // Clear all ephemeral session keys from memory (security critical!)
+    clearAllSessionKeys();
+    console.log("🔐 All ephemeral encryption keys cleared from memory");
+
     // Clear all cached data
     localStorage.clear();
     if (socket) {
