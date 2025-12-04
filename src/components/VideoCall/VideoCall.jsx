@@ -39,16 +39,188 @@ const VideoCall = () => {
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
 
-  const [stream, setStream] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [callId, setCallId] = useState('');
   const [isInCall, setIsInCall] = useState(false);
-  const [callStatus, setCallStatus] = useState('idle'); // idle, calling, connected
+  const [callStatus, setCallStatus] = useState('idle');
+  const [hasAudioPermission, setHasAudioPermission] = useState(true);
+  const [hasVideoPermission, setHasVideoPermission] = useState(true);
+  const [remoteVideoEnabled, setRemoteVideoEnabled] = useState(true);
+  const [localUserProfile, setLocalUserProfile] = useState(null);
+  const [remoteUserProfile, setRemoteUserProfile] = useState(null);
+
+  const hasStartedCallRef = useRef(false);
 
   // Check if we're answering a call (came from notification)
   const isAnswering = location.state?.callId;
   const callerName = location.state?.callerName;
+
+  // Fetch user profiles
+  useEffect(() => {
+    const fetchProfiles = () => {
+      const socket = getSocket();
+      const username = localStorage.getItem('username');
+      const userId = localStorage.getItem('userId');
+
+      // Get local user profile from localStorage using the correct key pattern
+      const storedProfile = localStorage.getItem(`profile-${userId}`);
+      if (storedProfile) {
+        try {
+          const profile = JSON.parse(storedProfile);
+          setLocalUserProfile({
+            username: profile.username || username,
+            profileImage: profile.profilePicture || profile.profileImage || null
+          });
+          console.log('👤 Local user profile loaded from localStorage:', {
+            username: profile.username,
+            rawProfilePicture: profile.profilePicture,
+            hasProfileImage: !!(profile.profilePicture || profile.profileImage)
+          });
+        } catch (e) {
+          console.error('Error parsing stored profile:', e);
+        }
+      } else {
+        // Fallback to just username
+        setLocalUserProfile({
+          username: username || 'You',
+          profileImage: null
+        });
+        console.log('👤 Local user profile from username (no cached profile):', username);
+      }
+
+      // Fetch remote user profile via socket - ALWAYS prefer fresh data from server
+      socket.emit('fetchUsername', odebukiUserId, (response) => {
+        console.log('📡 fetchUsername response:', response);
+        if (response) {
+          // Backend might send profilePicture or profileImage
+          let profilePic = response.profilePicture || response.profileImage || null;
+
+          // If socket doesn't return profile picture, check localStorage as fallback
+          if (!profilePic) {
+            console.log('⚠️ No profile picture in socket response, checking localStorage...');
+            const cachedProfile = localStorage.getItem(`profile-${odebukiUserId}`);
+            if (cachedProfile) {
+              try {
+                const parsed = JSON.parse(cachedProfile);
+                profilePic = parsed.profilePicture || parsed.profileImage || null;
+                console.log('📦 Found profile picture in localStorage cache:', !!profilePic);
+              } catch (e) {
+                console.error('Error parsing cached profile:', e);
+              }
+            }
+          }
+
+          setRemoteUserProfile({
+            username: response.username || 'User',
+            profileImage: profilePic
+          });
+
+          // Update localStorage cache with data from server (keep cached pic if server doesn't have one)
+          localStorage.setItem(`profile-${odebukiUserId}`, JSON.stringify({
+            username: response.username,
+            profilePicture: profilePic
+          }));
+
+          console.log('👤 Remote user profile set:', {
+            username: response.username,
+            rawProfilePicture: response.profilePicture,
+            rawProfileImage: response.profileImage,
+            finalProfileImage: profilePic,
+            hasProfileImage: !!profilePic,
+            profileImagePreview: profilePic?.substring(0, 50) + '...'
+          });
+        } else {
+          console.error('❌ fetchUsername returned no response');
+        }
+      });
+    };
+
+    fetchProfiles();
+  }, [odebukiUserId]);
+
+  // Listen for profile updates (both local and remote users)
+  useEffect(() => {
+    const socket = getSocket();
+
+    // Handle local user profile updates
+    const handleLocalProfileUpdate = () => {
+      const username = localStorage.getItem('username');
+      const userId = localStorage.getItem('userId');
+      const storedProfile = localStorage.getItem(`profile-${userId}`);
+
+      if (storedProfile) {
+        try {
+          const profile = JSON.parse(storedProfile);
+          setLocalUserProfile({
+            username: profile.username || username,
+            profileImage: profile.profilePicture || profile.profileImage || null
+          });
+          console.log('🔄 Local profile updated in video call:', {
+            username: profile.username,
+            rawProfilePicture: profile.profilePicture,
+            hasProfileImage: !!(profile.profilePicture || profile.profileImage)
+          });
+        } catch (e) {
+          console.error('Error updating local profile:', e);
+        }
+      }
+    };
+
+    // Handle remote user profile updates via socket
+    const handleRemoteProfileUpdate = (data) => {
+      console.log('👤 Remote user profile update received in VideoCall:', data);
+      const { userId: updatedUserId, username, profilePicture } = data;
+
+      // Check if this is the remote user we're calling
+      if (updatedUserId === odebukiUserId) {
+        console.log('🔄 Updating remote user profile in video call');
+        setRemoteUserProfile({
+          username: username || 'User',
+          profileImage: profilePicture || null
+        });
+
+        // Also update localStorage cache
+        const cachedProfile = localStorage.getItem(`profile-${updatedUserId}`);
+        if (cachedProfile) {
+          try {
+            const parsed = JSON.parse(cachedProfile);
+            localStorage.setItem(`profile-${updatedUserId}`, JSON.stringify({
+              ...parsed,
+              username: username || parsed.username,
+              profilePicture: profilePicture
+            }));
+          } catch (e) {
+            console.error('Error updating cached profile:', e);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('profileUpdated', handleLocalProfileUpdate);
+    socket.on('userProfileUpdated', handleRemoteProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleLocalProfileUpdate);
+      socket.off('userProfileUpdated', handleRemoteProfileUpdate);
+    };
+  }, [odebukiUserId]);
+
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log('🔍 VideoCall State changed:', {
+      isCameraOff,
+      hasVideoPermission,
+      hasLocalProfile: !!localUserProfile,
+      localUsername: localUserProfile?.username,
+      hasRemoteProfile: !!remoteUserProfile,
+      remoteUsername: remoteUserProfile?.username,
+      remoteProfileImage: remoteUserProfile?.profileImage,
+      shouldShowProfilePic: isCameraOff || !hasVideoPermission,
+      callStatus,
+      remoteVideoEnabled
+    });
+  }, [isCameraOff, hasVideoPermission, localUserProfile, remoteUserProfile, callStatus, remoteVideoEnabled]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -58,16 +230,72 @@ const VideoCall = () => {
     remoteStreamRef.current = new MediaStream();
 
     const startCamera = async () => {
+      if (hasStartedCallRef.current) {
+        console.log('[VideoCall] startCamera already ran, skipping');
+        return;
+      }
+      hasStartedCallRef.current = true;
+
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
+        // Try to get both video and audio
+        let mediaStream;
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+          });
+          setHasAudioPermission(true);
+          setHasVideoPermission(true);
+        } catch (error) {
+          console.log('Could not get both video and audio, trying individually...', error);
+
+          // Try video only
+          let videoStream = null;
+          try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            setHasVideoPermission(true);
+          } catch (videoError) {
+            console.log('Video permission denied', videoError);
+            setHasVideoPermission(false);
+            setIsCameraOff(true);
+          }
+
+          // Try audio only
+          let audioStream = null;
+          try {
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            setHasAudioPermission(true);
+          } catch (audioError) {
+            console.log('Audio permission denied', audioError);
+            setHasAudioPermission(false);
+            setIsMuted(true);
+          }
+
+          // Combine streams
+          mediaStream = new MediaStream();
+          if (videoStream) {
+            videoStream.getTracks().forEach(track => mediaStream.addTrack(track));
+          }
+          if (audioStream) {
+            audioStream.getTracks().forEach(track => mediaStream.addTrack(track));
+          }
+
+          // If neither permission granted, throw error
+          if (!videoStream && !audioStream) {
+            throw new Error('No media permissions granted');
+          }
+        }
+
         localStreamRef.current = mediaStream;
-        setStream(mediaStream);
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = mediaStream;
+          console.log('📹 Local video stream set:', {
+            hasVideo: mediaStream.getVideoTracks().length > 0,
+            hasAudio: mediaStream.getAudioTracks().length > 0,
+            videoEnabled: mediaStream.getVideoTracks()[0]?.enabled,
+            audioEnabled: mediaStream.getAudioTracks()[0]?.enabled
+          });
         }
 
         // Push tracks from local stream to peer connection
@@ -79,6 +307,17 @@ const VideoCall = () => {
         pcRef.current.ontrack = (event) => {
           event.streams[0].getTracks().forEach((track) => {
             remoteStreamRef.current.addTrack(track);
+
+            // Listen for track enabled/disabled events
+            track.onended = () => {
+              console.log('Remote track ended:', track.kind);
+            };
+
+            // Monitor remote video track state
+            if (track.kind === 'video') {
+              track.onmute = () => setRemoteVideoEnabled(false);
+              track.onunmute = () => setRemoteVideoEnabled(true);
+            }
           });
         };
 
@@ -91,14 +330,26 @@ const VideoCall = () => {
           setCallId(location.state.callId);
           setTimeout(() => {
             handleAnswerCall(location.state.callId);
+            socket.emit('acceptCall', { callId: location.state.callId });
+
           }, 500);
         } else {
           // If initiating a call, create offer and notify the target user
           handleCreateCall();
         }
       } catch (error) {
-        console.error("Error accessing camera:", error);
-        alert("Could not access camera/microphone. Please check permissions.");
+        console.error("Error accessing camera/microphone:", error);
+        alert("Could not access camera or microphone. The call will start without media.");
+        // Continue with call even without permissions
+        if (isAnswering) {
+          setCallId(location.state.callId);
+          setTimeout(() => {
+            handleAnswerCall(location.state.callId);
+            socket.emit('acceptCall', { callId: location.state.callId });
+          }, 500);
+        } else {
+          handleCreateCall();
+        }
       }
     };
 
@@ -144,6 +395,7 @@ const VideoCall = () => {
     // Listen for call declined
     socket.on('callDeclined', () => {
       alert('Call was declined');
+      socket.emit('declineCall', { callerId, callId });
       stopMedia();
       navigate(-1);
     });
@@ -155,11 +407,25 @@ const VideoCall = () => {
       navigate(-1);
     });
 
+    // Listen for remote video state changes
+    socket.on('videoStateChanged', ({ isEnabled }) => {
+      console.log('Remote video state changed:', isEnabled);
+      setRemoteVideoEnabled(isEnabled);
+    });
+
+    // Listen for remote audio state changes (optional, for future UI indicators)
+    socket.on('audioStateChanged', ({ isEnabled }) => {
+      console.log('Remote audio state changed:', isEnabled);
+      // Could add a state variable to show muted indicator on remote user
+    });
+
     return () => {
       stopMedia();
       socket.off('connect', initCall);
       socket.off('callDeclined');
       socket.off('callEnded');
+      socket.off('videoStateChanged');
+      socket.off('audioStateChanged');
     };
   }, [navigate]);
 
@@ -295,8 +561,8 @@ const VideoCall = () => {
     const socket = getSocket();
 
     // Notify the other user
-    socket.emit('endCall', { odebukiUserId });
-
+    socket.emit('endCall', { odebukiUserId, callId });
+    
     // Stop all media tracks (camera and microphone)
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => {
@@ -304,6 +570,7 @@ const VideoCall = () => {
         console.log(`Stopped track: ${track.kind}`);
       });
       localStreamRef.current = null;
+      
     }
 
     // Clear video element sources
@@ -317,9 +584,6 @@ const VideoCall = () => {
       remoteStreamRef.current = null;
     }
 
-    // Clear the stream state
-    setStream(null);
-
     // Close peer connection
     if (pcRef.current) {
       pcRef.current.close();
@@ -331,20 +595,95 @@ const VideoCall = () => {
 
   const toggleMute = () => {
     if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach(track => {
-        track.enabled = !track.enabled;
-      });
-      setIsMuted(!isMuted);
+      const audioTracks = localStreamRef.current.getAudioTracks();
+      if (audioTracks.length > 0) {
+        const newMutedState = !isMuted;
+        audioTracks.forEach(track => {
+          track.enabled = !newMutedState;
+        });
+        setIsMuted(newMutedState);
+
+        console.log('🔊 Audio toggled:', {
+          muted: newMutedState,
+          trackEnabled: audioTracks[0].enabled
+        });
+
+        // Notify remote user about audio state change
+        const socket = getSocket();
+        socket.emit('audioStateChanged', {
+          targetUserId: odebukiUserId,
+          isEnabled: !newMutedState
+        });
+      }
     }
   };
 
   const toggleCamera = () => {
     if (localStreamRef.current) {
-      localStreamRef.current.getVideoTracks().forEach(track => {
-        track.enabled = !track.enabled;
-      });
-      setIsCameraOff(!isCameraOff);
+      const videoTracks = localStreamRef.current.getVideoTracks();
+      if (videoTracks.length > 0) {
+        const newCameraOffState = !isCameraOff;
+        videoTracks.forEach(track => {
+          track.enabled = !newCameraOffState;
+        });
+        setIsCameraOff(newCameraOffState);
+
+        console.log('📹 Camera toggled:', {
+          cameraOff: newCameraOffState,
+          trackEnabled: videoTracks[0].enabled,
+          hasVideoPermission,
+          localUserProfile: localUserProfile?.username
+        });
+
+        // Notify remote user about video state change
+        const socket = getSocket();
+        socket.emit('videoStateChanged', {
+          targetUserId: odebukiUserId,
+          isEnabled: !newCameraOffState
+        });
+      } else {
+        console.log('⚠️ No video tracks available to toggle');
+      }
     }
+  };
+
+  // Helper function for consistent avatar colors
+  const getConsistentColor = (username) => {
+    const colors = ['FF5733', '33FF57', '3357FF', 'F033FF', 'FF33F0'];
+    return colors[username.length % colors.length];
+  };
+
+  // Get profile image with fallback
+  const getProfileImage = (profile) => {
+    if (!profile) {
+      console.log('⚠️ getProfileImage: No profile provided');
+      return null;
+    }
+
+    // Check if profile has a custom image (not empty string, null, or undefined)
+    const hasCustomImage = profile.profileImage && profile.profileImage.trim().length > 0;
+
+    let imageUrl;
+    if (hasCustomImage) {
+      // If the path starts with /, prepend the backend URL
+      imageUrl = profile.profileImage.startsWith('/')
+        ? `http://localhost:3001${profile.profileImage}`
+        : profile.profileImage;
+    } else {
+      // Fallback to UI Avatars
+      imageUrl = `https://ui-avatars.com/api/?name=${profile.username}&background=${getConsistentColor(profile.username)}&color=fff`;
+    }
+
+    console.log('🖼️ getProfileImage called:', {
+      username: profile.username,
+      rawProfileImage: profile.profileImage,
+      profileImageType: typeof profile.profileImage,
+      profileImageLength: profile.profileImage?.length,
+      hasCustomImage,
+      willUseBackendUrl: profile.profileImage?.startsWith('/'),
+      finalImageUrl: imageUrl?.substring(0, 80) + (imageUrl?.length > 80 ? '...' : '')
+    });
+    return imageUrl;
   };
 
   return (
@@ -352,35 +691,93 @@ const VideoCall = () => {
       {/* Video area */}
       <div className="flex-1 relative flex items-center justify-center">
         {/* Remote video */}
-        <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+        <div className="w-full h-full bg-gray-900 flex items-center justify-center relative">
           <video
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover ${!remoteVideoEnabled && callStatus === 'connected' ? 'hidden' : ''}`}
           />
           {callStatus !== 'connected' && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <i className="fa-solid fa-user text-gray-600 text-9xl"></i>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              {remoteUserProfile ? (
+                <>
+                  <img
+                    src={getProfileImage(remoteUserProfile)}
+                    alt={remoteUserProfile.username}
+                    className="w-48 h-48 rounded-full object-cover mb-4"
+                    onError={(e) => {
+                      e.target.src = `https://ui-avatars.com/api/?name=${remoteUserProfile.username}&background=${getConsistentColor(remoteUserProfile.username)}&color=fff`;
+                    }}
+                  />
+                  <p className="text-white text-xl">{remoteUserProfile.username}</p>
+                </>
+              ) : (
+                <i className="fa-solid fa-user text-gray-600 text-9xl"></i>
+              )}
+            </div>
+          )}
+          {callStatus === 'connected' && !remoteVideoEnabled && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+              {remoteUserProfile ? (
+                <>
+                  <img
+                    src={getProfileImage(remoteUserProfile)}
+                    alt={remoteUserProfile.username}
+                    className="w-48 h-48 rounded-full object-cover mb-4"
+                    onError={(e) => {
+                      e.target.src = `https://ui-avatars.com/api/?name=${remoteUserProfile.username}&background=${getConsistentColor(remoteUserProfile.username)}&color=fff`;
+                    }}
+                  />
+                  <p className="text-white text-xl">{remoteUserProfile.username}</p>
+                </>
+              ) : (
+                <i className="fa-solid fa-user text-gray-600 text-9xl"></i>
+              )}
             </div>
           )}
         </div>
 
         {/* Local video (small overlay) */}
-        <div className="absolute bottom-4 right-4 w-64 h-48 bg-gray-800 rounded-lg border-2 border-gray-700 overflow-hidden">
-          {stream && !isCameraOff ? (
-            <video
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <i className="fa-solid fa-user text-gray-500 text-2xl"></i>
-            </div>
-          )}
+        <div className="absolute bottom-4 right-4 w-64 h-48 bg-gray-800 rounded-lg border-2 border-gray-700 overflow-hidden relative">
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className={`w-full h-full object-cover ${isCameraOff || !hasVideoPermission ? 'hidden' : ''}`}
+          />
+          {(isCameraOff || !hasVideoPermission) && (() => {
+            console.log('🎨 Rendering profile picture overlay for local user:', {
+              hasProfile: !!localUserProfile,
+              username: localUserProfile?.username,
+              isCameraOff,
+              hasVideoPermission
+            });
+            return (
+              <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gray-800">
+                {localUserProfile ? (
+                  <>
+                    <img
+                      src={getProfileImage(localUserProfile)}
+                      alt={localUserProfile.username}
+                      className="w-24 h-24 rounded-full object-cover mb-2"
+                      onError={(e) => {
+                        console.error('❌ Image failed to load, using fallback');
+                        e.target.src = `https://ui-avatars.com/api/?name=${localUserProfile.username}&background=${getConsistentColor(localUserProfile.username)}&color=fff`;
+                      }}
+                      onLoad={() => {
+                        console.log('✅ Profile image loaded successfully');
+                      }}
+                    />
+                    <p className="text-white text-sm">{localUserProfile.username}</p>
+                  </>
+                ) : (
+                  <i className="fa-solid fa-user text-gray-500 text-2xl"></i>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Call status */}

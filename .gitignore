@@ -27,3 +27,6 @@ dist-ssr
 aes-wasm/target/
 dh-wasm/target/
 xeddsa-wasm/target/
+
+# AI files
+.claude

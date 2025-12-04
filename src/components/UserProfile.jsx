@@ -158,12 +158,48 @@ const UserProfile = () => {
       profileImage &&
       profileImage !== originalProfileImage &&
       profileImage !== defaultAvatar;
+
+    console.log('💾 Save button clicked - Image check:', {
+      hasProfileImage: !!profileImage,
+      profileImageLength: profileImage?.length,
+      originalProfileImageLength: originalProfileImage?.length,
+      isImageChanged,
+      isDifferent: profileImage !== originalProfileImage,
+      isNotDefault: profileImage !== defaultAvatar
+    });
+
     if (isImageChanged) {
       dataToSend.profilePicture = profileImage;
     }
 
+    // Check if there are any changes to save
+    if (Object.keys(dataToSend).length === 1) {
+      // Only userId is present, no actual changes
+      setPopupMsg("No changes to save");
+      setTimeout(() => setPopupMsg(""), 2000);
+      return;
+    }
+
+    console.log('💾 Sending update with data keys:', Object.keys(dataToSend));
+    console.log('💾 Data size:', JSON.stringify(dataToSend).length, 'bytes');
+
+    // Show loading state
+    setLoading(true);
     setPasswordError("");
+
+    // Set a timeout in case the socket doesn't respond
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      setPasswordError("Request timeout. Profile picture may be too large (max 1MB recommended)");
+      console.error('❌ updateUserInfo timed out after 10 seconds');
+    }, 10000);
+
     socket.emit("updateUserInfo", dataToSend, (response) => {
+      clearTimeout(timeoutId);
+      setLoading(false);
+
+      console.log('✅ updateUserInfo response:', response);
+
       if (response && response.success) {
         // Reset all editing states
         setShowPasswordChange(false);
@@ -193,6 +229,25 @@ const UserProfile = () => {
             profilePicture: response.user.profilePicture || "",
           })
         );
+
+        // Broadcast profile update to all connected users
+        if (isImageChanged || currentUsername !== originalUsername) {
+          socket.emit('profileUpdated', {
+            userId,
+            username: response.user.username,
+            profilePicture: response.user.profilePicture
+          });
+          console.log('📢 Broadcasting profile update to all users');
+        }
+
+        // Dispatch custom event for local components
+        window.dispatchEvent(new CustomEvent('profileUpdated', {
+          detail: {
+            userId,
+            username: response.user.username,
+            profilePicture: response.user.profilePicture
+          }
+        }));
       } else {
         // Handle errors
         if (response && response.error === "Username already taken") {

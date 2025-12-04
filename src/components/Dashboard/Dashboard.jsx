@@ -36,7 +36,7 @@ const Dashboard = () => {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith(`unread-${userId}-`)) {
-        const senderId = key.replace(`unread-${userId}-`, '');
+        const senderId = String(key.replace(`unread-${userId}-`, ''));
         const count = parseInt(localStorage.getItem(key) || '0', 10);
         if (count > 0) {
           unread[senderId] = count;
@@ -59,6 +59,7 @@ const Dashboard = () => {
   const { recentConversations, updateRecentConversations } = useConversations(userId);
   const messagesEndRef = useRef(null);
   const conversationsListRef = useRef(null);
+  const hasRefreshedProfiles = useRef(false);
 
   // Initialize socket connection and fetch user profile
   useEffect(() => {
@@ -83,6 +84,41 @@ const Dashboard = () => {
         .catch((error) => {
           console.error('Error fetching user profile:', error);
         });
+
+      // Refresh profile pictures for all recent conversations on page load (only once)
+      if (!hasRefreshedProfiles.current && recentConversations.length > 0) {
+        console.log('🔄 Refreshing profile pictures for all conversations...');
+        hasRefreshedProfiles.current = true;
+
+        recentConversations.forEach((conversation) => {
+          const conversationUserId = conversation.id || conversation.targetUserId;
+          if (conversationUserId) {
+            sharedSocket.emit('getUserInfo', { userId: conversationUserId }, (response) => {
+              if (response.success && response.user) {
+                console.log('✅ Refreshed profile for user:', conversationUserId);
+
+                // Update conversation with fresh profile data by passing updated user object
+                const formattedImage = formatProfileImage(response.user.profilePicture, response.user.username);
+                const updatedUser = {
+                  id: conversationUserId,
+                  username: response.user.username,
+                  profileImage: formattedImage,
+                  targetUserId: conversationUserId
+                };
+
+                // This will update existing conversation without changing lastMessage/lastMessageTime
+                updateRecentConversations(updatedUser, null);
+
+                // Update localStorage cache
+                localStorage.setItem(`profile-${conversationUserId}`, JSON.stringify({
+                  username: response.user.username,
+                  profilePicture: response.user.profilePicture
+                }));
+              }
+            });
+          }
+        });
+      }
     };
 
     if (sharedSocket.connected) {
@@ -99,6 +135,69 @@ const Dashboard = () => {
     sharedSocket.on('incomingCall', (callData) => {
       console.log('Incoming call:', callData);
       setIncomingCall(callData);
+    });
+
+    // Listen for call ended (to dismiss notification if caller cancels)
+    sharedSocket.on('callEnded', ({ callId }) => {
+      console.log('Call ended by caller:', callId);
+      setIncomingCall((current) => {
+        // Only clear if it's the same call
+        if (current && current.callId === callId) {
+          return null;
+        }
+        return current;
+      });
+    });
+
+    // Listen for profile updates from other users
+    sharedSocket.on('userProfileUpdated', (data) => {
+      console.log('👤 User profile updated:', data);
+      const { userId: updatedUserId, username, profilePicture } = data;
+
+      // Update recent conversations with new profile picture
+      updateRecentConversations((prevConversations) => {
+        return prevConversations.map(conv => {
+          if (conv.id === updatedUserId || conv.targetUserId === updatedUserId) {
+            const formattedImage = formatProfileImage(profilePicture, username);
+            console.log('🔄 Updating conversation profile for user:', updatedUserId);
+            return {
+              ...conv,
+              username: username || conv.username,
+              profileImage: formattedImage
+            };
+          }
+          return conv;
+        });
+      });
+
+      // Update active chat if it's the same user
+      setActiveChat((prevActiveChat) => {
+        if (prevActiveChat && (prevActiveChat.id === updatedUserId || prevActiveChat.targetUserId === updatedUserId)) {
+          const formattedImage = formatProfileImage(profilePicture, username);
+          console.log('🔄 Updating active chat profile for user:', updatedUserId);
+          return {
+            ...prevActiveChat,
+            username: username || prevActiveChat.username,
+            profileImage: formattedImage
+          };
+        }
+        return prevActiveChat;
+      });
+
+      // Update cached profile in localStorage
+      const cachedProfile = localStorage.getItem(`profile-${updatedUserId}`);
+      if (cachedProfile) {
+        try {
+          const parsed = JSON.parse(cachedProfile);
+          localStorage.setItem(`profile-${updatedUserId}`, JSON.stringify({
+            ...parsed,
+            username: username || parsed.username,
+            profilePicture: profilePicture
+          }));
+        } catch (e) {
+          console.error('Error updating cached profile:', e);
+        }
+      }
     });
 
     // Listen for new messages to update unread count and decrypt in background
@@ -120,10 +219,15 @@ const Dashboard = () => {
         console.log('📬 Active chat:', activeChat?.id);
         console.log('📬 Is initial message?:', message.is_initial);
 
+        // Ensure type consistency - convert IDs to strings for comparison
+        const currentUserId = String(userId);
+        const messageSenderId = String(message.userId);
+        const activeChatId = activeChat?.id ? String(activeChat.id) : null;
+
         // Only process if the message is FROM another user (not sent by current user)
         // and is not part of the currently active chat
-        if (message.userId && message.userId !== userId && message.userId !== activeChat?.id) {
-          const senderId = message.userId;
+        if (message.userId && messageSenderId !== currentUserId && messageSenderId !== activeChatId) {
+          const senderId = messageSenderId;
           console.log('✅ Processing notification for sender:', senderId);
 
           // DECRYPT MESSAGE IN BACKGROUND
@@ -143,6 +247,7 @@ const Dashboard = () => {
             // Continue with notification even if decryption fails
           }
 
+          // Increment unread count (sole source of truth for unread messages)
           setUnreadMessages(prev => {
             const currentUnread = prev[senderId] || 0;
             const newCount = currentUnread + 1;
@@ -157,46 +262,54 @@ const Dashboard = () => {
             };
           });
 
-          // Fetch user info to get proper username and profile image
-          console.log('🔍 Fetching user info for:', senderId);
+          // Check if conversation already exists
+          const conversationExists = recentConversations.some(conv => String(conv.id) === senderId);
 
-          // IMPORTANT: Add conversation immediately with placeholder data
-          // This ensures the first message shows up in the list right away
-          const placeholderUser = {
-            id: senderId,
-            username: message.username || `User ${senderId}`,
-            profileImage: null
-          };
+          if (!conversationExists) {
+            // First message from this user - add placeholder immediately
+            console.log('🔍 First message from this user, fetching user info for:', senderId);
 
-          // Add to recent conversations immediately so first message appears
-          updateRecentConversations(placeholderUser, {
-            text: '',
-            timestamp: message.timestamp || message.createdAt || new Date().toISOString(),
-            userId: senderId
-          });
-          console.log('✅ Conversation added to recent list (placeholder)');
+            const placeholderUser = {
+              id: senderId,
+              username: message.username || `User ${senderId}`,
+              profileImage: null
+            };
 
-          // Then fetch proper user info to update with correct data
-          sharedSocket.emit('getUserInfo', { userId: senderId }, (response) => {
-            if (response.success && response.user) {
-              console.log('✅ User info fetched:', response.user);
-              const conversationUser = {
-                id: senderId,
-                username: response.user.username,
-                profileImage: response.user.profilePicture
-              };
+            // Add conversation with timestamp but no message text yet (will be decrypted in Chat)
+            updateRecentConversations(placeholderUser, {
+              text: '',
+              timestamp: message.timestamp || message.createdAt || new Date().toISOString()
+            });
+            console.log('✅ Conversation added to recent list (placeholder)');
 
-              // Update conversation with proper user data
-              updateRecentConversations(conversationUser, {
+            // Fetch proper user info to update with correct data
+            sharedSocket.emit('getUserInfo', { userId: senderId }, (response) => {
+              if (response.success && response.user) {
+                console.log('✅ User info fetched:', response.user);
+                const conversationUser = {
+                  id: senderId,
+                  username: response.user.username,
+                  profileImage: response.user.profilePicture
+                };
+
+                // Update conversation with proper user data (no message object to avoid re-incrementing)
+                updateRecentConversations(conversationUser, null);
+                console.log('✅ Conversation updated with proper user info');
+              } else {
+                console.error('❌ Failed to fetch user info:', response);
+              }
+            });
+          } else {
+            // Conversation exists - just update timestamp to move it to top
+            console.log('✅ Conversation already exists, updating timestamp');
+            const existingConv = recentConversations.find(conv => String(conv.id) === senderId);
+            if (existingConv) {
+              updateRecentConversations(existingConv, {
                 text: '',
-                timestamp: message.timestamp || message.createdAt || new Date().toISOString(),
-                userId: senderId
+                timestamp: message.timestamp || message.createdAt || new Date().toISOString()
               });
-              console.log('✅ Conversation updated with proper user info');
-            } else {
-              console.error('❌ Failed to fetch user info:', response);
             }
-          });
+          }
         } else {
           console.log('⏭️ Skipping notification (own message or active chat)');
         }
@@ -210,10 +323,27 @@ const Dashboard = () => {
     return () => {
       sharedSocket.off('connect', onConnect);
       sharedSocket.off('incomingCall');
+      sharedSocket.off('callEnded');
+      sharedSocket.off('userProfileUpdated');
       sharedSocket.off('newMessage', handleNewMessageNotification);
       // Don't disconnect the shared socket here
     };
-  }, [token, userId, username, activeChat, updateRecentConversations]);
+  }, [token, userId, username, activeChat, updateRecentConversations, recentConversations]);
+
+  // Update document title with notification count
+  useEffect(() => {
+    const totalUnread = Object.values(unreadMessages).reduce((sum, count) => sum + count, 0);
+
+    if (totalUnread > 0) {
+      document.title = `(${totalUnread}) Echo`;
+    } else {
+      document.title = 'Echo';
+    }
+
+    return () => {
+      document.title = 'Echo'; // Reset on unmount
+    };
+  }, [unreadMessages]);
 
   // Listen for profile updates from localStorage
   useEffect(() => {
@@ -252,11 +382,12 @@ const Dashboard = () => {
   const handleChatSelect = (conversation) => {
     setActiveChat(conversation);
     setShowMobileChat(true); // Show chat on mobile when selected
+    const conversationId = String(conversation.id);
     setUnreadMessages(prev => ({
       ...prev,
-      [conversation.id]: 0
+      [conversationId]: 0
     }));
-    localStorage.setItem(`unread-${userId}-${conversation.id}`, 0);
+    localStorage.setItem(`unread-${userId}-${conversationId}`, 0);
   };
 
   const handleMobileBack = () => {
@@ -319,7 +450,7 @@ const Dashboard = () => {
     )
     .map(conv => ({
       ...conv,
-      unreadCount: unreadMessages[conv.id] || 0
+      unreadCount: unreadMessages[String(conv.id)] || 0
     }))
     .sort((a, b) => {
       // First, prioritize conversations with unread messages

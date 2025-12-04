@@ -22,6 +22,7 @@ import { fetchLatestMessageNumber, checkFirstMessage } from "./utils/api";
 import {
   setSessionKey,
   getSessionKey,
+  updateSavedMessages,
 } from "./utils/chat/keyManagement";
 
 // Double Ratchet Rust module
@@ -68,6 +69,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const previousMessageCountRef = useRef(0);
 
   // useEffect to handle the socket connection and message fetching
   useEffect(() => {
@@ -116,9 +118,35 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
 
         // Process each message one by one from the payload
         for (const message of messages) {
+          // Handle call event messages with special logic (check if user is involved)
+          if (message.messageType === 'call_event') {
+            const isInvolvedInCall =
+              message.callData?.callerId === userId ||
+              message.callData?.receiverId === userId;
+
+            const isRelevantToActiveChat =
+              (message.callData?.callerId === activeChat && message.callData?.receiverId === userId) ||
+              (message.callData?.receiverId === activeChat && message.callData?.callerId === userId);
+
+            if (isInvolvedInCall && isRelevantToActiveChat) {
+              console.log("📞 Received call event message:", {
+                callId: message.callData?.callId,
+                caller: message.callData?.callerId,
+                receiver: message.callData?.receiverId,
+                currentUser: userId,
+                activeChat: activeChat
+              });
+
+              // Save call event to localStorage
+              updateSavedMessages(userId, activeChat, message, setMessages);
+            }
+            continue;
+          }
+
           // If message is from user or to the user process
           if (message.userId == activeChat || message.userId == userId) {
             try {
+
               // Process own messages differently
               if (message.userId === userId) {
                 try {
@@ -430,9 +458,14 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
   });
 
   useEffect(() => {
-    if (autoScroll && messagesEndRef.current) {
+    const messageCountIncreased = messages.length > previousMessageCountRef.current;
+
+    if (autoScroll && messageCountIncreased && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
+
+    // Update the previous message count
+    previousMessageCountRef.current = messages.length;
   }, [messages, autoScroll]);
 
   const handleScroll = () => {
@@ -446,6 +479,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
 
   return (
     <div className="app-container h-full flex flex-col">
+
       <div className="chat-container flex-1 flex flex-col relative overflow-y-auto">
         <div
           ref={messagesContainerRef}
