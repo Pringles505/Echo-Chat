@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import io from "socket.io-client";
 import PropTypes from "prop-types";
-import SendText from "./MessageInput/sendText";
-import DisplayText from "./MessageDisplay/displayText";
+import SendText from "./MessageInput/MessageInput";
+import DisplayText from "./MessageDisplay/MessageDisplay";
 import {
   getWallpaperComponent,
   getWallpaperClasses,
-} from "../DashboardComponents/utils/wallpaper";
+} from "../DashboardComponents/utils/Wallpaper";
 // Utility functions for encoding and decoding
 import {
   base64ToArrayBuffer,
@@ -24,7 +24,7 @@ import {
   getLatestKey,
   getKey,
   updateSavedMessages,
-} from "./utils/chat/keyManagement";
+} from "./utils/keyManagement";
 
 // Double Ratchet Rust module
 import {
@@ -134,8 +134,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
                 const decryptedPayload = JSON.parse(decryptedPayloadStr);
                 const decryptedMessage = {
                   ...message,
-                  text: decryptedPayload.text,
-                  image: decryptedPayload.image,
+                  text: await decrypt(message.text, derivedKey, nonceArray),
                 };
 
                 // Update the saved messages with the decrypted message
@@ -247,8 +246,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
             const decryptedPayload = JSON.parse(decryptedPayloadStr);
             const decryptedMessage = {
               ...message,
-              text: decryptedPayload.text,
-              image: decryptedPayload.image,
+              text: await decrypt(message.text, derivedKey, nonceArray),
             };
 
             // Save the decrypted message to local storage and update the state
@@ -287,7 +285,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
   }, [userId, targetUserId]);
 
   // Send message function
-  const sendMessage = async (text, imageData = null) => {
+  const sendMessage = async (text) => {
     // Fetch the latest message number and derive the current message number
     const currentMessageNumber =
       (await fetchLatestMessageNumber(socket, userId, targetUserId)) + 1;
@@ -434,24 +432,22 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
     }
 
     // check if the text is empty
-    if (!text.trim() && !imageData) return;
+    if (!text.trim()) return;
 
     try {
-      // Encrypt the message AND the image using the derived key image + message = payload
+      // Encrypt the message using the derived key
 
-      const payload = JSON.stringify({ text: text || '', image: imageData || null });
-
-      let encryptedPayload = null;
+      let encryptedText = null;
       if (!isInitialMessage) {
         console.log("🚧🚧Encrypting with: ", currentKeyChain);
 
         const currentKeyChainU8 = getLatestKey(userId, targetUserId);
 
-        encryptedPayload = await encrypt(payload, currentKeyChainU8, nonceArray);
+        encryptedText = await encrypt(text, currentKeyChainU8, nonceArray);
         storeKey(userId, targetUserId, currentMessageNumber, currentKeyChainU8);
       } else {
         console.log("🚧Encrypting with: ", root_key);
-        encryptedPayload = await encrypt(payload, root_key, nonceArray);
+        encryptedText = await encrypt(text, root_key, nonceArray);
 
         if (isInitialMessage) {
           storeKey(userId, targetUserId, 0, root_key);
@@ -463,17 +459,17 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       // Emit the message to the server with additional fields
       if (isInitialMessage) {
         socket.emit("newMessage", {
-          payload: encryptedPayload,
+          text: encryptedText,
           userId,
           targetUserId,
           username,
           is_initial: isInitialMessage,
-          messageNumber: isInitialMessage ? 0 : currentMessageNumber,
+          messageNumber: 0,
           publicEphemeralKey: publicEphemeralKeyBase64,
         });
       } else {
         socket.emit("newMessage", {
-          payload: encryptedPayload,
+          text: encryptedText,
           userId,
           targetUserId,
           username,
@@ -484,7 +480,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       }
 
       console.log("📤 Sent message:", {
-        payload: encryptedPayload,
+        text: encryptedText,
         is_initial: isInitialMessage,
         messageNumber: currentMessageNumber,
         publicEphemeralKey: publicEphemeralKeyBase64,
@@ -505,46 +501,46 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
     );
   });
 
-  useEffect(() => {
-    if (autoScroll && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, autoScroll]);
+useEffect(() => {
+  if (autoScroll && messagesEndRef.current) {
+    messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+  }
+}, [messages, autoScroll]);
 
-  const handleScroll = () => {
-    if (messagesContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-      const isNearBottom = scrollHeight - scrollTop <= clientHeight + 100;
+const handleScroll = () => {
+  if (messagesContainerRef.current) {
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isNearBottom = scrollHeight - scrollTop <= clientHeight + 100; 
+   
+    setAutoScroll(isNearBottom);
+  }
+};
 
-      setAutoScroll(isNearBottom);
-    }
-  };
+return (
+  <div className="app-container h-full flex flex-col">
+    <div className="chat-container flex-1 flex flex-col relative overflow-y-auto">
+      <div
+        ref={messagesContainerRef}
+        className={`messages-container flex-1 relative ${getWallpaperClasses(
+          currentWallpaper
+        )}`}
+        onScroll={handleScroll}
+      >
+        {getWallpaperComponent(currentWallpaper)}
 
-  return (
-    <div className="app-container h-full flex flex-col">
-      <div className="chat-container flex-1 flex flex-col relative overflow-y-auto">
-        <div
-          ref={messagesContainerRef}
-          className={`messages-container flex-1 relative ${getWallpaperClasses(
-            currentWallpaper
-          )}`}
-          onScroll={handleScroll}
-        >
-          {getWallpaperComponent(currentWallpaper)}
-
-          <div className="relative z-10 h-full flex flex-col">
-            <DisplayText
-              messages={messages}
-              currentUserId={userId}
-              wallpaperType={currentWallpaper}
-            />
-            <div ref={messagesEndRef} />
-          </div>
+        <div className="relative z-10 h-full flex flex-col">
+          <DisplayText
+            messages={messages}
+            currentUserId={userId}
+            wallpaperType={currentWallpaper}
+          />
+          <div ref={messagesEndRef} />
         </div>
       </div>
-      <SendText sendMessage={sendMessage} />
     </div>
-  );
+    <SendText sendMessage={sendMessage} />
+  </div>
+);
 };
 
 Chat.propTypes = {

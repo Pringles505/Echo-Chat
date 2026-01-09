@@ -1,0 +1,198 @@
+{
+  "nav": {
+    "docs": "Dokumentation",
+    "pricing": "Preise",
+    "community": "Gemeinschaft",
+    "aboutUs": "Über uns",
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "language": "Sprache"
+  },
+  "hero": {
+    "title": "ECHO",
+    "subtitle": "Private Nachrichten.",
+    "subtitleHighlight": "Unzerbrechliche Verschlüsselung.",
+    "subtitleEnd": "Vollständige Transparenz.",
+    "description": "Militärische End-to-End-Verschlüsselung für alle. Keine Hintertüren. Keine Ausnahmen.",
+    "ctaPrimary": "Kostlos mit Chatten starten",
+    "ctaSecondary": "Anmelden"
+  },
+  "features": {
+    "title": "Datenschutz durch Design",
+    "description": "Jede Funktion mit Ihrem grundlegenden Recht auf Datenschutz entwickelt",
+    "echoProtocol": "Echo-Protokoll-Verschlüsselung",
+    "zeroKnowledge": "Zero-Knowledge-Beweis",
+    "forwardSecrecy": "Perfekte Forward-Geheimhaltung",
+    "ephemerals": "Kurzlebige Nachrichten",
+    "lightning": "Lightning-Netzwerk",
+    "groupChats": "Sichere Gruppenchats",
+    "openSource": "Open Source",
+    "decentralized": "Dezentralisierte Optionen",
+    "incognito": "Inkognito-Modus"
+  },
+  "cipher": {
+    "title": "Verschlüsselung in Aktion",
+    "description": "Sehen Sie, wie sich Ihre Nachricht in Echtzeit mit militärischer AES-Verschlüsselung transformiert",
+    "plaintext": "Klartext",
+    "key": "Verschlüsselungsschlüssel",
+    "ciphertext": "Chiffriertext",
+    "decrypt": "Nachricht entschlüsseln",
+    "generateKey": "Neuen Schlüssel generieren",
+    "copy": "Chiffriertext kopieren",
+    "copied": "Kopiert!",
+    "reset": "Zurücksetzen"
+  },
+  "keyExchange": {
+    "title": "X3DH-Protokoll-Visualisierung",
+    "description": "Sehen Sie, wie Echo mit Double Ratchet sichere Schlüssel zwischen zwei Geräten herstellt",
+    "deviceA": "Gerät A",
+    "deviceB": "Gerät B",
+    "restart": "Austausch neu starten"
+  },
+  "journey": {
+    "title": "So wird Ihre Nachricht übertragen",
+    "description": "Vollständige Transparenz zum Verschlüsselungs- und Übertragungsprozess",
+    "step1": "Benutzer A entwirft",
+    "step1Desc": "Sie schreiben eine Nachricht auf Ihrem Gerät",
+    "step2": "Nachricht verschlüsselt",
+    "step2Desc": "AES-256-Verschlüsselung mit gemeinsamen Schlüssel angewendet",
+    "step3": "Digitale Signatur",
+    "step3Desc": "Nachricht authentifiziert mit HMAC-SHA256",
+    "step4": "Netzwerkübertragung",
+    "step4Desc": "Verschlüsselte Nutzlast über Echo-Server gesendet",
+    "step5": "Entschlüsselung",
+    "step5Desc": "Benutzer B entschlüsselt mit seinen privaten Schlüsseln",
+    "step6": "Nachricht gelesen",
+    "step6Desc": "Originalklartext wird nur auf dem Empfängergerät angezeigt"
+  },
+  "code": {
+    "title": "Integration leicht gemacht",
+    "description": "Echo Protocol funktioniert nahtlos in allen großen Programmiersprachen",
+    "javascript": "Client-seitige Verschlüsselung",
+    "python": "Python-Integration",
+    "go": "Go-Implementierung",
+    "rust": "Rust-Backend"
+  },
+  "security": {
+    "title": "Kryptographische Grundlagen",
+    "description": "Auf begutachteten kryptographischen Protokollen und Industriestandards aufgebaut",
+    "x3dh": "X3DH-Protokoll",
+    "doubleRatchet": "Double-Ratchet-Algorithmus",
+    "groupProtocol": "Gruppenprotokoll",
+    "cryptoOps": "Kryptographische Operationen"
+  },
+  "pricing": {
+    "title": "Einfache, transparente Preisgestaltung",
+    "description": "Wählen Sie den Plan, der Ihren Anforderungen entspricht",
+    "free": "Kostenlos",
+    "starter": "Anfänger",
+    "pro": "Profi",
+    "business": "Geschäft",
+    "enterprise": "Unternehmen",
+    "monthlyBilling": "/Monat",
+    "yearlyBilling": "/Jahr",
+    "getStarted": "Beginn",
+    "contact": "Vertrieb kontaktieren",
+    "compareFeatures": "Funktionen vergleichen"
+  },
+  "why": {
+    "title": "Warum Echo anders ist",
+    "description": "Auf Prinzipien gebaut, nicht auf Kompromissen"
+  },
+  "testimonials": {
+    "title": "Von Teams weltweit vertraut",
+    "description": "Sehen Sie, was unsere Benutzer über Echo sagen"
+  },
+  "integrations": {
+    "title": "Funktioniert mit Ihrem Stack",
+    "description": "Nahtlose Integration mit Ihren Lieblingswerkzeugen"
+  },
+  "labs": {
+    "title": "Echo Labs",
+    "description": "Experiment mit echter Kryptographie"
+  },
+  "docs": {
+    "title": "Entwickler-Hub",
+    "intro": "Einführung in Echo",
+    "gettingStarted": "Erste Schritte",
+    "protocols": "Sicherheitsprotokolle",
+    "api": "API-Referenz",
+    "sdks": "SDKs und Bibliotheken",
+    "bestPractices": "Best Practices",
+    "orcaChat": "OrcaChat-Architektur",
+    "search": "Dokumentation durchsuchen..."
+  },
+  "auth": {
+    "login": "Bei Echo anmelden",
+    "register": "Konto erstellen",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "fullName": "Vollständiger Name",
+    "signInButton": "Anmelden",
+    "signUpButton": "Konto erstellen",
+    "googleAuth": "Mit Google fortfahren",
+    "githubAuth": "Mit GitHub fortfahren",
+    "noAccount": "Haben Sie kein Konto?",
+    "haveAccount": "Haben Sie bereits ein Konto?",
+    "forgotPassword": "Passwort vergessen?"
+  },
+  "orcaChat": {
+    "title": "OrcaChat",
+    "subtitle": "Ihr KI-Assistent",
+    "placeholder": "Fragen Sie mich etwas...",
+    "greeting": "Hey! Ich bin Orca, Echos KI-Assistent. Wie kann ich dir heute helfen?",
+    "closeChat": "Schließen"
+  },
+  "documentation": {
+    "title": "Entwickler-Hub",
+    "intro": "Einführung in Echo",
+    "gettingStarted": "Erste Schritte",
+    "protocols": "Sicherheitsprotokolle",
+    "api": "API-Referenz",
+    "sdks": "SDKs und Bibliotheken",
+    "bestPractices": "Best Practices",
+    "orcaChat": "OrcaChat-Architektur",
+    "search": "Dokumentation durchsuchen..."
+  },
+  "community": {
+    "title": "Gemeinschaft",
+    "subtitle": "Verbinden Sie sich mit anderen Entwicklern und bleiben Sie auf dem Laufenden über Echo-Entwicklungen",
+    "allPosts": "Alle Beiträge",
+    "announcements": "Ankündigungen",
+    "developers": "Entwickler",
+    "security": "Sicherheit",
+    "composer": "Was gibt es Neues? Teilen Sie Ihre Echo-Erfahrung..."
+  },
+  "pricing": {
+    "title": "Einfache, transparente Preisgestaltung",
+    "subtitle": "Wählen Sie den Plan, der zu Ihrem Team passt. Keine versteckten Gebühren. Kündigen Sie jederzeit.",
+    "monthly": "Monatlich",
+    "yearly": "Jährlich",
+    "save": "Sparen Sie 20%",
+    "free": "Kostenlos",
+    "pro": "Profi",
+    "enterprise": "Unternehmen",
+    "contactSales": "Vertrieb kontaktieren",
+    "tryFree": "Kostenlos testen"
+  },
+  "demo": {
+    "title": "Verschlüsselungs-Demo",
+    "subtitle": "Sehen Sie, wie Echo Ihre Nachrichten in Echtzeit verschlüsselt",
+    "plaintext": "Nur-Text-Nachricht",
+    "key": "Verschlüsselungsschlüssel",
+    "ciphertext": "Verschlüsselter Text",
+    "encrypt": "Verschlüsseln",
+    "decrypt": "Entschlüsseln",
+    "newKey": "Neuer Schlüssel",
+    "reset": "Zurücksetzen"
+  },
+  "apiPlayground": {
+    "title": "API-Spielplatz",
+    "subtitle": "Testen Sie Echo-API-Endpunkte interaktiv",
+    "endpoints": "Endpunkte",
+    "request": "Anfrage",
+    "response": "Antwort",
+    "send": "Anfrage senden"
+  }
+}

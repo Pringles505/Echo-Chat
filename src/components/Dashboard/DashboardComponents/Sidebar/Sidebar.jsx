@@ -1,5 +1,6 @@
 import { MessageCircle, User, Users, LogOut, PaintbrushVertical } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { WALLPAPER_PREVIEWS } from "../utils/wallpaper.jsx";
 
 // Custom hook para detectar clics fuera del elemento
@@ -94,6 +95,7 @@ const Sidebar = ({
   onWallpaperChange,
   currentWallpaper
 }) => {
+  const { t } = useTranslation();
   const [showWallpaperMenu, setShowWallpaperMenu] = useState(false);
   const wallpaperMenuRef = useRef(null);
   const totalUnread = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
@@ -151,7 +153,7 @@ const Sidebar = ({
           {showWallpaperMenu && (
             <div className="absolute left-full top-0 ml-2 w-48 bg-[#404040] rounded-lg shadow-xl z-50 overflow-hidden border border-gray-600">
               <div className="p-2 border-b border-gray-600">
-                <h3 className="text-xs font-semibold text-gray-300">Wallpapers</h3>
+                <h3 className="text-xs font-semibold text-gray-300">{t('sidebar.wallpapers.title')}</h3>
               </div>
               <div className="grid grid-cols-2 gap-2 p-2">
                 {Object.entries(WALLPAPER_PREVIEWS).map(([id, wp]) => (

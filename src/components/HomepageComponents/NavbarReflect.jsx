@@ -45,21 +45,17 @@ const NavbarReflect = () => {
     { label: t('nav.product'), href: '/#features' },
     { label: t('nav.docs'), href: '/documentation' },
     { label: t('nav.community'), href: '/community' },
-    { label: t('nav.blog'), href: '/blog' },
     { label: t('nav.pricing'), href: '/pricing' },
     { label: t('nav.demo'), href: '/demo' },
   ];
 
   const languages = [
-    { code: 'es', label: 'Español', flag: '🇪🇸' },
-    { code: 'en', label: 'English', flag: '🇬🇧' },
+    { code: 'en', label: 'English' },
+    { code: 'es', label: 'Español' },
   ];
-
-  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
-    localStorage.setItem('i18nextLng', lng);
     setLangDropdown(false);
   };
 
@@ -101,27 +97,26 @@ const NavbarReflect = () => {
             <div className="relative hidden sm:block">
               <button
                 onClick={() => setLangDropdown(!langDropdown)}
-                className="flex items-center space-x-2 px-3 py-2 rounded-full text-neutral-300 hover:text-white hover:bg-white/5 transition-colors duration-250 text-sm"
+                className="flex items-center space-x-1 px-3 py-2 rounded-full text-neutral-300 hover:text-white hover:bg-white/5 transition-colors duration-250 text-sm"
               >
-                <span className="text-lg">{currentLanguage.flag}</span>
+                <Globe className="w-4 h-4" />
                 <ChevronDown className="w-3 h-3" />
               </button>
 
               {/* Language Dropdown */}
               {langDropdown && (
-                <div className="absolute right-0 mt-2 w-44 bg-neutral-900 border border-white/10 rounded-xl shadow-xl overflow-hidden py-1">
+                <div className="absolute right-0 mt-2 w-40 bg-neutral-900 border border-white/10 rounded-xl shadow-xl overflow-hidden py-1">
                   {languages.map((lang) => (
                     <button
                       key={lang.code}
                       onClick={() => changeLanguage(lang.code)}
-                      className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-250 flex items-center space-x-3 ${
+                      className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors duration-250 ${
                         i18n.language === lang.code
                           ? 'bg-primary-600 text-white'
                           : 'text-neutral-300 hover:bg-white/5 hover:text-white'
                       }`}
                     >
-                      <span className="text-lg">{lang.flag}</span>
-                      <span>{lang.label}</span>
+                      {lang.label}
                     </button>
                   ))}
                 </div>
@@ -167,26 +162,7 @@ const NavbarReflect = () => {
                 {link.label}
               </a>
             ))}
-            
-            {/* Mobile Language Selector */}
-            <div className="flex items-center justify-center gap-2 py-3 border-t border-b border-white/5 my-2">
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => changeLanguage(lang.code)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-250 ${
-                    i18n.language === lang.code
-                      ? 'bg-primary-600 text-white'
-                      : 'text-neutral-300 hover:bg-white/5 hover:text-white border border-white/10'
-                  }`}
-                >
-                  <span className="text-lg">{lang.flag}</span>
-                  <span>{lang.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="pt-4 mt-4 grid grid-cols-2 gap-4">
+            <div className="pt-4 mt-4 border-t border-white/5 grid grid-cols-2 gap-4">
               <Link
                 to="/auth/login"
                 onClick={() => setIsOpen(false)}

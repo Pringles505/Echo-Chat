@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Search, Plus, Lock, MessageCircle } from "lucide-react";
 import Friends from "./Friends/Friends";
 import Chat from "./Chat/Chat";
@@ -8,10 +9,11 @@ import ChatHeader from "./DashboardComponents/Header/ChatHeader";
 import ConversationList from "./DashboardComponents/Conversations/ConversationList";
 import { useConversations } from "./DashboardComponents/hooks/useConversations";
 import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatProfileImage } from "./DashboardComponents/utils/helpers";
-import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
+import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/Wallpaper";
 import io from 'socket.io-client';
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const { username, userId, profileImage } = getUserData(token);
@@ -182,17 +184,17 @@ const Dashboard = () => {
           <MessageCircle size={64} strokeWidth={1.5} className="text-gray-400 mx-auto" />
         </div>
         <h3 className="text-xl font-semibold text-white mt-4 mb-2">
-          {activeView === 'chats' ? 'Select a conversation' : 'No chat selected'}
+          {activeView === 'chats' ? t('dashboard.emptyState.selectChat') : t('dashboard.emptyState.noChatSelected')}
         </h3>
         <p className="text-gray-300 max-w-md text-center">
           {activeView === 'chats' 
-            ? 'Choose a conversation from the list or start a new chat with a friend'
-            : 'Search for a friend to start a new conversation'}
+            ? t('dashboard.emptyState.chooseConversation')
+            : t('dashboard.emptyState.searchFriend')}
         </p>
         
         <div className="flex items-center justify-center text-xs text-gray-400 mt-8 pt-8 pb-4 border-t border-gray-700">
           <Lock className="w-4 h-4 mr-1.5" />
-          <span>Your messages are encrypted using</span>
+          <span>{t('dashboard.emptyState.encrypted')}</span>
           <img 
             src="/EchoProtocolLogo.png" 
             alt="Echo Protocol" 
@@ -235,8 +237,8 @@ const Dashboard = () => {
                 type="text"
                 placeholder={
                   activeView === 'friends' 
-                    ? "Search for friends..." 
-                    : "Search conversations..."
+                    ? t('dashboard.search.friends')
+                    : t('dashboard.search.conversations')
                 }
                 className="w-full px-6 py-3 bg-white/10 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8e79f2] focus:border-[#8e79f2] text-white placeholder-gray-400 backdrop-blur-sm transition-all duration-300"
                 value={activeView === 'friends' ? searchTerm : conversationsSearchTerm}
@@ -278,8 +280,8 @@ const Dashboard = () => {
               ) : (
                 <p className="text-gray-400 text-sm p-4">
                   {conversationsSearchTerm 
-                    ? 'No conversations match your search'
-                    : 'No recent conversations'}
+                    ? t('dashboard.noConversationsMatch')
+                    : t('dashboard.noRecentConversations')}
                 </p>
               )}
             </div>

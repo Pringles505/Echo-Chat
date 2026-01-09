@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import {
   Lock,
   Eye,
@@ -13,11 +14,12 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
-import { getSocket } from "../socket";
-import Toast from "./Toast";
-import ParticlesBackground from "./HomepageComponents/ParticlesBackground.jsx";
+import { getSocket } from "../../socket";
+import Toast from "../common/Toast";
+import ParticlesBackground from "../HomepageComponents/ParticlesBackground.jsx";
 
 const UserProfile = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams();
@@ -124,7 +126,7 @@ const UserProfile = () => {
 
   const handleCopy = (value, label) => {
     navigator.clipboard.writeText(value);
-    setPopupMsg(`${label} copied!`);
+    setPopupMsg(`${label} ${t('profile.messages.copied')}`);
     setTimeout(() => setPopupMsg(""), 1200);
   };
 
@@ -134,11 +136,11 @@ const UserProfile = () => {
     // Validate password change if showing
     if (showPasswordChange) {
       if (!oldPassword || !newPassword || !confirmPassword) {
-        setPasswordError("Please fill all password fields.");
+        setPasswordError(t('profile.messages.fillAllFields'));
         return;
       }
       if (newPassword !== confirmPassword) {
-        setPasswordError("Passwords do not match.");
+        setPasswordError(t('profile.messages.passwordMismatch'));
         return;
       }
     }
@@ -181,7 +183,7 @@ const UserProfile = () => {
         }
 
         // Show success message
-        setPopupMsg("Changes saved successfully");
+        setPopupMsg(t('profile.messages.savedSuccess'));
         setTimeout(() => setPopupMsg(""), 2000);
 
         // Update cache
@@ -197,10 +199,10 @@ const UserProfile = () => {
         // Handle errors
         if (response && response.error === "Username already taken") {
           // Don't reset username - let user modify and try again
-          setPopupMsg("Username already taken");
+          setPopupMsg(t('profile.messages.usernameTaken'));
         } else {
           setPasswordError(
-            (response && response.error) || "Error updating profile"
+            (response && response.error) || t('profile.messages.updateError')
           );
         }
         setTimeout(() => {
@@ -239,14 +241,14 @@ const UserProfile = () => {
   const handleDeleteAccount = () => {
     socket.emit("deleteAccount", { userId }, (response) => {
       if (response && response.success) {
-        setPopupMsg("Account deleted successfully");
+        setPopupMsg(t('profile.messages.deleteSuccess'));
         setTimeout(() => {
           localStorage.clear();
           sessionStorage.clear();
           navigate("/login", { replace: true });
         }, 1500);
       } else {
-        setPopupMsg((response && response.error) || "Error deleting account");
+        setPopupMsg((response && response.error) || t('profile.messages.deleteError'));
         setTimeout(() => setPopupMsg(""), 2000);
       }
     });
@@ -257,7 +259,7 @@ const UserProfile = () => {
       <div className="flex h-screen bg-black text-white items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <div className="mt-4 text-purple-400">Loading profile...</div>
+          <div className="mt-4 text-purple-400">{t('profile.messages.loading')}</div>
         </div>
       </div>
     );
@@ -296,10 +298,10 @@ const UserProfile = () => {
                 type="button"
               >
                 <ArrowLeft size={16} />
-                Go Back
+                {t('profile.goBack')}
               </button>
               <h1 className="text-2xl font-bold text-center text-white">
-                User Profile
+                {t('profile.title')}
               </h1>
               <div className="w-28"></div>
             </div>
@@ -315,7 +317,7 @@ const UserProfile = () => {
                 onClick={() => setActiveTab("profile")}
               >
                 <Edit size={16} />
-                Profile
+                {t('profile.tabs.profile')}
               </button>
               {isOwnProfile && (
                 <button
@@ -327,7 +329,7 @@ const UserProfile = () => {
                   onClick={() => setActiveTab("security")}
                 >
                   <Shield size={16} />
-                  Security
+                  {t('profile.tabs.security')}
                 </button>
               )}
             </div>
@@ -378,7 +380,7 @@ const UserProfile = () => {
                   <div className="flex-1">
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Username
+                        {t('profile.labels.username')}
                       </label>
                       <div className="flex items-center gap-2">
                         {editingUsername ? (
@@ -403,7 +405,7 @@ const UserProfile = () => {
                                 !editingAbout &&
                                 !showPasswordChange
                                   ? () =>
-                                      handleCopy(currentUsername, "Username")
+                                      handleCopy(currentUsername, t('profile.labels.username'))
                                   : undefined
                               }
                             >
@@ -428,7 +430,7 @@ const UserProfile = () => {
 
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        User ID
+                        {t('profile.labels.userId')}
                       </label>
                       <div className="flex items-center gap-2">
                         <span
@@ -443,7 +445,7 @@ const UserProfile = () => {
                             !editingUsername &&
                             !editingAbout &&
                             !showPasswordChange
-                              ? () => handleCopy(userId, "User ID")
+                              ? () => handleCopy(userId, t('profile.labels.userId'))
                               : undefined
                           }
                         >
@@ -456,7 +458,7 @@ const UserProfile = () => {
 
                 <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-400 mb-1">
-                    About me
+                    {t('profile.labels.aboutMe')}
                   </label>
                   <div className="flex flex-col gap-2">
                     {editingAbout ? (
@@ -483,11 +485,11 @@ const UserProfile = () => {
                             !editingAbout &&
                             !editingUsername &&
                             !showPasswordChange
-                              ? () => handleCopy(aboutMe, "About me")
+                              ? () => handleCopy(aboutMe, t('profile.labels.aboutMe'))
                               : undefined
                           }
                         >
-                          {aboutMe || "Tell us something about yourself..."}
+                          {aboutMe || t('profile.labels.aboutMePlaceholder')}
                         </div>
                         {isOwnProfile &&
                           !editingAbout &&
@@ -514,7 +516,7 @@ const UserProfile = () => {
                       onClick={handleCancel}
                       type="button"
                     >
-                      <X size={16} /> Cancel
+                      <X size={16} /> {t('profile.actions.cancel')}
                     </button>
                     <button
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
@@ -522,7 +524,7 @@ const UserProfile = () => {
                       type="button"
                       disabled={loading}
                     >
-                      <Check size={16} /> Save
+                      <Check size={16} /> {t('profile.actions.save')}
                     </button>
                   </div>
                 )}
@@ -537,7 +539,7 @@ const UserProfile = () => {
                   <div>
                     <h3 className="flex items-center gap-2 text-lg font-medium text-white mb-4">
                       <Key size={18} />
-                      Change Password
+                      {t('profile.actions.changePassword')}
                     </h3>
 
                     {showPasswordChange ? (
@@ -546,7 +548,7 @@ const UserProfile = () => {
                           <input
                             className="w-full bg-white/10 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
                             type={showPassword ? "text" : "password"}
-                            placeholder="Current password"
+                            placeholder={t('profile.security.currentPassword')}
                             value={oldPassword}
                             onChange={(e) => setOldPassword(e.target.value)}
                             autoFocus
@@ -567,7 +569,7 @@ const UserProfile = () => {
                           <input
                             className="w-full bg-white/10 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
                             type={showNewPassword ? "text" : "password"}
-                            placeholder="New password"
+                            placeholder={t('profile.security.newPassword')}
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                           />
@@ -587,7 +589,7 @@ const UserProfile = () => {
                           <input
                             className="w-full bg-white/10 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
                             type={showConfirmPassword ? "text" : "password"}
-                            placeholder="Confirm new password"
+                            placeholder={t('profile.security.confirmNewPassword')}
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                           />
@@ -623,14 +625,14 @@ const UserProfile = () => {
                             }}
                             type="button"
                           >
-                            <X size={16} /> Cancel
+                            <X size={16} /> {t('profile.actions.cancel')}
                           </button>
                           <button
                             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
                             onClick={handleSave}
                             type="button"
                           >
-                            <Check size={16} /> Save
+                            <Check size={16} /> {t('profile.actions.save')}
                           </button>
                         </div>
                       </div>
@@ -642,7 +644,7 @@ const UserProfile = () => {
                       >
                         <div className="flex items-center gap-2">
                           <Key size={16} />
-                          <span>Change Password</span>
+                          <span>{t('profile.actions.changePassword')}</span>
                         </div>
                         <Edit size={16} className="text-gray-400" />
                       </button>
@@ -653,14 +655,13 @@ const UserProfile = () => {
                   <div>
                     <h3 className="flex items-center gap-2 text-lg font-medium text-white mb-4">
                       <Shield size={18} />
-                      Account Deletion
+                      {t('profile.security.accountDeletion')}
                     </h3>
 
                     {showDeleteConfirm ? (
                       <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg">
                         <p className="text-red-400 font-medium mb-3">
-                          Are you sure you want to delete your account? This
-                          action cannot be undone.
+                          {t('profile.security.deleteWarning')}
                         </p>
                         <div className="flex gap-3">
                           <button
@@ -671,14 +672,14 @@ const UserProfile = () => {
                             }}
                             type="button"
                           >
-                            <Check size={16} /> Confirm Delete
+                            <Check size={16} /> {t('profile.actions.confirmDelete')}
                           </button>
                           <button
                             className="flex-1 px-4 py-2 bg-white/10 hover:bg-gray-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700"
                             onClick={() => setShowDeleteConfirm(false)}
                             type="button"
                           >
-                            <X size={16} /> Cancel
+                            <X size={16} /> {t('profile.actions.cancel')}
                           </button>
                         </div>
                       </div>
@@ -690,7 +691,7 @@ const UserProfile = () => {
                       >
                         <div className="flex items-center gap-2">
                           <Trash2 size={16} />
-                          <span>Delete Account</span>
+                          <span>{t('profile.actions.deleteAccount')}</span>
                         </div>
                         <Trash2 size={16} className="text-red-400" />
                       </button>
@@ -702,7 +703,7 @@ const UserProfile = () => {
 
             <div className="flex items-center justify-center text-xs text-gray-400 mt-8 pt-8 pb-4 border-t border-gray-700">
               <Lock className="w-4 h-4 mr-1.5" />
-              <span>Your messages are encrypted using</span>
+              <span>{t('profile.footer')}</span>
               <img
                 src="/EchoProtocolLogo.png"
                 alt="Echo Protocol"

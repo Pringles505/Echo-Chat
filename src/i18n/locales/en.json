@@ -1,0 +1,307 @@
+{
+  "nav": {
+    "product": "Product",
+    "docs": "Documentation",
+    "pricing": "Pricing",
+    "community": "Community",
+    "demo": "Demo",
+    "aboutUs": "About",
+    "login": "Log in",
+    "register": "Get Started",
+    "language": "Language",
+    "blog": "Blog"
+  },
+  "hero": {
+    "title": "ECHO",
+    "subtitle": "Private Messages.",
+    "subtitleHighlight": "Unbreakable Encryption.",
+    "subtitleEnd": "Total Transparency.",
+    "description": "Military-grade end-to-end encryption for everyone. No backdoors. No exceptions.",
+    "ctaPrimary": "Start Chatting Free",
+    "ctaSecondary": "Sign In",
+    "badge": "v2.0 is now live",
+    "tagline": "Secure. Fast. Decentralized.",
+    "encrypted": "Encrypted",
+    "protocol": "ECHO PROTOCOL"
+  },
+  "features": {
+    "title": "Privacy by Design",
+    "titleMain": "Privacy isn't a feature.",
+    "titleSub": "It's the foundation.",
+    "description": "Every feature engineered with your fundamental right to privacy",
+    "echoProtocol": "Echo Protocol",
+    "echoProtocolDesc": "Military-grade X3DH protocol encryption.",
+    "echoProtocolDetails": "Our custom implementation of the Extended Triple Diffie-Hellman key agreement protocol ensures that your messages are encrypted before they even leave your device. We use AES-256-GCM for the highest level of security.",
+    "zeroKnowledge": "Zero-Knowledge",
+    "zeroKnowledgeDesc": "We never see your data. Privacy by design.",
+    "zeroKnowledgeDetails": "Our architecture is built so that we cannot access your private keys or messages.",
+    "forwardSecrecy": "Perfect Forward Secrecy",
+    "forwardSecrecyDesc": "Dynamic key rotation protects past chats.",
+    "forwardSecrecyDetails": "If a key is ever compromised, it cannot be used to decrypt past messages.",
+    "ephemerals": "Ephemeral",
+    "ephemeralDesc": "Self-destruct timers from 5s to 30 days.",
+    "ephemeralDetails": "Configure messages to self-destruct after a set period.",
+    "lightning": "Lightning Network",
+    "lightningDesc": "Instant delivery at scale.",
+    "lightningDetails": "Optimized WebSocket connections.",
+    "groupChats": "Secure Groups",
+    "groupChatsDesc": "Encrypted groups up to 500 people.",
+    "groupChatsDetails": "Group chats are encrypted using the Sender Keys protocol.",
+    "decentralized": "Decentralized",
+    "decentralizedDesc": "No central servers. You control your data.",
+    "decentralizedDetails": "Optional peer-to-peer architecture that eliminates single points of failure and ensures your communications don't depend on any central entity.",
+    "openSource": "Open Source",
+    "openSourceDesc": "Auditable codebase.",
+    "openSourceDetails": "Our entire codebase is open source and available for audit.",
+    "incognito": "Incognito Mode",
+    "learnMore": "Learn more",
+    "showLess": "Show less"
+  },
+  "cipher": {
+    "title": "Encryption in Action",
+    "description": "Watch your message transform in real-time with AES-256.",
+    "plaintext": "Plaintext",
+    "key": "Encryption Key",
+    "secretKey": "Secret Key",
+    "ciphertext": "Ciphertext",
+    "decrypt": "Decrypt Message",
+    "generateKey": "Generate New Key",
+    "copy": "Copy",
+    "copyToClipboard": "Copy to clipboard",
+    "copied": "Copied!",
+    "reset": "Reset",
+    "badge": "INTERACTIVE DEMO",
+    "hide": "Hide Decrypted",
+    "waitingForInput": "Waiting for input...",
+    "enterMessage": "Enter your message...",
+    "stats": {
+      "aes": "AES Encryption",
+      "realtime": "Processing",
+      "clientSide": "Client-side"
+    }
+  },
+  "keyExchange": {
+    "title": "Secure Key Exchange",
+    "alice": "Alice",
+    "bob": "Bob",
+    "protocols": {
+      "x3dh": "X3DH Protocol",
+      "x3dhDesc": "Extended Triple Diffie-Hellman",
+      "doubleRatchet": "Double Ratchet",
+      "doubleRatchetDesc": "Self-healing key management",
+      "forwardSecrecy": "Forward Secrecy",
+      "forwardSecrecyDesc": "New keys for every message"
+    }
+  },
+  "code": {
+    "title": "Integration Made Simple",
+    "description": "Echo Protocol works seamlessly across all major programming languages",
+    "javascript": "Client-Side Encryption",
+    "python": "Python Integration",
+    "go": "Go Implementation",
+    "rust": "Rust Backend",
+    "badge": "DEVELOPER-FRIENDLY API",
+    "copy": "Copy",
+    "copied": "Copied",
+    "stats": {
+      "languages": "Languages Supported",
+      "setup": "Setup Time",
+      "openSource": "Open Source",
+      "support": "Community Support"
+    }
+  },
+  "ai": {
+    "badge": "ECHO AI",
+    "title": "Your intelligent",
+    "titleHighlight": "security analyst",
+    "description": "Ask Echo AI to audit conversations, summarize technical decisions, or verify encryption status.",
+    "analyzing": "Analyzing...",
+    "tryAnother": "Try another example",
+    "generateReport": "Generate Report"
+  },
+  "security": {
+    "title": "Cryptographic Foundation",
+    "description": "Built on peer-reviewed cryptographic protocols and industry standards",
+    "badge": "SECURITY PROTOCOLS",
+    "keyFeatures": "Key Features",
+    "protocolFlow": "PROTOCOL FLOW",
+    "viewAudit": "View Full Security Audit",
+    "protocols": {
+      "x3dh": {
+        "title": "X3DH Protocol",
+        "subtitle": "Key Agreement",
+        "description": "Extended Triple Diffie-Hellman provides authenticated key agreement."
+      },
+      "doubleRatchet": {
+        "title": "Double Ratchet Algorithm",
+        "subtitle": "Per-Message Keys",
+        "description": "Provides a series of symmetric keys for each message."
+      },
+      "groupProtocol": {
+        "title": "Group Protocol",
+        "subtitle": "Secure Conversations",
+        "description": "Group messaging in Echo uses tree-based MLS."
+      },
+      "cryptoOps": {
+        "title": "Cryptographic Operations",
+        "subtitle": "Algorithms & Standards",
+        "description": "Echo uses industry-standard, audited cryptographic primitives."
+      }
+    },
+    "guarantees": {
+      "pfs": {
+        "title": "Perfect Forward Secrecy",
+        "description": "Compromise of long-term keys does not affect past messages."
+      },
+      "bs": {
+        "title": "Backward Secrecy",
+        "description": "Future messages are protected even if current session keys are compromised."
+      },
+      "zka": {
+        "title": "Zero-Knowledge Architecture",
+        "description": "Echo servers cannot decrypt any message."
+      }
+    }
+  },
+  "pricing": {
+    "title": "Simple, transparent pricing",
+    "description": "Choose the plan that fits your privacy needs. No hidden fees, ever.",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "save": "Save 20%",
+    "recommended": "MOST POPULAR",
+    "getStarted": "Get Started",
+    "startFreeTrial": "Start Free Trial",
+    "contactSales": "Contact Sales",
+    "billedYearly": "/mo (billed yearly)",
+    "perUserMonth": "/user/mo",
+    "plans": {
+      "starter": {
+        "name": "Starter",
+        "desc": "Essential privacy for individuals.",
+        "features": ["End-to-End Encryption", "Self-destructing messages", "Up to 3 devices", "1GB Storage", "Community Support"]
+      },
+      "pro": {
+        "name": "Pro",
+        "desc": "Advanced tools for power users.",
+        "features": ["Everything in Starter", "Unlimited devices", "50GB Storage", "HD Video Calls", "Priority Support", "Custom Themes"]
+      },
+      "business": {
+        "name": "Business",
+        "desc": "Control and compliance for teams.",
+        "features": ["Everything in Pro", "Admin Dashboard", "SSO Integration", "Audit Logs", "Data Retention", "Dedicated Manager"]
+      }
+    }
+  },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "welcomeBackDesc": "Sign in to your Echo account to continue",
+    "joinEcho": "Join Echo",
+    "joinEchoDesc": "Create an account to start secure messaging",
+    "emailAddress": "Email Address",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "fullName": "Full Name",
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign In",
+    "signingIn": "Signing in...",
+    "signUp": "Sign up",
+    "creatingAccount": "Creating account...",
+    "createAccount": "Create Account",
+    "orContinueWith": "or continue with",
+    "orSignUpWith": "or sign up with",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithGithub": "Continue with GitHub",
+    "signUpWithGoogle": "Sign up with Google",
+    "signUpWithGithub": "Sign up with GitHub",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "errorFilled": "Please fill in all fields",
+    "errorPasswordMatch": "Passwords do not match",
+    "errorTerms": "Please agree to the terms and privacy policy",
+    "weak": "weak",
+    "medium": "medium",
+    "strong": "strong",
+    "termsAgree": "I agree to Echo's",
+    "termsOfService": "Terms of Service",
+    "and": "and",
+    "privacyPolicy": "Privacy Policy",
+    "ofEcho": "",
+    "placeholderEmail": "you@example.com",
+    "placeholderName": "John Doe"
+  },
+  "footer": {
+    "description": "Military-grade encryption for everyone. No backdoors. No exceptions.",
+    "rights": "All rights reserved.",
+    "tagline": "Open source secure messaging. Built on battle-tested cryptographic protocols. No backdoors.",
+    "product": {
+      "title": "Product",
+      "features": "Features",
+      "pricing": "Pricing",
+      "security": "Security",
+      "status": "Status",
+      "download": "Download",
+      "roadmap": "Roadmap"
+    },
+    "resources": {
+      "title": "Resources",
+      "documentation": "Documentation",
+      "docs": "Docs",
+      "guides": "Guides",
+      "apiPlayground": "API Playground",
+      "blog": "Blog",
+      "community": "Community",
+      "help": "Help",
+      "status": "Status"
+    },
+    "communitySection": {
+      "title": "Community",
+      "community": "Community",
+      "discord": "Discord",
+      "github": "GitHub",
+      "twitter": "Twitter"
+    },
+    "company": {
+      "title": "Company",
+      "about": "About",
+      "contact": "Contact",
+      "careers": "Careers",
+      "partners": "Partners",
+      "blog": "Blog"
+    },
+    "legal": {
+      "privacyPolicy": "Privacy Policy",
+      "privacy": "Privacy",
+      "termsOfService": "Terms of Service",
+      "terms": "Terms",
+      "cookiePolicy": "Cookie Policy",
+      "cookies": "Cookies",
+      "gdpr": "GDPR",
+      "licenses": "Licenses"
+    }
+  },
+  "dashboard": {
+    "search": {
+      "friends": "Search for friends...",
+      "conversations": "Search conversations..."
+    },
+    "emptyState": {
+      "selectChat": "Select a conversation",
+      "noChatSelected": "No chat selected",
+      "chooseConversation": "Choose a conversation from the list or start a new chat with a friend",
+      "searchFriend": "Search for a friend to start a new conversation",
+      "encrypted": "Your messages are encrypted using"
+    },
+    "noConversationsMatch": "No conversations match your search",
+    "noRecentConversations": "No recent conversations"
+  },
+  "sidebar": {
+    "wallpapers": {
+      "title": "Wallpapers"
+    }
+  },
+  "languageSelector": {
+    "es": "Español",
+    "en": "English"
+  }
+}

@@ -1,0 +1,307 @@
+﻿{
+  "nav": {
+    "product": "Producto",
+    "docs": "Documentación",
+    "pricing": "Precios",
+    "community": "Comunidad",
+    "demo": "Demo",
+    "aboutUs": "Nosotros",
+    "login": "Iniciar Sesión",
+    "register": "Empezar",
+    "language": "Idioma",
+    "blog": "Blog"
+  },
+  "hero": {
+    "title": "ECHO",
+    "subtitle": "Mensajes Privados.",
+    "subtitleHighlight": "Encriptación Inquebrantable.",
+    "subtitleEnd": "Transparencia Total.",
+    "description": "Encriptación de extremo a extremo de grado militar para todos. Sin puertas traseras. Sin excepciones.",
+    "ctaPrimary": "Empieza a Chatear Gratis",
+    "ctaSecondary": "Iniciar Sesión",
+    "badge": "v2.0 ya está disponible",
+    "tagline": "Seguro. Rápido. Descentralizado.",
+    "encrypted": "Encriptado",
+    "protocol": "PROTOCOLO ECHO"
+  },
+  "features": {
+    "title": "Privacidad por Diseño",
+    "titleMain": "La privacidad no es una característica.",
+    "titleSub": "Es la base.",
+    "description": "Cada función diseñada con tu derecho fundamental a la privacidad",
+    "echoProtocol": "Protocolo Echo",
+    "echoProtocolDesc": "Encriptación de grado militar con protocolo X3DH.",
+    "echoProtocolDetails": "Nuestra implementación personalizada del protocolo Extended Triple Diffie-Hellman garantiza que tus mensajes se encripten antes de salir de tu dispositivo. Usamos AES-256-GCM para el nivel más alto de seguridad.",
+    "zeroKnowledge": "Conocimiento Cero",
+    "zeroKnowledgeDesc": "Nunca vemos tus datos. Privacidad por diseño.",
+    "zeroKnowledgeDetails": "Nuestra arquitectura está construida de modo que no podemos acceder a tus claves privadas o mensajes.",
+    "forwardSecrecy": "Secreto Perfecto",
+    "forwardSecrecyDesc": "Claves rotativas protegen tus chats pasados.",
+    "forwardSecrecyDetails": "Si una clave se compromete, no puede usarse para descifrar mensajes pasados.",
+    "ephemerals": "Mensajes Efímeros",
+    "ephemeralDesc": "Temporizadores de autodestrucción de 5s a 30 días.",
+    "ephemeralDetails": "Configura mensajes para autodestruirse después de un período.",
+    "lightning": "Red Lightning",
+    "lightningDesc": "Entrega instantánea a escala.",
+    "lightningDetails": "Conexiones WebSocket optimizadas.",
+    "groupChats": "Grupos Seguros",
+    "groupChatsDesc": "Grupos encriptados de hasta 500 personas.",
+    "groupChatsDetails": "Los chats grupales se encriptan usando el protocolo Sender Keys.",
+    "decentralized": "Descentralizado",
+    "decentralizedDesc": "Sin servidores centrales. Tú controlas tus datos.",
+    "decentralizedDetails": "Arquitectura peer-to-peer opcional que elimina puntos únicos de fallo y garantiza que tus comunicaciones no dependan de ninguna entidad central.",
+    "openSource": "Código Abierto",
+    "openSourceDesc": "Código auditable.",
+    "openSourceDetails": "Todo nuestro código es de código abierto y disponible para auditoría.",
+    "incognito": "Modo Incógnito",
+    "learnMore": "Saber más",
+    "showLess": "Ver menos"
+  },
+  "cipher": {
+    "title": "Encriptación en Acción",
+    "description": "Mira cómo tu mensaje se transforma en tiempo real con AES-256.",
+    "plaintext": "Texto Plano",
+    "key": "Clave de Encriptación",
+    "secretKey": "Clave Secreta",
+    "ciphertext": "Texto Cifrado",
+    "decrypt": "Desencriptar Mensaje",
+    "generateKey": "Generar Nueva Clave",
+    "copy": "Copiar",
+    "copyToClipboard": "Copiar al portapapeles",
+    "copied": "¡Copiado!",
+    "reset": "Reiniciar",
+    "badge": "DEMO INTERACTIVA",
+    "hide": "Ocultar Desencriptado",
+    "waitingForInput": "Esperando entrada...",
+    "enterMessage": "Ingresa tu mensaje...",
+    "stats": {
+      "aes": "Encriptación AES",
+      "realtime": "Procesamiento",
+      "clientSide": "Lado del Cliente"
+    }
+  },
+  "keyExchange": {
+    "title": "Intercambio Seguro de Claves",
+    "alice": "Alice",
+    "bob": "Bob",
+    "protocols": {
+      "x3dh": "Protocolo X3DH",
+      "x3dhDesc": "Extended Triple Diffie-Hellman",
+      "doubleRatchet": "Double Ratchet",
+      "doubleRatchetDesc": "Gestión de claves auto-reparable",
+      "forwardSecrecy": "Secreto Hacia Adelante",
+      "forwardSecrecyDesc": "Nuevas claves para cada mensaje"
+    }
+  },
+  "code": {
+    "title": "Integración Simplificada",
+    "description": "El Protocolo Echo funciona perfectamente en los principales lenguajes de programación",
+    "javascript": "Encriptación del Lado del Cliente",
+    "python": "Integración Python",
+    "go": "Implementación Go",
+    "rust": "Backend Rust",
+    "badge": "API AMIGABLE PARA DESARROLLADORES",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "stats": {
+      "languages": "Lenguajes Soportados",
+      "setup": "Tiempo de Configuración",
+      "openSource": "Código Abierto",
+      "support": "Soporte Comunitario"
+    }
+  },
+  "ai": {
+    "badge": "ECHO AI",
+    "title": "Tu analista de seguridad",
+    "titleHighlight": "inteligente",
+    "description": "Pide a Echo AI que audite conversaciones, resuma decisiones técnicas o verifique el estado de la encriptación.",
+    "analyzing": "Analizando...",
+    "tryAnother": "Probar otro ejemplo",
+    "generateReport": "Generar Reporte"
+  },
+  "security": {
+    "title": "Fundación Criptográfica",
+    "description": "Construido sobre protocolos criptográficos revisados por pares y estándares de la industria",
+    "badge": "PROTOCOLOS DE SEGURIDAD",
+    "keyFeatures": "Características Clave",
+    "protocolFlow": "FLUJO DEL PROTOCOLO",
+    "viewAudit": "Ver Auditoría de Seguridad Completa",
+    "protocols": {
+      "x3dh": {
+        "title": "Protocolo X3DH",
+        "subtitle": "Acuerdo de Claves",
+        "description": "Extended Triple Diffie-Hellman proporciona acuerdo de claves autenticado."
+      },
+      "doubleRatchet": {
+        "title": "Algoritmo Double Ratchet",
+        "subtitle": "Claves por Mensaje",
+        "description": "Proporciona una serie de claves simétricas para cada mensaje."
+      },
+      "groupProtocol": {
+        "title": "Protocolo de Grupo",
+        "subtitle": "Conversaciones Seguras",
+        "description": "La mensajería grupal en Echo utiliza MLS basado en árboles."
+      },
+      "cryptoOps": {
+        "title": "Operaciones Criptográficas",
+        "subtitle": "Algoritmos y Estándares",
+        "description": "Echo utiliza primitivas criptográficas estándar de la industria."
+      }
+    },
+    "guarantees": {
+      "pfs": {
+        "title": "Secreto Perfecto Hacia Adelante",
+        "description": "El compromiso de claves a largo plazo no afecta los mensajes pasados."
+      },
+      "bs": {
+        "title": "Secreto Hacia Atrás",
+        "description": "Los mensajes futuros están protegidos incluso si las claves actuales están comprometidas."
+      },
+      "zka": {
+        "title": "Arquitectura de Conocimiento Cero",
+        "description": "Los servidores Echo no pueden desencriptar ningún mensaje."
+      }
+    }
+  },
+  "pricing": {
+    "title": "Precios Simples y Transparentes",
+    "description": "Elige el plan que se adapte a tus necesidades de privacidad. Sin tarifas ocultas, nunca.",
+    "monthly": "Mensual",
+    "yearly": "Anual",
+    "save": "Ahorra 20%",
+    "recommended": "MÁS POPULAR",
+    "getStarted": "Empezar",
+    "startFreeTrial": "Iniciar Prueba Gratuita",
+    "contactSales": "Contactar Ventas",
+    "billedYearly": "/mes (facturado anualmente)",
+    "perUserMonth": "/usuario/mes",
+    "plans": {
+      "starter": {
+        "name": "Inicial",
+        "desc": "Privacidad esencial para individuos.",
+        "features": ["Encriptación de Extremo a Extremo", "Mensajes autodestructivos", "Hasta 3 dispositivos", "1GB Almacenamiento", "Soporte Comunitario"]
+      },
+      "pro": {
+        "name": "Pro",
+        "desc": "Herramientas avanzadas para usuarios avanzados.",
+        "features": ["Todo en Inicial", "Dispositivos ilimitados", "50GB Almacenamiento", "Videollamadas HD", "Soporte Prioritario", "Temas Personalizados"]
+      },
+      "business": {
+        "name": "Negocios",
+        "desc": "Control y cumplimiento para equipos.",
+        "features": ["Todo en Pro", "Panel de Admin", "Integración SSO", "Registros de Auditoría", "Retención de Datos", "Gerente Dedicado"]
+      }
+    }
+  },
+  "auth": {
+    "welcomeBack": "Bienvenido de nuevo",
+    "welcomeBackDesc": "Inicia sesión en tu cuenta Echo para continuar",
+    "joinEcho": "Únete a Echo",
+    "joinEchoDesc": "Crea una cuenta para comenzar a enviar mensajes seguros",
+    "emailAddress": "Dirección de Correo",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "fullName": "Nombre Completo",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "signIn": "Iniciar Sesión",
+    "signingIn": "Iniciando sesión...",
+    "signUp": "Registrarse",
+    "creatingAccount": "Creando cuenta...",
+    "createAccount": "Crear Cuenta",
+    "orContinueWith": "o continuar con",
+    "orSignUpWith": "o registrarse con",
+    "continueWithGoogle": "Continuar con Google",
+    "continueWithGithub": "Continuar con GitHub",
+    "signUpWithGoogle": "Registrarse con Google",
+    "signUpWithGithub": "Registrarse con GitHub",
+    "noAccount": "¿No tienes una cuenta?",
+    "haveAccount": "¿Ya tienes una cuenta?",
+    "errorFilled": "Por favor completa todos los campos",
+    "errorPasswordMatch": "Las contraseñas no coinciden",
+    "errorTerms": "Por favor acepta los términos y la política de privacidad",
+    "weak": "débil",
+    "medium": "media",
+    "strong": "fuerte",
+    "termsAgree": "Acepto los",
+    "termsOfService": "Términos de Servicio",
+    "and": "y la",
+    "privacyPolicy": "Política de Privacidad",
+    "ofEcho": "de Echo",
+    "placeholderEmail": "tu@ejemplo.com",
+    "placeholderName": "Juan Pérez"
+  },
+  "footer": {
+    "description": "Encriptación de grado militar para todos. Sin puertas traseras. Sin excepciones.",
+    "rights": "Todos los derechos reservados.",
+    "tagline": "Mensajería segura de código abierto. Construido sobre protocolos criptográficos probados. Sin puertas traseras.",
+    "product": {
+      "title": "Producto",
+      "features": "Características",
+      "pricing": "Precios",
+      "security": "Seguridad",
+      "status": "Estado",
+      "download": "Descargar",
+      "roadmap": "Hoja de Ruta"
+    },
+    "resources": {
+      "title": "Recursos",
+      "documentation": "Documentación",
+      "docs": "Documentación",
+      "guides": "Guías",
+      "apiPlayground": "API Playground",
+      "blog": "Blog",
+      "community": "Comunidad",
+      "help": "Ayuda",
+      "status": "Estado"
+    },
+    "communitySection": {
+      "title": "Comunidad",
+      "community": "Comunidad",
+      "discord": "Discord",
+      "github": "GitHub",
+      "twitter": "Twitter"
+    },
+    "company": {
+      "title": "Compañía",
+      "about": "Sobre Nosotros",
+      "contact": "Contacto",
+      "careers": "Carreras",
+      "partners": "Socios",
+      "blog": "Blog"
+    },
+    "legal": {
+      "privacyPolicy": "Política de Privacidad",
+      "privacy": "Privacidad",
+      "termsOfService": "Términos de Servicio",
+      "terms": "Términos",
+      "cookiePolicy": "Política de Cookies",
+      "cookies": "Cookies",
+      "gdpr": "GDPR",
+      "licenses": "Licencias"
+    }
+  },
+  "dashboard": {
+    "search": {
+      "friends": "Buscar amigos...",
+      "conversations": "Buscar conversaciones..."
+    },
+    "emptyState": {
+      "selectChat": "Selecciona una conversación",
+      "noChatSelected": "Ningún chat seleccionado",
+      "chooseConversation": "Elige una conversación de la lista o inicia un nuevo chat con un amigo",
+      "searchFriend": "Busca un amigo para iniciar una nueva conversación",
+      "encrypted": "Tus mensajes están encriptados usando"
+    },
+    "noConversationsMatch": "Ninguna conversación coincide con tu búsqueda",
+    "noRecentConversations": "No hay conversaciones recientes"
+  },
+  "sidebar": {
+    "wallpapers": {
+      "title": "Fondos de pantalla"
+    }
+  },
+  "languageSelector": {
+    "es": "Español",
+    "en": "English"
+  }
+}
