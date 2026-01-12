@@ -5,7 +5,7 @@ import { Menu, X, Globe, ChevronDown, ArrowRight } from 'lucide-react';
 import gsap from 'gsap';
 import Logo from './Logo';
 
-const NavbarReflect = () => {
+const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [langDropdown, setLangDropdown] = useState(false);
@@ -209,4 +209,4 @@ const NavbarReflect = () => {
   );
 };
 
-export default NavbarReflect;
+export default Navbar;
