@@ -23,7 +23,8 @@ const ConversationList = ({
               onSelect={handleChatSelect}
               setIsHovered={setIsHovered}
               activeChat={activeChat}
-              userId={userId} 
+              userId={userId}
+              unreadCount={conversation.unreadCount || 0}
             />
           ))
         ) : (

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal, ArrowLeft } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import io from "socket.io-client";
+import { getSocket } from "../../../../socket";
 
 const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
   const navigate = useNavigate();
@@ -30,29 +30,32 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
     setMenuOpen(false);
   }, [activeChat]);
 
-  // Initialize socket connection
+  // Initialize socket connection and track online status
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
-      auth: { token },
-      withCredentials: true,
-      transports: ['websocket']
-    });
+    const sharedSocket = getSocket();
 
-    // Receive full online users list on initial connect
-    newSocket.on('onlineUsersList', ({ onlineUsers }) => {
+    // Request current online users when component mounts
+    sharedSocket.emit('getOnlineUsers', ({ onlineUsers }) => {
       setOnlineUsers(onlineUsers);
     });
 
-    newSocket.on('userOnline', ({ userId }) => {
-      setOnlineUsers(prev => [...prev, userId]);
-    });
+    const handleUserOnline = ({ userId }) => {
+      setOnlineUsers(prev => prev.includes(userId) ? prev : [...prev, userId]);
+    };
 
-    newSocket.on('userOffline', ({ userId }) => {
+    const handleUserOffline = ({ userId }) => {
       setOnlineUsers(prev => prev.filter(id => id !== userId));
-    });
+    };
 
-    setSocket(newSocket);
-    return () => newSocket.disconnect();
+    sharedSocket.on('userOnline', handleUserOnline);
+    sharedSocket.on('userOffline', handleUserOffline);
+
+    setSocket(sharedSocket);
+
+    return () => {
+      sharedSocket.off('userOnline', handleUserOnline);
+      sharedSocket.off('userOffline', handleUserOffline);
+    };
   }, [token]);
 
   const getConsistentColor = (username) => {
@@ -104,13 +107,6 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
       ${activeChat ? 'border-black' : 'border-black'}
     `}>
       <div className="flex items-center gap-4">
-        <button
-          className="md:hidden p-1 rounded-full hover:bg-gray-700 transition-colors mr-2"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-400" />
-        </button>
-
         <div className="relative">
           <div className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden border-2 border-black">
             <img
@@ -138,6 +134,23 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
               ` · Last seen ${new Date(activeChat.lastSeen).toLocaleTimeString()}`
             )}
           </p>
+        </div>
+
+        <div className="flex gap-2 ml-4">
+          <button
+            className="p-2 rounded-full hover:bg-gray-700 transition-colors"
+            aria-label="Voice call"
+            onClick={() => alert("Voice call clicked!")}
+          >
+            <i className="fa-solid fa-phone text-gray-400"></i>
+          </button>
+          <button
+            className="p-2 rounded-full hover:bg-gray-700 transition-colors"
+            aria-label="Video call"
+            onClick={() => navigate(`/video-call/${activeChat.id}`)}
+          >
+            <i className="fa-solid fa-video text-gray-400"></i>
+          </button>
         </div>
       </div>
 

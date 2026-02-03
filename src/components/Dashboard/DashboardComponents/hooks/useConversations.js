@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 
 export const useConversations = (userId) => {
   const [recentConversations, setRecentConversations] = useState([]);
-  const [unreadMessages, setUnreadMessages] = useState({});
   const isInitialized = useRef(false); // prevents overwrite on re-renders
 
   // Load only once when userId becomes available
@@ -14,13 +13,6 @@ export const useConversations = (userId) => {
       try {
         const parsed = JSON.parse(saved);
         setRecentConversations(parsed);
-
-        const unreads = {};
-        parsed.forEach(conv => {
-          const count = Number(localStorage.getItem(`unread-${userId}-${conv.id}`)) || 0;
-          unreads[conv.id] = count;
-        });
-        setUnreadMessages(unreads);
       } catch (e) {
         console.error("Failed to parse localStorage conversations", e);
       }
@@ -41,13 +33,18 @@ export const useConversations = (userId) => {
       let updated = [...prev];
 
       if (existingIndex >= 0) {
+        // Merge new data with existing, updating username and profileImage if provided
         updated[existingIndex] = {
           ...updated[existingIndex],
+          ...friendData, // Merge in any new data (username, profileImage, etc.)
           lastMessage: message?.text || updated[existingIndex].lastMessage,
           lastMessageTime: message?.timestamp || updated[existingIndex].lastMessageTime,
         };
-        const [moved] = updated.splice(existingIndex, 1);
-        updated.unshift(moved);
+        // Only move to top if there's a new message
+        if (message) {
+          const [moved] = updated.splice(existingIndex, 1);
+          updated.unshift(moved);
+        }
       } else {
         updated.unshift({
           ...friendData,
@@ -59,17 +56,9 @@ export const useConversations = (userId) => {
       return updated.slice(0, 20); // Keep recent 20
     });
 
-    if (message && message.userId !== userId) {
-      setUnreadMessages(prev => {
-        const newCount = (prev[friendData.id] || 0) + 1;
-        localStorage.setItem(`unread-${userId}-${friendData.id}`, newCount);
-        return {
-          ...prev,
-          [friendData.id]: newCount
-        };
-      });
-    }
+    // Note: Unread message management is now handled solely in Dashboard.jsx
+    // to avoid duplicate state management and race conditions
   };
 
-  return { recentConversations, unreadMessages, updateRecentConversations };
+  return { recentConversations, updateRecentConversations };
 };

@@ -27,8 +27,14 @@ module.exports = {
       },
       keyframes: {
         bounce: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
+          '0%, 100%': {
+            transform: 'translateY(0)',
+            animationTimingFunction: 'ease-in-out'
+          },
+          '50%': {
+            transform: 'translateY(-10px)',
+            animationTimingFunction: 'ease-in-out'
+          },
         },
       },
     },

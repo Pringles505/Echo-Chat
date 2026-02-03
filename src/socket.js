@@ -1,21 +1,38 @@
 import { io } from 'socket.io-client';
 
 let socket = null;
+let currentToken = null;
 
 export function getSocket() {
   const token = localStorage.getItem('token');
   if (!socket) {
-    socket = io('http://localhost:3001', {
+    socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001', {
       withCredentials: true,
-      autoConnect: false,
+      auth: token ? { token } : {},
+      transports: ['websocket']
     });
+    currentToken = token;
+  } else if (token && !currentToken) {
+    // Reconnect only on login (null -> token), not on cross-tab localStorage changes
+    socket.auth = { token };
+    currentToken = token;
+    if (socket.connected) {
+      socket.disconnect();
+      socket.connect();
+    }
   }
-  // Always set the latest token before connecting
-  socket.auth = token ? { token } : {};
   if (!socket.connected) {
     socket.connect();
   }
   return socket;
+}
+
+export function disconnectSocket() {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+    currentToken = null;
+  }
 }
 
 export default getSocket;

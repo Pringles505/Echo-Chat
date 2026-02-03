@@ -8,10 +8,11 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-     "tauri": "tauri"
+    "tauri": "tauri"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
+    "@heroicons/react": "^2.2.0",
     "@react-three/drei": "^9.77.1",
     "@react-three/fiber": "^8.13.3",
     "@tailwindcss/forms": "^0.5.10",
@@ -22,6 +23,7 @@
     "crypto": "^1.0.1",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
+    "firebase": "^12.6.0",
     "framer-motion": "^12.15.0",
     "gsap": "^3.13.0",
     "i18n": "^0.15.1",
