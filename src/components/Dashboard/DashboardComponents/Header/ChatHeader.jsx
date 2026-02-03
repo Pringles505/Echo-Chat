@@ -30,30 +30,31 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
     setMenuOpen(false);
   }, [activeChat]);
 
-  // Initialize socket connection using shared socket
+  // Initialize socket connection and track online status
   useEffect(() => {
     const sharedSocket = getSocket();
 
-    // Receive full online users list on initial connect
-    sharedSocket.on('onlineUsersList', ({ onlineUsers }) => {
+    // Request current online users when component mounts
+    sharedSocket.emit('getOnlineUsers', ({ onlineUsers }) => {
       setOnlineUsers(onlineUsers);
     });
 
-    sharedSocket.on('userOnline', ({ userId }) => {
-      setOnlineUsers(prev => [...prev, userId]);
-    });
+    const handleUserOnline = ({ userId }) => {
+      setOnlineUsers(prev => prev.includes(userId) ? prev : [...prev, userId]);
+    };
 
-    sharedSocket.on('userOffline', ({ userId }) => {
+    const handleUserOffline = ({ userId }) => {
       setOnlineUsers(prev => prev.filter(id => id !== userId));
-    });
+    };
+
+    sharedSocket.on('userOnline', handleUserOnline);
+    sharedSocket.on('userOffline', handleUserOffline);
 
     setSocket(sharedSocket);
 
     return () => {
-      sharedSocket.off('onlineUsersList');
-      sharedSocket.off('userOnline');
-      sharedSocket.off('userOffline');
-      // Don't disconnect the shared socket
+      sharedSocket.off('userOnline', handleUserOnline);
+      sharedSocket.off('userOffline', handleUserOffline);
     };
   }, [token]);
 

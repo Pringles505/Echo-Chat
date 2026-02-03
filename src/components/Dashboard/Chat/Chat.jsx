@@ -70,6 +70,8 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
   const messagesEndRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const previousMessageCountRef = useRef(0);
+  const chatMessageHandlerRef = useRef(null);
+  const seenUpdateHandlerRef = useRef(null);
 
   // useEffect to handle the socket connection and message fetching
   useEffect(() => {
@@ -197,8 +199,41 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
         }
       };
 
+      // Store handler ref so cleanup removes only this listener
+      chatMessageHandlerRef.current = handleChatMessage;
+
       // Listen for incoming messages and initial messages
       socket.on("newMessage", handleChatMessage);
+
+      // Listen for read receipt updates, filtered to this chat
+      const handleSeenUpdate = ({ userId: seenByUserId, targetUserId: seenForUserId }) => {
+        if (seenForUserId === userId && seenByUserId === targetUserId) {
+          console.log("👀", seenForUserId, "Message seen by:", seenByUserId);
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg.userId === userId ? { ...msg, seenStatus: true } : msg
+            )
+          );
+
+          // Also update localStorage so updateSavedMessages doesn't
+          // overwrite React state with stale seenStatus values
+          const savedSessionKey = `chatSession-${userId}-${targetUserId}`;
+          const savedSession = localStorage.getItem(savedSessionKey);
+          if (savedSession) {
+            try {
+              const parsedSession = JSON.parse(savedSession);
+              const savedMessages = (parsedSession.savedMessages || []).map((msg) =>
+                msg.userId === userId ? { ...msg, seenStatus: true } : msg
+              );
+              localStorage.setItem(savedSessionKey, JSON.stringify({ savedMessages }));
+            } catch (e) {
+              console.error('Error updating seen status in localStorage:', e);
+            }
+          }
+        }
+      };
+      seenUpdateHandlerRef.current = handleSeenUpdate;
+      socket.on("messageSeenUpdate", handleSeenUpdate);
     };
 
     initChat();
@@ -209,7 +244,8 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
         `🧹 Cleaning up listeners for chat: User ${userId} ↔ Target ${targetUserId}`
       );
       socket.off("initChat");
-      socket.off("newMessage");
+      socket.off("newMessage", chatMessageHandlerRef.current);
+      socket.off("messageSeenUpdate", seenUpdateHandlerRef.current);
 
       // Note: We no longer clear session keys when switching chats
       // The Double Ratchet state must persist for proper decryption
@@ -445,17 +481,6 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       console.error("Failed to send message:", error);
     }
   };
-
-  // Listen for messageSeenUpdatem wehn the target user sees the message
-  // In this case, targetUserId=userId and userId=targetUserId, since its sent from the target user 
-  socket.on("messageSeenUpdate", ({ userId, targetUserId }) => {
-    console.log("👀", targetUserId, "Message seen by:", userId);
-    setMessages((prevMessages) =>
-      prevMessages.map((msg) => {
-        return { ...msg, seenStatus: true };
-      })
-    );
-  });
 
   useEffect(() => {
     const messageCountIncreased = messages.length > previousMessageCountRef.current;
