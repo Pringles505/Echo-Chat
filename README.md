@@ -33,7 +33,8 @@ Developed by 2ºCEB students **Marcos Cabrero**, **Gonzalo de la Lastra**, and *
   - [XEdDSA (EdDSA for X25519)](#xeddsa-eddsa-for-x25519)
   - [XEdDSA Signing](#xeddsa-signing)
   - [XEdDSA Verification](#xeddsa-verification)  
-- [Setup](#setup)  
+- [Setup](#setup)
+- [Running](#running)  
 - [References](#references)  
 
 # Security Protocol
@@ -198,6 +199,18 @@ Navigate and build the Rust XEdDSA Module
 ```
 cd xeddsa-wasm
 wasm-pack build --target web
+```
+
+# Running
+
+Run on the web
+```
+npm run dev
+```
+
+Run desktop app
+```
+npm run tauri dev
 ```
 
 # References
