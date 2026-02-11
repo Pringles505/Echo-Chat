@@ -2,7 +2,7 @@
 // Handles Double Ratchet decryption for both foreground (Chat) and background (Dashboard) messages
 
 import { base64ToArrayBuffer, arrayBufferToBase64, hexToUint8Array } from "../helpers";
-import { getSessionKey, setSessionKey, updateSavedMessages } from "./keyManagement";
+import { getSessionKey, setSessionKey, updateSavedMessages, getEphemeralData, setEphemeralData } from "./keyManagement";
 import { initializeDoubleRatchetResponse, continueDoubleRatchetChain } from "../crypto/dr";
 import { decrypt } from "../crypto/aes";
 
@@ -33,12 +33,11 @@ export const decryptIncomingMessage = async (
   try {
     console.log(`🔐 [Decryption Service] Processing message from ${targetUserId}`);
 
-    // Retrieve the previous target public ephemeral key from local storage if it exists
+    // Retrieve the previous target public ephemeral key from ELD if it exists
     // IMPORTANT: Use session-specific key to avoid conflicts between different chats
     const sessionId = [userId, targetUserId].sort().join('-');
-    const previousTargetPublicEphemeralKey = localStorage.getItem(
-      `previousTargetPublicEphemeralKey-${sessionId}`
-    );
+    const ephData = await getEphemeralData(userId, targetUserId);
+    const previousTargetPublicEphemeralKey = ephData?.previousTargetPublicEphemeralKey || null;
 
     console.log("🔑 [Decryption Service] Previous ephemeral key:", previousTargetPublicEphemeralKey);
     console.log("🔑 [Decryption Service] Current message ephemeral key:", message.publicEphemeralKey);
@@ -61,10 +60,12 @@ export const decryptIncomingMessage = async (
     else if (message.publicEphemeralKey != previousTargetPublicEphemeralKey) {
       console.log("⛓️ [Decryption Service] Ratchet advanced - continuing chain");
 
-      const sessionId = [userId, targetUserId].join("-");
-
-      // Retrieve the private ephemeral key from local storage and decode
-      const privateEphemeralBase64 = localStorage.getItem(`ephPriv-${sessionId}`);
+      // Retrieve the private ephemeral key from ELD and decode
+      const currentEphData = await getEphemeralData(userId, targetUserId);
+      const privateEphemeralBase64 = currentEphData?.ephPriv;
+      if (!privateEphemeralBase64) {
+        throw new Error("Missing private ephemeral key (ephPriv) for ratchet continuation");
+      }
       const privateEphemeral = base64ToArrayBuffer(privateEphemeralBase64);
 
       derived_rootKey = await continueDoubleRatchetChain(
@@ -77,7 +78,7 @@ export const decryptIncomingMessage = async (
     // If the RECEIVED message has NOT continued the RATCHET, use the current session key
     else {
       console.log("🔑 [Decryption Service] Using existing session key");
-      derived_rootKey = getSessionKey(userId, targetUserId);
+      derived_rootKey = await getSessionKey(userId, targetUserId);
     }
 
     // Verify we got a key
@@ -102,10 +103,11 @@ export const decryptIncomingMessage = async (
     // Store the target public ephemeral key for future ratchet continuation
     // IMPORTANT: Use session-specific key to avoid conflicts between different chats
     const targetPublicEphemeralKeyBase64 = message.publicEphemeralKey;
-    localStorage.setItem(
-      `previousTargetPublicEphemeralKey-${sessionId}`,
-      targetPublicEphemeralKeyBase64
-    );
+    const existingEphData = await getEphemeralData(userId, targetUserId) || {};
+    await setEphemeralData(userId, targetUserId, {
+      ...existingEphData,
+      previousTargetPublicEphemeralKey: targetPublicEphemeralKeyBase64
+    });
 
     // Save the DECRYPTED message to local storage
     // If setMessages is provided (foreground mode), update state
@@ -149,7 +151,7 @@ export const decryptOwnMessage = async (
     console.log("📩 [Decryption Service] Decrypting own message (echo)");
 
     // Get ephemeral key from memory (saved when we sent the message)
-    const derivedKey = getSessionKey(userId, targetUserId);
+    const derivedKey = await getSessionKey(userId, targetUserId);
 
     // Error out in case no key is found
     if (!derivedKey) {

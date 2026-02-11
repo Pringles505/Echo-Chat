@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getSavedMessages } from "../../Chat/utils/chat/keyManagement";
 
 const ConversationItem = ({
   conversation,
@@ -23,30 +24,15 @@ const ConversationItem = ({
   const avatarBgColor = getConsistentColor(conversation.username);
 
   useEffect(() => {
-  const fetchLatest = () => {
+  const fetchLatest = async () => {
     const targetUserId = conversation.targetUserId || conversation.id;
-    const messagesKey = `chatSession-${userId}-${targetUserId}`;
-    console.log('🔍 ConversationItem fetching latest for key:', messagesKey);
-    const messagesRaw = localStorage.getItem(messagesKey);
-
-    if (!messagesRaw) {
-      console.log('📭 No messages found in localStorage for', messagesKey);
-      // Check if there's an unread message (notification received but not opened yet)
-      if (unreadCount > 0) {
-        setLatestMessage('New message');
-      } else {
-        setLatestMessage('No messages yet');
-      }
-      return;
-    }
+    console.log('🔍 ConversationItem fetching latest for:', targetUserId);
 
     try {
-      const parsed = JSON.parse(messagesRaw);
-      const messages = parsed.savedMessages;
+      const messages = await getSavedMessages(userId, targetUserId);
 
-      if (!Array.isArray(messages) || messages.length === 0) {
-        console.log('📭 Empty messages array for', messagesKey);
-        // Check if there's an unread message
+      if (!messages || messages.length === 0) {
+        console.log('📭 No messages found in ELD');
         if (unreadCount > 0) {
           setLatestMessage('New message');
         } else {
@@ -57,9 +43,26 @@ const ConversationItem = ({
 
       const lastMsg = messages[messages.length - 1];
       console.log('✅ Latest message found:', lastMsg?.text);
-      setLatestMessage(lastMsg?.text || (unreadCount > 0 ? 'New message' : 'No messages yet'));
+
+      if (lastMsg?.messageType === 'call_event') {
+        const dur = lastMsg.callData?.duration || 0;
+        const status = lastMsg.callData?.status;
+        if (status === 'missed') {
+          setLatestMessage('Missed call');
+        } else if (status === 'declined') {
+          setLatestMessage('Call declined');
+        } else if (dur > 0) {
+          const m = Math.floor(dur / 60);
+          const s = dur % 60;
+          setLatestMessage(`Video call ${m > 0 ? m + ':' + String(s).padStart(2, '0') : s + 's'}`);
+        } else {
+          setLatestMessage('Video call');
+        }
+      } else {
+        setLatestMessage(lastMsg?.text || (unreadCount > 0 ? 'New message' : 'No messages yet'));
+      }
     } catch (err) {
-      console.error("Error parsing messages:", err);
+      console.error("Error fetching messages from ELD:", err);
       setLatestMessage(unreadCount > 0 ? 'New message' : 'No messages yet');
     }
   };
@@ -67,7 +70,7 @@ const ConversationItem = ({
   // Initial fetch
   fetchLatest();
 
-  // Listener for localStorage updates
+  // Listener for storage updates (still works via custom event)
   const handleStorageUpdate = (event) => {
     console.log('🔔 localStorageUpdated event received in ConversationItem:', event.detail);
     console.log('🔔 Current conversation:', conversation.id);

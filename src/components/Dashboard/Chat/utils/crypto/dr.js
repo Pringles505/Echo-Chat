@@ -6,6 +6,11 @@ import init_xeddsa, {verify_signature} from 'xeddsa-wasm';
 
 import init_dh, {diffie_hellman, hkdf_derive  } from 'dh-wasm';
 
+import { getIdentityKeys } from '../chat/keyManagement';
+
+const HKDF_SALT = new Uint8Array();
+const HKDF_INFO = new TextEncoder().encode('EchoProtocol');
+
 const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_private, publicEphemeralKey, privateKeyArray) => {
     await init_dh();
     console.log('🗝️⚠️⚠️Initializing Double Ratchet...');
@@ -35,7 +40,8 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
     console.log('Signature valid:', isValidSignature);
 
 
-    const publicIdentityKeyX25519 = localStorage.getItem('publicKeyX25519');
+    const identityKeys = await getIdentityKeys();
+    const publicIdentityKeyX25519 = identityKeys?.publicKeyX25519;
     console.log("🗝️🎈 publicIdentityKeyX25519: ", publicIdentityKeyX25519)
     console.log("🗝️🎈 publicEphemeralKey: ", publicEphemeralKey)
 
@@ -68,7 +74,7 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
     console.log('IKM:', IKM);
 
     //HKDF the IKM to produce the root key
-    const root_key = hkdf_derive(IKM, 0, "EchoProtocol", 32)
+    const root_key = hkdf_derive(IKM, HKDF_SALT, HKDF_INFO, 32)
     console.log('Root Key:', root_key);
 
     return root_key;
@@ -109,7 +115,7 @@ const continueDoubleRatchetChain = async (socket, targetUserId, previousTargetPu
 
     await init_dh();
     const DH4 = await diffie_hellman(privateEphemeralKey, previousTargetPublicEphemeralKey);
-    const chainKey = hkdf_derive(DH4, 0, "EchoProtocol", 32);
+    const chainKey = hkdf_derive(DH4, HKDF_SALT, HKDF_INFO, 32);
 
     return chainKey;
 }
@@ -119,10 +125,11 @@ const initializeDoubleRatchetResponse = async (socket, message, userId, targetUs
 
 
     await init_dh();
-    // Retrieve the privatePreKey from local storage
-    const storedPrivatePreKey = localStorage.getItem('privatePreKey');
+    // Retrieve the privatePreKey from ELD
+    const identityKeysResponse = await getIdentityKeys();
+    const storedPrivatePreKey = identityKeysResponse?.privatePreKey;
     if (!storedPrivatePreKey) {
-        throw new Error('Private PreKey not found in local storage');
+        throw new Error('Private PreKey not found in encrypted storage');
     }
     const privatePreKey = base64ToArrayBuffer(storedPrivatePreKey);
 
@@ -158,7 +165,7 @@ const initializeDoubleRatchetResponse = async (socket, message, userId, targetUs
     IKM.set(dh3, dh1.length + dh2.length);
     console.log('IKM:', IKM);
 
-    const root_key = hkdf_derive(IKM, 0, "EchoProtocol", 32)
+    const root_key = hkdf_derive(IKM, HKDF_SALT, HKDF_INFO, 32)
     console.log('Root Key:', root_key);
     return root_key;
 }

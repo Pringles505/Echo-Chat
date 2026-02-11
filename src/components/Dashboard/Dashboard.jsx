@@ -11,9 +11,10 @@ import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatPr
 import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
 import { getSocket } from "../../socket";
 import IncomingCallNotification from "../VideoCall/IncomingCallNotification";
-import { clearAllSessionKeys } from "./Chat/utils/chat/keyManagement";
+import { clearAllSessionKeys, getIdentityKeys } from "./Chat/utils/chat/keyManagement";
 import { decryptIncomingMessage } from "./Chat/utils/chat/messageDecryption";
 import { base64ToArrayBuffer } from "./Chat/utils/helpers";
+import eld from "../../utils/storage/EncryptedLocalDatabase";
 
 const Dashboard = () => {
   const token = localStorage.getItem("token");
@@ -21,7 +22,7 @@ const Dashboard = () => {
   const { username, userId, profileImage } = getUserData(token);
   localStorage.setItem('userId', userId);
   localStorage.setItem('username', username);
-  
+
   // Estados
   const [activeChat, setActiveChat] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -207,9 +208,13 @@ const Dashboard = () => {
       // Handle both single message and array of messages
       const messages = Array.isArray(messageData) ? messageData : [messageData];
 
-      // Get user's private key for decryption
-      const storedPrivateKey = localStorage.getItem("privateKeyX25519");
-      const privateKeyArray = base64ToArrayBuffer(storedPrivateKey);
+      // Get user's private key for decryption from ELD
+      const identityKeys = await getIdentityKeys();
+      if (!identityKeys?.privateKeyX25519) {
+        console.error('[Dashboard] No private key available in ELD');
+        return;
+      }
+      const privateKeyArray = base64ToArrayBuffer(identityKeys.privateKeyX25519);
 
       // Process each message for notifications
       for (const message of messages) {
@@ -410,8 +415,8 @@ const Dashboard = () => {
     if (message.userId === activeChat?.id) {
       updateRecentConversations(activeChat, message);
     } else {
-      const friend = recentConversations.find(c => c.id === message.userId) || 
-                    { id: message.userId, username: message.username };
+      const friend = recentConversations.find(c => c.id === message.userId) ||
+        { id: message.userId, username: message.username };
       updateRecentConversations(friend, message);
     }
   };
@@ -421,12 +426,20 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
+    // Lock the encrypted database (clears DEK from memory)
+    eld.lock();
+    console.log("[ELD] Database locked");
+
     // Clear all ephemeral session keys from memory (security critical!)
     clearAllSessionKeys();
-    console.log("🔐 All ephemeral encryption keys cleared from memory");
+    console.log("All ephemeral encryption keys cleared from memory");
 
-    // Clear all cached data
-    localStorage.clear();
+    // Clear session data but NOT the encrypted IndexedDB
+    sessionStorage.removeItem(`eld-pass-${userId}`);
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("username");
+
     if (socket) {
       socket.disconnect();
     }
@@ -475,18 +488,18 @@ const Dashboard = () => {
           {activeView === 'chats' ? 'Select a conversation' : 'No chat selected'}
         </h3>
         <p className="text-gray-300 max-w-md text-center">
-          {activeView === 'chats' 
+          {activeView === 'chats'
             ? 'Choose a conversation from the list or start a new chat with a friend'
             : 'Search for a friend to start a new conversation'}
         </p>
-        
+
         <div className="flex items-center justify-center text-xs text-gray-400 mt-8 pt-8 pb-4 border-t border-gray-700">
           <Lock className="w-4 h-4 mr-1.5" />
           <span>Your messages are encrypted using</span>
-          <img 
-            src="/EchoProtocolLogo.png" 
-            alt="Echo Protocol" 
-            className="h-12 ml-1.5" 
+          <img
+            src="/EchoProtocolLogo.png"
+            alt="Echo Protocol"
+            className="h-12 ml-1.5"
           />
         </div>
       </div>

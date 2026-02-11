@@ -27,6 +27,24 @@ export function getSocket() {
   return socket;
 }
 
+export function connectWithoutAuth() {
+  if (!socket) {
+    socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001', {
+      withCredentials: true,
+      auth: {},
+      transports: ['websocket']
+    });
+  } else {
+    socket.auth = {};
+    if (socket.connected) {
+      socket.disconnect();
+    }
+  }
+  currentToken = null;
+  socket.connect();
+  return socket;
+}
+
 export function disconnectSocket() {
   if (socket) {
     socket.disconnect();

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSocket } from '../socket';
+import { connectWithoutAuth } from '../socket';
+import { jwtDecode } from "jwt-decode";
 // import { Buffer } from "buffer";
 import init from "/dh-wasm/pkg";
 import Navbar from "../components/HomepageComponents/Navbar";
 import ParticlesBackground from "../components/HomepageComponents/ParticlesBackground";
 import WaveBackground from "../components/HomepageComponents/WaveBackground";
 import "./styles/SignIn.css";
+import eld from '../utils/storage/EncryptedLocalDatabase';
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -24,23 +26,47 @@ const Login = () => {
     }
 
     await init();
-    const socket = getSocket();
-
-    // If socket is already connected, disconnect first
-    if (socket.connected) {
-      socket.disconnect();
-    }
-
-    // Connect without token for login
-    socket.auth = {};
-    socket.connect();
+    const socket = connectWithoutAuth();
 
     socket.once("connect", () => {
-      socket.emit("login", { username, password }, (response) => {
+      socket.emit("login", { username, password }, async (response) => {
         if (response.success) {
           localStorage.setItem("token", response.token);
-          localStorage.setItem("userId", response.userId);
-          navigate("/dashboard");
+
+          const resolvedUserId = response.userId || (() => {
+            try {
+              const decoded = jwtDecode(response.token);
+              return decoded?.id || "";
+            } catch {
+              return "";
+            }
+          })();
+
+          localStorage.setItem("userId", resolvedUserId);
+
+          // Unlock the encrypted database
+          try {
+            const userExists = await eld.userExists(resolvedUserId);
+
+            if (userExists) {
+              await eld.unlock(resolvedUserId, password);
+              console.log("[ELD] Database unlocked");
+            } else {
+              // First login on this device - no local keys
+              // Option 1: Show warning and continue
+              console.warn("[ELD] No local database - keys not available locally");
+              // Option 2: Or block login and require re-registration
+              // setError("No local keys found. Please register on this device.");
+              // socket.disconnect();
+              // return;
+            }
+
+            navigate("/dashboard");
+          } catch (err) {
+            console.error("[ELD] Unlock failed:", err);
+            setError("Failed to unlock: " + err.message);
+            socket.disconnect();
+          }
         } else {
           setError(response.error || "Login failed");
           socket.disconnect();

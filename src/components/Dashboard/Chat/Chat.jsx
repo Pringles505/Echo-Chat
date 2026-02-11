@@ -23,6 +23,11 @@ import {
   setSessionKey,
   getSessionKey,
   updateSavedMessages,
+  getIdentityKeys,
+  getSavedMessages,
+  setEphemeralData,
+  getEphemeralData,
+  updateMessageSeenStatus,
 } from "./utils/chat/keyManagement";
 
 // Double Ratchet Rust module
@@ -57,21 +62,39 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
   // Use shared socket connection
   const socket = getSocket();
 
-  // Extract the private key from localstorage and convert it to a ByteArray
-  const storedPrivateKey = localStorage.getItem("privateKeyX25519");
-  const privateKeyArray = base64ToArrayBuffer(storedPrivateKey);
-
   // Extract userId and targetUserId from the token and activeChat
   const userId = token ? jwtDecode(token).id : "";
   const targetUserId = activeChat;
   const username = token ? jwtDecode(token).username : "";
   const [messages, setMessages] = useState([]);
+  const [privateKeyArray, setPrivateKeyArray] = useState(null);
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const previousMessageCountRef = useRef(0);
+  const isInitialLoadRef = useRef(true);
   const chatMessageHandlerRef = useRef(null);
   const seenUpdateHandlerRef = useRef(null);
+
+  // Load private key from ELD on mount
+  useEffect(() => {
+    const loadPrivateKey = async () => {
+      const keys = await getIdentityKeys();
+      if (keys?.privateKeyX25519) {
+        setPrivateKeyArray(base64ToArrayBuffer(keys.privateKeyX25519));
+        console.log("[Chat] Loaded private key from ELD");
+      } else {
+        console.error("[Chat] No private key available in ELD");
+      }
+    };
+    loadPrivateKey();
+  }, []);
+
+  // Reset scroll refs when switching chats so the new chat starts at the bottom instantly
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    previousMessageCountRef.current = 0;
+  }, [targetUserId]);
 
   // useEffect to handle the socket connection and message fetching
   useEffect(() => {
@@ -81,24 +104,23 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       `🔄 Fetching messages for chat: User ${userId} ↔ Target ${targetUserId}`
     );
 
-    // Load previously decrypted messages from localStorage
-    const savedSessionKey = `chatSession-${userId}-${targetUserId}`;
-    const savedSession = localStorage.getItem(savedSessionKey);
-
-    if (savedSession) {
+    // Load previously decrypted messages from ELD
+    const loadSavedMessages = async () => {
       try {
-        const parsedSession = JSON.parse(savedSession);
-        const savedMessages = parsedSession.savedMessages || [];
-        console.log(`📂 Loaded ${savedMessages.length} previously decrypted messages from storage`);
-        setMessages(savedMessages);
+        const savedMessages = await getSavedMessages(userId, targetUserId);
+        if (savedMessages.length > 0) {
+          console.log(`📂 Loaded ${savedMessages.length} messages from ELD`);
+          setMessages(savedMessages);
+        } else {
+          console.log('📂 No saved messages found, starting fresh');
+          setMessages([]);
+        }
       } catch (error) {
         console.error('Error loading saved messages:', error);
         setMessages([]);
       }
-    } else {
-      console.log('📂 No saved messages found, starting fresh');
-      setMessages([]);
-    }
+    };
+    loadSavedMessages();
 
     // initialize the chat by fetching the latest message number and setting up real-time message handling
     const initChat = async () => {
@@ -206,7 +228,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       socket.on("newMessage", handleChatMessage);
 
       // Listen for read receipt updates, filtered to this chat
-      const handleSeenUpdate = ({ userId: seenByUserId, targetUserId: seenForUserId }) => {
+      const handleSeenUpdate = async ({ userId: seenByUserId, targetUserId: seenForUserId }) => {
         if (seenForUserId === userId && seenByUserId === targetUserId) {
           console.log("👀", seenForUserId, "Message seen by:", seenByUserId);
           setMessages((prevMessages) =>
@@ -215,20 +237,11 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
             )
           );
 
-          // Also update localStorage so updateSavedMessages doesn't
-          // overwrite React state with stale seenStatus values
-          const savedSessionKey = `chatSession-${userId}-${targetUserId}`;
-          const savedSession = localStorage.getItem(savedSessionKey);
-          if (savedSession) {
-            try {
-              const parsedSession = JSON.parse(savedSession);
-              const savedMessages = (parsedSession.savedMessages || []).map((msg) =>
-                msg.userId === userId ? { ...msg, seenStatus: true } : msg
-              );
-              localStorage.setItem(savedSessionKey, JSON.stringify({ savedMessages }));
-            } catch (e) {
-              console.error('Error updating seen status in localStorage:', e);
-            }
+          // Also update ELD so messages have correct seenStatus
+          try {
+            await updateMessageSeenStatus(userId, targetUserId);
+          } catch (e) {
+            console.error('Error updating seen status in ELD:', e);
           }
         }
       };
@@ -262,7 +275,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
     console.log("🧮 Using message number:", currentMessageNumber);
 
     // Check if we have an existing session key (for continuing conversation)
-    const currentKeyChain = getSessionKey(userId, targetUserId);
+    const currentKeyChain = await getSessionKey(userId, targetUserId);
     console.log("🗝️ Current Session Key:", currentKeyChain ? "Found" : "Not found (will initialize)");
 
     // Intialize variables for the message state
@@ -276,12 +289,10 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       console.log("⛓️⛓️ Continuing ⛓️⛓️");
       console.log("currentKeyChain:", currentKeyChain);
 
-      // Retrieve previous public ephemeral key from local storage
+      // Retrieve previous public ephemeral key from ELD
       // IMPORTANT: Use session-specific key to avoid conflicts between different chats
-      const sessionId = [userId, targetUserId].sort().join('-');
-      const previousTargetPublicEphemeralKey = localStorage.getItem(
-        `previousTargetPublicEphemeralKey-${sessionId}`
-      );
+      const ephData = await getEphemeralData(userId, targetUserId);
+      const previousTargetPublicEphemeralKey = ephData?.previousTargetPublicEphemeralKey || null;
 
       // Intilialize the new root key variable
       let new_root_key = null;
@@ -297,12 +308,11 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
         const publicEphemeralKey =
           generate_public_ephemeral_key(privateEphemeralKey);
 
-        // Save private ephemeral key to local storage
-        const sessionId = [userId, targetUserId].join("-");
-        localStorage.setItem(
-          `ephPriv-${sessionId}`,
-          arrayBufferToBase64(privateEphemeralKey)
-        );
+        // Save private ephemeral key to ELD
+        await setEphemeralData(userId, targetUserId, {
+          ...ephData,
+          ephPriv: arrayBufferToBase64(privateEphemeralKey)
+        });
 
         // Encode public ephemeral key to Base64 for transmission
         publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
@@ -331,17 +341,17 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       // If no previous target public ephemeral key exists, use the current session key
       else {
         console.log("No previous target public ephemeral key found");
-        new_root_key = getSessionKey(userId, targetUserId);
+        new_root_key = await getSessionKey(userId, targetUserId);
 
-        // Save the initial public ephemeral key to local storage
-        publicEphemeralKeyBase64 = localStorage.getItem(
-          "initialSelfPublicEphemeralKey"
-        );
+        // Get the initial public ephemeral key from ELD
+        const currentEphData = await getEphemeralData(userId, targetUserId);
+        publicEphemeralKeyBase64 = currentEphData?.initialSelfPublicEphemeralKey || null;
       }
 
       // Store the new root key in memory for this session only
       // Will be used to encrypt this message and then kept for potential next message
-      setSessionKey(userId, targetUserId, new_root_key);
+      await setSessionKey(userId, targetUserId, new_root_key);
+      root_key = new_root_key;
       console.log("🔑 Ephemeral key stored in memory for this session");
     }
     // If no key chain is found, initialize a new double ratchet session
@@ -369,22 +379,17 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       // Encode public ephemeral key to Base64 for transmission
       publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
 
-      // Save the initial public ephemeral key to local storage
-      localStorage.setItem(
-        "initialSelfPublicEphemeralKey",
-        publicEphemeralKeyBase64
-      );
+      // Save the ephemeral keys to ELD
+      await setEphemeralData(userId, targetUserId, {
+        initialSelfPublicEphemeralKey: publicEphemeralKeyBase64,
+        ephPriv: arrayBufferToBase64(privateEphemeralKey)
+      });
+
       console.log("Saved To State: ", publicEphemeralKeyBase64);
       console.log(
         "🗝️ Generated ephemeral keys:",
         publicEphemeralKey,
         privateEphemeralKey
-      );
-
-      const sessionId = [userId, targetUserId].join("-");
-      localStorage.setItem(
-        `ephPriv-${sessionId}`,
-        arrayBufferToBase64(privateEphemeralKey)
       );
 
       if (isInitialMessage) {
@@ -398,13 +403,13 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
         );
         root_key = root;
         // Store the root key in memory ONLY for this session
-        setSessionKey(userId, targetUserId, root_key);
+        await setSessionKey(userId, targetUserId, root_key);
         console.log("✅ Root key generated and stored in memory (ephemeral)");
       } else {
         // If not initial but no session key exists, we need to derive one
         // This happens when the page is refreshed or chat is reopened
         console.log("⚠️ No initial message flag, but checking for existing session key...");
-        const existingKey = getSessionKey(userId, targetUserId);
+        const existingKey = await getSessionKey(userId, targetUserId);
         if (!existingKey) {
           console.log("🔄 No session key found, initializing new key for existing conversation");
           const root = await initializeDoubleRatchet(
@@ -415,7 +420,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
             privateKeyArray
           );
           root_key = root;
-          setSessionKey(userId, targetUserId, root_key);
+          await setSessionKey(userId, targetUserId, root_key);
           console.log("✅ New session key initialized for existing conversation");
         } else {
           // Use existing key
@@ -433,11 +438,11 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
 
       // Get the current session key (either from initialization or continuation)
       // If we have root_key (from new initialization), use it; otherwise get from session
-      const encryptionKey = root_key || getSessionKey(userId, targetUserId);
+      const encryptionKey = root_key || await getSessionKey(userId, targetUserId);
 
       if (!encryptionKey) {
         console.error("❌ No encryption key available! This should not happen.");
-        console.error("Debug info:", { isInitialMessage, root_key, hasSessionKey: !!getSessionKey(userId, targetUserId) });
+        console.error("Debug info:", { isInitialMessage, root_key, hasSessionKey: !!(await getSessionKey(userId, targetUserId)) });
         return;
       }
 
@@ -486,7 +491,9 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
     const messageCountIncreased = messages.length > previousMessageCountRef.current;
 
     if (autoScroll && messageCountIncreased && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      const behavior = isInitialLoadRef.current ? "instant" : "smooth";
+      messagesEndRef.current.scrollIntoView({ behavior });
+      isInitialLoadRef.current = false;
     }
 
     // Update the previous message count
