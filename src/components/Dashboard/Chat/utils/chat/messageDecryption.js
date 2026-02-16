@@ -2,28 +2,17 @@
 // Handles Double Ratchet decryption for both foreground (Chat) and background (Dashboard) messages
 
 import { base64ToArrayBuffer, arrayBufferToBase64, hexToUint8Array } from "../helpers";
-import { getSessionKey, setSessionKey, updateSavedMessages, getEphemeralData, setEphemeralData } from "./keyManagement";
+import { getSessionKey, setSessionKey, updateSavedMessages, getEphemeralData, setEphemeralData, setOwnEphemeralKeys } from "./keyManagement";
 import { initializeDoubleRatchetResponse, continueDoubleRatchetChain } from "../crypto/dr";
 import { decrypt } from "../crypto/aes";
+import init_dh, { generate_private_ephemeral_key, generate_public_ephemeral_key, diffie_hellman, hkdf_derive } from "dh-wasm";
 
-// Secret key and nonce for encryption
-const nonce = "000102030405060708090a0b";
-const nonceArray = hexToUint8Array(nonce);
+import { chain_key_KDF, deriveChainKeys  } from "../crypto/hkdf";
+import { getRootKey, setRootKey, setReceivingChainKey, getReceivingChainKey, setSendingChainKey } from "./keyManagement";
 
-/**
- * Decrypt an incoming message using the Double Ratchet protocol
- * This function can be used by both Chat (foreground) and Dashboard (background)
- *
- * @param {Object} message - The encrypted message object
- * @param {string} userId - Current user's ID
- * @param {string} targetUserId - Target user's ID (sender of the message)
- * @param {Uint8Array} privateKeyArray - User's X25519 private key
- * @param {Object} socket - Socket.IO connection
- * @param {Function} setMessages - Optional setState function (for Chat component)
- * @returns {Object} - Decrypted message object
- */
 export const decryptIncomingMessage = async (
   message,
+  nonce,
   userId,
   targetUserId,
   privateKeyArray,
@@ -42,47 +31,108 @@ export const decryptIncomingMessage = async (
     console.log("🔑 [Decryption Service] Previous ephemeral key:", previousTargetPublicEphemeralKey);
     console.log("🔑 [Decryption Service] Current message ephemeral key:", message.publicEphemeralKey);
 
-    // Initialize the derived root key
-    let derived_rootKey = null;
 
-    // If the RECEIVED message is initial, initialize double ratchet RESPONSE
-    if (message.is_initial === true) {
-      console.log("🆕 [Decryption Service] Initial message - initializing Double Ratchet response");
-      derived_rootKey = await initializeDoubleRatchetResponse(
+    let root_key = await getRootKey(userId, targetUserId);
+    let messageKey = null;
+    console.log("🔑 TARGET USER ID ", targetUserId);
+
+    if (!root_key) {
+      console.log("🔐 [Decryption Service] No existing root key found, storing derived root key");
+
+      const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+
+      await init_dh();
+      const privateEphemeralKey = await generate_private_ephemeral_key(randomBytes);
+      const publicEphemeralKey = await generate_public_ephemeral_key(privateEphemeralKey);
+
+      root_key = await initializeDoubleRatchetResponse(
         socket,
         message,
-        userId,
         targetUserId,
         privateKeyArray
       );
+
+      await setRootKey(userId, targetUserId, root_key);
+
+      const { receivingChainKey } = deriveChainKeys(root_key, userId, targetUserId);
+
+      const chain_key_material = chain_key_KDF(receivingChainKey);
+      messageKey = chain_key_material.slice(0, 32);
+      const newChainKey = chain_key_material.slice(32);
+
+      await setReceivingChainKey(userId, targetUserId, newChainKey);
+
+      console.log("✅ Receiving chain initialized and message key derived for first message");
+
+      const publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
+      await setOwnEphemeralKeys(userId, targetUserId, publicEphemeralKeyBase64, arrayBufferToBase64(privateEphemeralKey));
+      console.log("✅ Own ephemeral keys stored");
     }
     // If the RECEIVED message has continued the RATCHET, advance the RECEIVING chain
-    else if (message.publicEphemeralKey != previousTargetPublicEphemeralKey) {
+    else if (message.publicEphemeralKey != previousTargetPublicEphemeralKey && previousTargetPublicEphemeralKey) {
       console.log("⛓️ [Decryption Service] Ratchet advanced - continuing chain");
 
       // Retrieve the private ephemeral key from ELD and decode
       const currentEphData = await getEphemeralData(userId, targetUserId);
-      const privateEphemeralBase64 = currentEphData?.ephPriv;
-      if (!privateEphemeralBase64) {
-        throw new Error("Missing private ephemeral key (ephPriv) for ratchet continuation");
-      }
+      let privateEphemeralBase64 = currentEphData?.ephPriv;
+
       const privateEphemeral = base64ToArrayBuffer(privateEphemeralBase64);
 
-      derived_rootKey = await continueDoubleRatchetChain(
+      const { receivingChainKey, newRootKey } = await continueDoubleRatchetChain(
         socket,
         targetUserId,
         message.publicEphemeralKey,
-        privateEphemeral
+        privateEphemeral,
+        root_key
       );
+
+      await setRootKey(userId, targetUserId, newRootKey);
+      //update local variable for same session use
+      root_key = newRootKey;
+
+      const chain_key_material = chain_key_KDF(receivingChainKey);
+      messageKey = chain_key_material.slice(0, 32);
+      const nextReceivingChainKey = chain_key_material.slice(32);
+
+      await setReceivingChainKey(userId, targetUserId, nextReceivingChainKey);
+
+      const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+      await init_dh();
+      const newPrivateEph = await generate_private_ephemeral_key(randomBytes);
+      const newPublicEph = await generate_public_ephemeral_key(newPrivateEph);
+      await setOwnEphemeralKeys(userId, targetUserId, arrayBufferToBase64(newPublicEph), arrayBufferToBase64(newPrivateEph));
+
+      const INFO_RK = new TextEncoder().encode('EchoProtocol/v1/KDF_RK');
+
+      const DH4 = await diffie_hellman(newPrivateEph, base64ToArrayBuffer(message.publicEphemeralKey));
+      const hkdf_expand = hkdf_derive(DH4, newRootKey, INFO_RK, 64);
+
+      const { sendingKeyChain, newRootKey2 } = {
+        sendingKeyChain: hkdf_expand.slice(0, 32),
+        newRootKey2: hkdf_expand.slice(32)
+      };
+
+      await setRootKey(userId, targetUserId, newRootKey2);
+      root_key = newRootKey2;
+      await setSendingChainKey(userId, targetUserId, sendingKeyChain);
     }
-    // If the RECEIVED message has NOT continued the RATCHET, use the current session key
     else {
-      console.log("🔑 [Decryption Service] Using existing session key");
-      derived_rootKey = await getSessionKey(userId, targetUserId);
+      console.log("🔐 [Decryption Service] No ratchet advance - deriving message key from existing chain")
+      let receivingChainKey = await getReceivingChainKey(userId, targetUserId);
+      if (!receivingChainKey) {
+        const { receivingChainKey: derivedReceivingChainKey } = deriveChainKeys(root_key, userId, targetUserId);
+        receivingChainKey = derivedReceivingChainKey;
+      }
+
+      const chain_key_material = chain_key_KDF(receivingChainKey);
+      messageKey = chain_key_material.slice(0, 32);
+      const newChainKey = chain_key_material.slice(32);
+
+      await setReceivingChainKey(userId, targetUserId, newChainKey);
     }
 
     // Verify we got a key
-    if (!derived_rootKey) {
+    if (!root_key) {
       console.error("❌ [Decryption Service] Failed to derive key for incoming message");
       throw new Error("Failed to derive decryption key");
     }
@@ -90,7 +140,7 @@ export const decryptIncomingMessage = async (
     console.log("✅ [Decryption Service] Derived key obtained, decrypting...");
 
     // IMMEDIATELY decrypt the message using the derived key
-    const decryptedPayloadStr = await decrypt(message.payload, derived_rootKey, nonceArray);
+    const decryptedPayloadStr = await decrypt(message.payload, messageKey, nonce);
     const decryptedPayload = JSON.parse(decryptedPayloadStr);
     const decryptedMessage = {
       ...message,
@@ -100,8 +150,6 @@ export const decryptIncomingMessage = async (
 
     console.log("✅ [Decryption Service] Message decrypted:", decryptedMessage.text);
 
-    // Store the target public ephemeral key for future ratchet continuation
-    // IMPORTANT: Use session-specific key to avoid conflicts between different chats
     const targetPublicEphemeralKeyBase64 = message.publicEphemeralKey;
     const existingEphData = await getEphemeralData(userId, targetUserId) || {};
     await setEphemeralData(userId, targetUserId, {
@@ -116,71 +164,19 @@ export const decryptIncomingMessage = async (
       userId,
       targetUserId,
       decryptedMessage,
-      setMessages || (() => {}) // Provide no-op function for background mode
+      setMessages || (() => { }) // Provide no-op function for background mode
     );
 
+
+
     // Save the derived key temporarily for potential next message in same session
-    setSessionKey(userId, targetUserId, derived_rootKey);
+    setSessionKey(userId, targetUserId, root_key);
 
     console.log("✅ [Decryption Service] Message saved and key stored in session");
 
     return decryptedMessage;
   } catch (error) {
     console.error("❌ [Decryption Service] Error decrypting message:", error);
-    throw error;
-  }
-};
-
-/**
- * Decrypt own message (echo from server)
- * Used when receiving our own sent message back from the server
- *
- * @param {Object} message - The encrypted message object
- * @param {string} userId - Current user's ID
- * @param {string} targetUserId - Target user's ID (recipient of the message)
- * @param {Function} setMessages - Optional setState function (for Chat component)
- * @returns {Object} - Decrypted message object
- */
-export const decryptOwnMessage = async (
-  message,
-  userId,
-  targetUserId,
-  setMessages = null
-) => {
-  try {
-    console.log("📩 [Decryption Service] Decrypting own message (echo)");
-
-    // Get ephemeral key from memory (saved when we sent the message)
-    const derivedKey = await getSessionKey(userId, targetUserId);
-
-    // Error out in case no key is found
-    if (!derivedKey) {
-      console.error(`❌ [Decryption Service] No ephemeral key found for self message`);
-      throw new Error("No session key found for own message");
-    }
-
-    // Decrypt the message text using the derived key
-    const decryptedPayloadStr = await decrypt(message.payload, derivedKey, nonceArray);
-    const decryptedPayload = JSON.parse(decryptedPayloadStr);
-    const decryptedMessage = {
-      ...message,
-      text: decryptedPayload.text,
-      image: decryptedPayload.image,
-    };
-
-    console.log("✅ [Decryption Service] Own message decrypted:", decryptedMessage.text);
-
-    // Update the saved messages with the decrypted message
-    updateSavedMessages(
-      userId,
-      targetUserId,
-      decryptedMessage,
-      setMessages || (() => {})
-    );
-
-    return decryptedMessage;
-  } catch (error) {
-    console.error("❌ [Decryption Service] Error decrypting own message:", error);
     throw error;
   }
 };

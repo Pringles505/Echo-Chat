@@ -11,7 +11,7 @@ import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatPr
 import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
 import { getSocket } from "../../socket";
 import IncomingCallNotification from "../VideoCall/IncomingCallNotification";
-import { clearAllSessionKeys, getIdentityKeys } from "./Chat/utils/chat/keyManagement";
+import { getIdentityKeys, getSavedMessages } from "./Chat/utils/chat/keyManagement";
 import { decryptIncomingMessage } from "./Chat/utils/chat/messageDecryption";
 import { base64ToArrayBuffer } from "./Chat/utils/helpers";
 import eld from "../../utils/storage/EncryptedLocalDatabase";
@@ -231,15 +231,24 @@ const Dashboard = () => {
 
         // Only process if the message is FROM another user (not sent by current user)
         // and is not part of the currently active chat
-        if (message.userId && messageSenderId !== currentUserId && messageSenderId !== activeChatId) {
+        if (message.userId && messageSenderId !== currentUserId) {
           const senderId = messageSenderId;
           console.log('✅ Processing notification for sender:', senderId);
+
+          // Skip messages already decrypted and saved in ELD
+          const existingMessages = await getSavedMessages(userId, senderId);
+          if (existingMessages.some(msg => msg._id === message._id)) {
+            console.log(`⏭️ Skipping already-decrypted message: ${message._id}`);
+            continue;
+          }
 
           // DECRYPT MESSAGE IN BACKGROUND
           try {
             console.log('🔐 [Dashboard] Attempting background decryption...');
+            const nonce = base64ToArrayBuffer(message.nonce || '');
             await decryptIncomingMessage(
               message,
+              nonce,
               userId,
               senderId,
               privateKeyArray,
@@ -429,10 +438,6 @@ const Dashboard = () => {
     // Lock the encrypted database (clears DEK from memory)
     eld.lock();
     console.log("[ELD] Database locked");
-
-    // Clear all ephemeral session keys from memory (security critical!)
-    clearAllSessionKeys();
-    console.log("All ephemeral encryption keys cleared from memory");
 
     // Clear session data but NOT the encrypted IndexedDB
     sessionStorage.removeItem(`eld-pass-${userId}`);

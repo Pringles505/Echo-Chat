@@ -9,7 +9,8 @@ import init_dh, {diffie_hellman, hkdf_derive  } from 'dh-wasm';
 import { getIdentityKeys } from '../chat/keyManagement';
 
 const HKDF_SALT = new Uint8Array();
-const HKDF_INFO = new TextEncoder().encode('EchoProtocol');
+const CHAIN_INFO = new TextEncoder().encode('EchoProtocol/v1/KDF_CK');
+const INFO_RK = new TextEncoder().encode('EchoProtocol/v1/KDF_RK');
 
 const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_private, publicEphemeralKey, privateKeyArray) => {
     await init_dh();
@@ -74,13 +75,13 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
     console.log('IKM:', IKM);
 
     //HKDF the IKM to produce the root key
-    const root_key = hkdf_derive(IKM, HKDF_SALT, HKDF_INFO, 32)
+    const root_key = hkdf_derive(IKM, HKDF_SALT, INFO_RK, 32)
     console.log('Root Key:', root_key);
 
     return root_key;
 }
 
-const continueDoubleRatchetChain = async (socket, targetUserId, previousTargetPublicEphemeralKeyBase64, privateEphemeralKey) => {
+const continueDoubleRatchetChain = async (socket, targetUserId, previousTargetPublicEphemeralKeyBase64, privateEphemeralKey, root_key) => {
     console.log("🚧🚧Continue DR Chain🚧🚧")
     console.log("🚧🚧Previous Target Public Ephemeral Key Base64: ", previousTargetPublicEphemeralKeyBase64)
     console.log("🚧🚧Private Ephemeral Key: ", privateEphemeralKey)
@@ -115,12 +116,15 @@ const continueDoubleRatchetChain = async (socket, targetUserId, previousTargetPu
 
     await init_dh();
     const DH4 = await diffie_hellman(privateEphemeralKey, previousTargetPublicEphemeralKey);
-    const chainKey = hkdf_derive(DH4, HKDF_SALT, HKDF_INFO, 32);
 
-    return chainKey;
+    const hkdf_expand = hkdf_derive(DH4, root_key, INFO_RK, 64);
+    const receivingChainKey = hkdf_expand.slice(0, 32);
+    const newRootKey = hkdf_expand.slice(32);
+
+    return { receivingChainKey, newRootKey }; 
 }
 
-const initializeDoubleRatchetResponse = async (socket, message, userId, targetUserId, privateKeyArray ) => {
+const initializeDoubleRatchetResponse = async (socket, message, targetUserId, privateKeyArray ) => {
     console.log("🚧🚧DR Response🚧🚧")
 
 
@@ -165,7 +169,7 @@ const initializeDoubleRatchetResponse = async (socket, message, userId, targetUs
     IKM.set(dh3, dh1.length + dh2.length);
     console.log('IKM:', IKM);
 
-    const root_key = hkdf_derive(IKM, HKDF_SALT, HKDF_INFO, 32)
+    const root_key = hkdf_derive(IKM, HKDF_SALT, INFO_RK, 32)
     console.log('Root Key:', root_key);
     return root_key;
 }

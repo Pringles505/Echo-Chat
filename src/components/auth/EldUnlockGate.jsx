@@ -20,7 +20,7 @@ const EldUnlockGate = ({ token, children }) => {
   const userId = decoded?.id || "";
   const username = decoded?.username || "";
 
-  const [status, setStatus] = useState("checking"); // checking | needs_password | unlocked
+  const [status, setStatus] = useState("checking"); 
   const [password, setPassword] = useState("");
   const [rememberForTab, setRememberForTab] = useState(true);
   const [error, setError] = useState("");
@@ -114,10 +114,10 @@ const EldUnlockGate = ({ token, children }) => {
     <div className="min-h-screen flex items-center justify-center bg-primary-1000 p-4">
       <div className="w-full max-w-md bg-[var(--color-background)]/50 backdrop-blur-md rounded-xl p-6 border border-[var(--color-primary)]/30 shadow-xl">
         <h2 className="text-2xl font-bold text-center mb-2 text-white">
-          Unlock Encrypted Storage
+          Unlock Chat
         </h2>
         <p className="text-sm text-gray-200 mb-6 text-center">
-          {username ? `Signed in as ${username}. ` : ""}Enter your password to decrypt local keys and messages.
+          {username ? `${username}, ` : ""}Enter your password to unlock chat.
         </p>
 
         {error ? (
@@ -149,7 +149,7 @@ const EldUnlockGate = ({ token, children }) => {
               checked={rememberForTab}
               onChange={(e) => setRememberForTab(e.target.checked)}
             />
-            Remember for this tab (stores password in sessionStorage)
+            Remember for this tab
           </label>
 
           <button

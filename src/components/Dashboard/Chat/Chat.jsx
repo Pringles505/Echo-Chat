@@ -20,20 +20,21 @@ import { fetchLatestMessageNumber, checkFirstMessage } from "./utils/api";
 
 // Key management functions for session keys
 import {
-  setSessionKey,
-  getSessionKey,
+  getSendingChainKey,
+  setOwnEphemeralKeys,
+  setSendingChainKey,
+  getRootKey,
+  setRootKey,
   updateSavedMessages,
   getIdentityKeys,
   getSavedMessages,
-  setEphemeralData,
-  getEphemeralData,
   updateMessageSeenStatus,
+  getOwnEphemeralKeys,
 } from "./utils/chat/keyManagement";
 
 // Double Ratchet Rust module
 import {
   initializeDoubleRatchet,
-  continueDoubleRatchetChain,
 } from "./utils/crypto/dr";
 
 // Diffie-Hellman Rust Module
@@ -45,17 +46,10 @@ import init_dh, {
 // AES Encryption primitives
 import { encrypt } from "./utils/crypto/aes";
 
-// Shared message decryption service
-import { decryptIncomingMessage, decryptOwnMessage } from "./utils/chat/messageDecryption";
-
-// Secret key and nonce for encryption
-const nonce = "000102030405060708090a0b";
-
-// Convert the nonce from hex to byteArray
-const nonceArray = hexToUint8Array(nonce);
-
-// For the purposes of this project, for now, keys and sensitive data are stored in local storage
-// In production use this should be an encrypted local database
+import {
+  chain_key_KDF,
+  deriveChainKeys
+} from './utils/crypto/hkdf';
 
 // Main chat component
 function Chat({ token, activeChat, currentWallpaper = "default" }) {
@@ -73,8 +67,6 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
   const [autoScroll, setAutoScroll] = useState(true);
   const previousMessageCountRef = useRef(0);
   const isInitialLoadRef = useRef(true);
-  const chatMessageHandlerRef = useRef(null);
-  const seenUpdateHandlerRef = useRef(null);
 
   // Load private key from ELD on mount
   useEffect(() => {
@@ -98,7 +90,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
 
   // useEffect to handle the socket connection and message fetching
   useEffect(() => {
-    // Check if userId and targetUserId are valid
+    // Check if userId and targetUserId are valid 
     if (!userId || !targetUserId) return;
     console.log(
       `🔄 Fetching messages for chat: User ${userId} ↔ Target ${targetUserId}`
@@ -122,369 +114,254 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
     };
     loadSavedMessages();
 
-    // initialize the chat by fetching the latest message number and setting up real-time message handling
+    // Handle incoming chat messages in real-time
+    const handleChatMessage = async (payload) => {
+      // Check if the payload is an array or a single message
+      const messages = Array.isArray(payload) ? payload : [payload];
+
+      // Process each message one by one from the payload
+      for (const message of messages) {
+        const nonce = base64ToArrayBuffer(message.nonce);
+        // Handle call event messages with special logic (check if user is involved)
+        if (message.messageType === 'call_event') {
+          const isInvolvedInCall =
+            message.callData?.callerId === userId ||
+            message.callData?.receiverId === userId;
+
+          const isRelevantToActiveChat =
+            (message.callData?.callerId === activeChat && message.callData?.receiverId === userId) ||
+            (message.callData?.receiverId === activeChat && message.callData?.callerId === userId);
+
+          if (isInvolvedInCall && isRelevantToActiveChat) {
+            console.log("📞 Received call event message:", {
+              callId: message.callData?.callId,
+              caller: message.callData?.callerId,
+              receiver: message.callData?.receiverId,
+              currentUser: userId,
+              activeChat: activeChat
+            });
+
+            // Save call event to localStorage
+            updateSavedMessages(userId, activeChat, message, setMessages);
+          }
+          continue;
+        }
+
+        // If message is from user or to the user process
+        if (message.userId == activeChat || message.userId == userId) {
+          try {
+
+            console.log("📩 Received real-time message:", message);
+
+            // Check if the message is for the active chat
+            const sender = String(message.userId);
+            if (activeChat === sender) {
+              socket.emit("messageSeen", { userId, targetUserId });
+            }
+            if (message.userId == userId) {
+              continue;
+            }
+
+            // Dashboard handles decryption — Chat reloads via localStorageUpdated event
+          } catch (err) {
+            console.error("❌ Error handling message:", err, message);
+            continue;
+          }
+        } else {
+          console.log(
+            "Message targetUserId: ",
+            message.userId,
+            "does not match activeChat: ",
+            activeChat
+          );
+        }
+      }
+    };
+
+    // Listen for read receipt updates, filtered to this chat
+    const handleSeenUpdate = async ({ userId: seenByUserId, targetUserId: seenForUserId }) => {
+      if (seenForUserId === userId && seenByUserId === targetUserId) {
+        console.log("👀", seenForUserId, "Message seen by:", seenByUserId);
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.userId === userId ? { ...msg, seenStatus: true } : msg
+          )
+        );
+
+        // Also update ELD so messages have correct seenStatus
+        try {
+          await updateMessageSeenStatus(userId, targetUserId);
+        } catch (e) {
+          console.error('Error updating seen status in ELD:', e);
+        }
+      }
+    };
+
+    // Listen for Dashboard completing decryption + ELD save
+    const handleEldUpdate = async (event) => {
+      const { userId: updatedUserId, targetUserId: updatedTargetUserId } = event.detail;
+      if (
+        (updatedUserId === userId && updatedTargetUserId === targetUserId) ||
+        (updatedUserId === targetUserId && updatedTargetUserId === userId)
+      ) {
+        const savedMessages = await getSavedMessages(userId, targetUserId);
+        setMessages(savedMessages);
+      }
+    };
+
+    window.addEventListener('localStorageUpdated', handleEldUpdate);
+
+    // Register listeners at effect scope
+    socket.on("newMessage", handleChatMessage);
+    socket.on("messageSeenUpdate", handleSeenUpdate);
+
+    // Async init (fetch message number, emit ready)
     const initChat = async () => {
-      // Fetch the latest message number
       const latestMessageNumber = await fetchLatestMessageNumber(
         socket,
         userId,
         targetUserId
       );
       console.log("📩 Latest message number:", latestMessageNumber);
-
-      // Initialize the socket connection and emit the 'ready' event
       socket.emit("ready", { userId, targetUserId });
-
-      // Handle incoming chat messages in real-time
-      const handleChatMessage = async (payload) => {
-        // Check if the payload is an array or a single message
-        const messages = Array.isArray(payload) ? payload : [payload];
-
-        // Process each message one by one from the payload
-        for (const message of messages) {
-          // Handle call event messages with special logic (check if user is involved)
-          if (message.messageType === 'call_event') {
-            const isInvolvedInCall =
-              message.callData?.callerId === userId ||
-              message.callData?.receiverId === userId;
-
-            const isRelevantToActiveChat =
-              (message.callData?.callerId === activeChat && message.callData?.receiverId === userId) ||
-              (message.callData?.receiverId === activeChat && message.callData?.callerId === userId);
-
-            if (isInvolvedInCall && isRelevantToActiveChat) {
-              console.log("📞 Received call event message:", {
-                callId: message.callData?.callId,
-                caller: message.callData?.callerId,
-                receiver: message.callData?.receiverId,
-                currentUser: userId,
-                activeChat: activeChat
-              });
-
-              // Save call event to localStorage
-              updateSavedMessages(userId, activeChat, message, setMessages);
-            }
-            continue;
-          }
-
-          // If message is from user or to the user process
-          if (message.userId == activeChat || message.userId == userId) {
-            try {
-
-              // Process own messages differently
-              if (message.userId === userId) {
-                try {
-                  await decryptOwnMessage(
-                    message,
-                    userId,
-                    targetUserId,
-                    setMessages
-                  );
-                } catch (error) {
-                  console.error("❌ Error decrypting own message:", error);
-                }
-                continue;
-              }
-              console.log("📩 Received real-time message:", message);
-
-              // Check if the message is for the active chat
-              const sender = String(message.userId);
-              if (activeChat === sender) {
-                socket.emit("messageSeen", { userId, targetUserId });
-              }
-
-              // Use shared decryption service
-              try {
-                await decryptIncomingMessage(
-                  message,
-                  userId,
-                  targetUserId,
-                  privateKeyArray,
-                  socket,
-                  setMessages
-                );
-              } catch (error) {
-                console.error("❌ Error decrypting incoming message:", error);
-              }
-            } catch (err) {
-              console.error("❌ Error handling message:", err, message);
-              continue;
-            }
-          } else {
-            console.log(
-              "Message targetUserId: ",
-              message.userId,
-              "does not match activeChat: ",
-              activeChat
-            );
-          }
-        }
-      };
-
-      // Store handler ref so cleanup removes only this listener
-      chatMessageHandlerRef.current = handleChatMessage;
-
-      // Listen for incoming messages and initial messages
-      socket.on("newMessage", handleChatMessage);
-
-      // Listen for read receipt updates, filtered to this chat
-      const handleSeenUpdate = async ({ userId: seenByUserId, targetUserId: seenForUserId }) => {
-        if (seenForUserId === userId && seenByUserId === targetUserId) {
-          console.log("👀", seenForUserId, "Message seen by:", seenByUserId);
-          setMessages((prevMessages) =>
-            prevMessages.map((msg) =>
-              msg.userId === userId ? { ...msg, seenStatus: true } : msg
-            )
-          );
-
-          // Also update ELD so messages have correct seenStatus
-          try {
-            await updateMessageSeenStatus(userId, targetUserId);
-          } catch (e) {
-            console.error('Error updating seen status in ELD:', e);
-          }
-        }
-      };
-      seenUpdateHandlerRef.current = handleSeenUpdate;
-      socket.on("messageSeenUpdate", handleSeenUpdate);
     };
-
     initChat();
 
-    // Cleanup function to remove listeners when the component unmounts or when userId or targetUserId changes
+    // Cleanup removes the exact handlers registered above
     return () => {
       console.log(
         `🧹 Cleaning up listeners for chat: User ${userId} ↔ Target ${targetUserId}`
       );
-      socket.off("initChat");
-      socket.off("newMessage", chatMessageHandlerRef.current);
-      socket.off("messageSeenUpdate", seenUpdateHandlerRef.current);
-
-      // Note: We no longer clear session keys when switching chats
-      // The Double Ratchet state must persist for proper decryption
-      // Keys are only cleared on logout via clearAllSessionKeys()
+      socket.off("newMessage", handleChatMessage);
+      socket.off("messageSeenUpdate", handleSeenUpdate);
+      window.removeEventListener('localStorageUpdated', handleEldUpdate);
       console.log("✅ Chat cleanup complete (session keys preserved for ratchet continuity)");
     };
-  }, [userId, targetUserId]);
+  }, [userId, targetUserId, privateKeyArray]);
 
   // Send message function
   const sendMessage = async (text, imageData = null) => {
+    const HKDF_SALT = new Uint8Array();
+
     // Fetch the latest message number and derive the current message number
-    const currentMessageNumber =
-      (await fetchLatestMessageNumber(socket, userId, targetUserId)) + 1;
-    console.log("🧮 Using message number:", currentMessageNumber);
+    // Generate unique nonce for this message, NOT private
+    const nonceArray = crypto.getRandomValues(new Uint8Array(12));
 
-    // Check if we have an existing session key (for continuing conversation)
-    const currentKeyChain = await getSessionKey(userId, targetUserId);
-    console.log("🗝️ Current Session Key:", currentKeyChain ? "Found" : "Not found (will initialize)");
+    let root_key = await getRootKey(userId, targetUserId);
 
-    // Intialize variables for the message state
-    let isInitialMessage = false;
-    let publicEphemeralKeyBase64 = null;
-    let root_key = null;
+    // If no existing root key, this is the initial message and we need to initialize the double ratchet
+    if (!root_key) {
+      console.log("🔐 No existing root key, initializing new Double Ratchet session");
 
-    // If the current conversation has a key chain, continue the double ratchet logic
-    if (currentKeyChain) {
-      // Log the current key chain
-      console.log("⛓️⛓️ Continuing ⛓️⛓️");
-      console.log("currentKeyChain:", currentKeyChain);
-
-      // Retrieve previous public ephemeral key from ELD
-      // IMPORTANT: Use session-specific key to avoid conflicts between different chats
-      const ephData = await getEphemeralData(userId, targetUserId);
-      const previousTargetPublicEphemeralKey = ephData?.previousTargetPublicEphemeralKey || null;
-
-      // Intilialize the new root key variable
-      let new_root_key = null;
-
-      // If a previous target public ephemeral key exists, continue the double ratchet chain
-      if (previousTargetPublicEphemeralKey) {
-        // Generate random base seed 32 Byte Array
-        const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-
-        // Generate new ephemeral keys from base seed
-        await init_dh();
-        const privateEphemeralKey = generate_private_ephemeral_key(randomBytes);
-        const publicEphemeralKey =
-          generate_public_ephemeral_key(privateEphemeralKey);
-
-        // Save private ephemeral key to ELD
-        await setEphemeralData(userId, targetUserId, {
-          ...ephData,
-          ephPriv: arrayBufferToBase64(privateEphemeralKey)
-        });
-
-        // Encode public ephemeral key to Base64 for transmission
-        publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
-
-        // Log new ephemeral keys and previous target public ephemeral key
-        console.log("Saved To State: ", publicEphemeralKeyBase64);
-        console.log(
-          "🗝️🗝️ Generated ephemeral keys:",
-          publicEphemeralKey,
-          privateEphemeralKey
-        );
-        console.log(
-          "Previous Target Public Ephemeral Key: ",
-          previousTargetPublicEphemeralKey
-        );
-
-        // Continue the double ratchet chain with the previous target public ephemeral key
-        new_root_key = await continueDoubleRatchetChain(
-          socket,
-          targetUserId,
-          previousTargetPublicEphemeralKey,
-          privateEphemeralKey
-        );
-        console.log("New Root Key: ", new_root_key);
-      }
-      // If no previous target public ephemeral key exists, use the current session key
-      else {
-        console.log("No previous target public ephemeral key found");
-        new_root_key = await getSessionKey(userId, targetUserId);
-
-        // Get the initial public ephemeral key from ELD
-        const currentEphData = await getEphemeralData(userId, targetUserId);
-        publicEphemeralKeyBase64 = currentEphData?.initialSelfPublicEphemeralKey || null;
-      }
-
-      // Store the new root key in memory for this session only
-      // Will be used to encrypt this message and then kept for potential next message
-      await setSessionKey(userId, targetUserId, new_root_key);
-      root_key = new_root_key;
-      console.log("🔑 Ephemeral key stored in memory for this session");
-    }
-    // If no key chain is found, initialize a new double ratchet session
-    else {
-      console.log("⛓️⛓️ No chain, initializing new chain ⛓️⛓️");
-
-      // If no session data is found, check if it's the first message
-      isInitialMessage = !(await checkFirstMessage(
-        socket,
-        userId,
-        targetUserId
-      ));
-      console.log("Is this the first message?", isInitialMessage);
-      console.log("📂No session data found, generating new session...📂");
-
-      // Generate random base seed 32 Byte Array
       const randomBytes = crypto.getRandomValues(new Uint8Array(32));
 
-      // Generate new ephemeral keys from base seed
+      // Generate private and public ephemeral key for this session
       await init_dh();
-      const privateEphemeralKey = generate_private_ephemeral_key(randomBytes);
-      const publicEphemeralKey =
-        generate_public_ephemeral_key(privateEphemeralKey);
+      const privateEphemeralKey = await generate_private_ephemeral_key(randomBytes);
+      const publicEphemeralKey = await generate_public_ephemeral_key(privateEphemeralKey);
 
-      // Encode public ephemeral key to Base64 for transmission
-      publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
-
-      // Save the ephemeral keys to ELD
-      await setEphemeralData(userId, targetUserId, {
-        initialSelfPublicEphemeralKey: publicEphemeralKeyBase64,
-        ephPriv: arrayBufferToBase64(privateEphemeralKey)
-      });
-
-      console.log("Saved To State: ", publicEphemeralKeyBase64);
-      console.log(
-        "🗝️ Generated ephemeral keys:",
+      root_key = await initializeDoubleRatchet(
+        socket,
+        targetUserId,
+        privateEphemeralKey,
         publicEphemeralKey,
-        privateEphemeralKey
+        privateKeyArray
       );
+      await setRootKey(userId, targetUserId, root_key);
 
-      if (isInitialMessage) {
-        console.log("🔐 Initializing Double Ratchet");
-        const root = await initializeDoubleRatchet(
-          socket,
-          targetUserId,
-          privateEphemeralKey,
-          publicEphemeralKey,
-          privateKeyArray
-        );
-        root_key = root;
-        // Store the root key in memory ONLY for this session
-        await setSessionKey(userId, targetUserId, root_key);
-        console.log("✅ Root key generated and stored in memory (ephemeral)");
-      } else {
-        // If not initial but no session key exists, we need to derive one
-        // This happens when the page is refreshed or chat is reopened
-        console.log("⚠️ No initial message flag, but checking for existing session key...");
-        const existingKey = await getSessionKey(userId, targetUserId);
-        if (!existingKey) {
-          console.log("🔄 No session key found, initializing new key for existing conversation");
-          const root = await initializeDoubleRatchet(
-            socket,
-            targetUserId,
-            privateEphemeralKey,
-            publicEphemeralKey,
-            privateKeyArray
-          );
-          root_key = root;
-          await setSessionKey(userId, targetUserId, root_key);
-          console.log("✅ New session key initialized for existing conversation");
-        } else {
-          // Use existing key
-          root_key = existingKey;
-        }
-      }
-    }
+      const { sendingChainKey } = deriveChainKeys(root_key, userId, targetUserId);
 
-    // check if the text is empty
-    if (!text.trim() && !imageData) return;
+      const chain_key_material = chain_key_KDF(sendingChainKey);
+      const messageKey = chain_key_material.slice(0, 32);
+      const newChainKey = chain_key_material.slice(32);
 
-    try {
-      // Encrypt the message AND the image using the ephemeral key
-      const payload = JSON.stringify({ text: text || '', image: imageData || null });
+      await setSendingChainKey(userId, targetUserId, newChainKey);
+      console.log("✅ Sending Key Chain Initialized and stored");
 
-      // Get the current session key (either from initialization or continuation)
-      // If we have root_key (from new initialization), use it; otherwise get from session
-      const encryptionKey = root_key || await getSessionKey(userId, targetUserId);
+      const publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
+      await setOwnEphemeralKeys(userId, targetUserId, publicEphemeralKeyBase64, arrayBufferToBase64(privateEphemeralKey));
+      console.log("✅ Own ephemeral keys stored");
 
-      if (!encryptionKey) {
-        console.error("❌ No encryption key available! This should not happen.");
-        console.error("Debug info:", { isInitialMessage, root_key, hasSessionKey: !!(await getSessionKey(userId, targetUserId)) });
-        return;
-      }
-
-      console.log("🔐 Encrypting with ephemeral session key");
-      const encryptedPayload = await encrypt(payload, encryptionKey, nonceArray);
-
-      // Key remains in memory for receiving our own echo message
-      // No need to re-store it as it's already in memory
-      console.log("✅ Message encrypted, key kept in memory for echo decryption");
-
-      // Emit the message to the server with additional fields
-      if (isInitialMessage) {
-        socket.emit("newMessage", {
-          payload: encryptedPayload,
-          userId,
-          targetUserId,
-          username,
-          is_initial: isInitialMessage,
-          messageNumber: isInitialMessage ? 0 : currentMessageNumber,
-          publicEphemeralKey: publicEphemeralKeyBase64,
-        });
-      } else {
-        socket.emit("newMessage", {
-          payload: encryptedPayload,
-          userId,
-          targetUserId,
-          username,
-          is_initial: isInitialMessage,
-          messageNumber: currentMessageNumber,
-          publicEphemeralKey: publicEphemeralKeyBase64,
-        });
-      }
-
-      console.log("📤 Sent message:", {
-        payload: encryptedPayload,
-        is_initial: isInitialMessage,
-        messageNumber: currentMessageNumber,
-        publicEphemeralKey: publicEphemeralKeyBase64,
+      const payload = JSON.stringify({
+        text: text || '',
+        image: imageData || null
       });
-    } catch (error) {
-      console.error("Failed to send message:", error);
+      const encryptedPayload = await encrypt(payload, messageKey, nonceArray);
+      console.log("✅ Message encrypted");
+      console.log("✅ Sensitive keys zeroed out");
+
+      socket.emit("newMessage", {
+        payload: encryptedPayload,
+        nonce: arrayBufferToBase64(nonceArray),
+        userId,
+        targetUserId,
+        username,
+        publicEphemeralKey: publicEphemeralKeyBase64
+      });
+
+      console.log("✅ First message sent");
+      await updateSavedMessages(userId, targetUserId, {
+        _id: crypto.randomUUID(),
+        userId,
+        targetUserId,
+        username,
+        text: text || '',
+        image: imageData || null,
+        seenStatus: false,
+        createdAt: new Date().toISOString(),
+      }, setMessages);
+      return;
     }
+
+    let sendingChainKey = await getSendingChainKey(userId, targetUserId);
+    if (!sendingChainKey) {
+      console.error("❌ No sending chain key found for existing session, creating SENDING chain from ROOT key");
+      const { sendingChainKey: derivedSendingChainKey } = deriveChainKeys(root_key, userId, targetUserId);
+      sendingChainKey = derivedSendingChainKey;
+      await setSendingChainKey(userId, targetUserId, sendingChainKey);
+      console.log("✅ Derived and stored missing sending chain key from root key");
+    }
+
+    const chain_key_material = chain_key_KDF(sendingChainKey);
+    const messageKey = chain_key_material.slice(0, 32);
+    const newChainKey = chain_key_material.slice(32);
+
+
+    await setSendingChainKey(userId, targetUserId, newChainKey);
+    console.log("✅ Derived message key for encryption");
+
+    const ownKeys = await getOwnEphemeralKeys(userId, targetUserId);
+    const publicEphemeralKeyBase64 = ownKeys.public;
+
+    const payload = JSON.stringify({
+      text: text || '',
+      image: imageData || null
+    });
+    const encryptedPayload = await encrypt(payload, messageKey, nonceArray);
+    console.log("✅ Message encrypted");
+    console.log("✅ Sensitive keys zeroed out");
+
+    socket.emit("newMessage", {
+      payload: encryptedPayload,
+      nonce: arrayBufferToBase64(nonceArray),
+      userId,
+      targetUserId,
+      username,
+      publicEphemeralKey: publicEphemeralKeyBase64
+    });
+
+    console.log("✅ First message sent");
+    await updateSavedMessages(userId, targetUserId, {
+      _id: crypto.randomUUID(),
+      userId,
+      targetUserId,
+      username,
+      text: text || '',
+      image: imageData || null,
+      seenStatus: false,
+      createdAt: new Date().toISOString(),
+    }, setMessages);
+    return;
   };
 
   useEffect(() => {

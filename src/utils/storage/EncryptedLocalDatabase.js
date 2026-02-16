@@ -4,27 +4,30 @@ import dhInit, { hkdf_derive } from 'dh-wasm';
 
 // Constants
 const DB_NAME = 'EchoEncryptedDB';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 
 const STORES = {
     META: 'meta',              //SALTS
     IDENTITY_KEYS: 'identity_keys',
     SESSION_KEYS: 'session_keys',
     MESSAGES: 'messages',
-    MEDIA: 'media'
+    MEDIA: 'media',
+    ROOT_KEYS: 'root_keys',
+    SENDING_CHAIN_KEYS: 'sending_chain_keys',
+    RECEIVING_CHAIN_KEYS: 'receiving_chain_keys',
 };
 
 class EncryptedLocalDatabase {
     constructor() {
         this.db = null;            // IndexedDB instance
-        this.dek = null;           // Database Encryption Key (memory only!)
+        this.dek = null;           // Database Encryption Key 
         this.currentUserId = null; // Who is logged in
         this._instanceId = Math.random().toString(36).substr(2, 9);
         console.log('[ELD] New instance created, id:', this._instanceId);
     }
 
     async initializeDB() {
-        if (this.db) return this.db;  // Already initialized
+        if (this.db) return this.db;
 
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -67,6 +70,24 @@ class EncryptedLocalDatabase {
                 // MEDIA - index by userId
                 if (!db.objectStoreNames.contains(STORES.MEDIA)) {
                     const store = db.createObjectStore(STORES.MEDIA, { keyPath: 'id' });
+                    store.createIndex('userId', 'userId', { unique: false });
+                }
+
+                // ROOT_KEYS - index by userId
+                if (!db.objectStoreNames.contains(STORES.ROOT_KEYS)) {
+                    const store = db.createObjectStore(STORES.ROOT_KEYS, { keyPath: 'id' });
+                    store.createIndex('userId', 'userId', { unique: false });
+                }
+
+                // SENDING_CHAIN_KEYS - index by userId
+                if (!db.objectStoreNames.contains(STORES.SENDING_CHAIN_KEYS)) {
+                    const store = db.createObjectStore(STORES.SENDING_CHAIN_KEYS, { keyPath: 'id' });
+                    store.createIndex('userId', 'userId', { unique: false });
+                }
+
+                // RECEIVING_CHAIN_KEYS - index by userId
+                if (!db.objectStoreNames.contains(STORES.RECEIVING_CHAIN_KEYS)) {
+                    const store = db.createObjectStore(STORES.RECEIVING_CHAIN_KEYS, { keyPath: 'id' });
                     store.createIndex('userId', 'userId', { unique: false });
                 }
             };
@@ -348,45 +369,160 @@ class EncryptedLocalDatabase {
         return JSON.parse(decrypted);
     }
 
-    async storeSessionKey(peerId, sessionKey, metadata = {}) {
+    // Receiving Chain Keys
+
+    async storeReceivingChainKey(peerId, receivingChainKey) {
         this._ensureUnlocked();
-        if (!(sessionKey instanceof Uint8Array) || sessionKey.length !== 32) {
-            throw new Error(`Invalid session key length: ${sessionKey?.length} (expected 32)`);
+        if (!(receivingChainKey instanceof Uint8Array) || receivingChainKey.length !== 32) {
+            throw new Error(`Invalid receiving chain key length: ${receivingChainKey?.length} (expected 32)`);
         }
-        const sessionId = [this.currentUserId, peerId].sort().join('-');
+        const receivingKeyChainId = [this.currentUserId, peerId].sort().join('-');
 
         const data = {
-            sessionKey: this._uint8ToBase64(sessionKey),
+            receivingChainKey: this._uint8ToBase64(receivingChainKey),
             peerId,
-            ...metadata,
             updatedAt: Date.now()
-        };
-
+        }
         const encrypted = await this._encrypt(data);
-        await this._put(STORES.SESSION_KEYS, {
-            id: `session-${sessionId}`,
+        await this._put(STORES.RECEIVING_CHAIN_KEYS, {
+            id: `receivingChainKey-${receivingKeyChainId}`,
             userId: this.currentUserId,
-            sessionId,
+            receivingKeyChainId,
             ...encrypted
         });
     }
 
-    async getSessionKey(peerId) {
+    async getReceivingChainKey(peerId) {
         this._ensureUnlocked();
-        const sessionId = [this.currentUserId, peerId].sort().join('-');
-        const record = await this._get(STORES.SESSION_KEYS, `session-${sessionId}`);
+        const receivingKeyChainId = [this.currentUserId, peerId].sort().join('-');
+        const record = await this._get(STORES.RECEIVING_CHAIN_KEYS, `receivingChainKey-${receivingKeyChainId}`);
         if (!record) return null;
 
         const decrypted = await this._decrypt(record.ciphertext, record.nonce);
         const data = JSON.parse(decrypted);
-        data.sessionKey = this._base64ToUint8(data.sessionKey);
-        if (!(data.sessionKey instanceof Uint8Array) || data.sessionKey.length !== 32) {
-            console.warn('[ELD] Invalid session key stored; deleting:', { sessionId, length: data.sessionKey?.length });
-            await this.deleteSessionKey(peerId);
+        const key = typeof data.receivingChainKey === 'string'
+            ? this._base64ToUint8(data.receivingChainKey)
+            : data.receivingChainKey;
+        if (!(key instanceof Uint8Array) || key.length !== 32) {
+            console.warn('[ELD] Invalid receiving chain key stored; deleting:', { receivingKeyChainId, length: key?.length });
+            await this.deleteReceivingChainKey(peerId);
             return null;
         }
-        return data;
+        return { receivingChainKey: key };
     }
+
+    async deleteReceivingChainKey(peerId) {
+        this._ensureUnlocked();
+        const receivingKeyChainId = [this.currentUserId, peerId].sort().join('-');
+        await this._delete(STORES.RECEIVING_CHAIN_KEYS, `receivingChainKey-${receivingKeyChainId}`);
+    }
+
+    // Sending Chain Keys
+
+    async storeSendingChainKey(peerId, sendingChainKey) {
+        this._ensureUnlocked();
+        if (!(sendingChainKey instanceof Uint8Array) || sendingChainKey.length !== 32) {
+            throw new Error(`Invalid sending chain key length: ${sendingChainKey?.length} (expected 32)`);
+        }
+        const sendingKeyChainId = [this.currentUserId, peerId].sort().join('-');
+
+        const data = {
+            sendingChainKey: this._uint8ToBase64(sendingChainKey),
+            peerId,
+            updatedAt: Date.now()
+        }
+        const encrypted = await this._encrypt(data);
+        await this._put(STORES.SENDING_CHAIN_KEYS, {
+            id: `sendingChainKey-${sendingKeyChainId}`,
+            userId: this.currentUserId,
+            sendingKeyChainId,
+            ...encrypted
+        });
+    }
+
+    async getSendingChainKey(peerId) {
+        this._ensureUnlocked();
+        const sendingKeyChainId = [this.currentUserId, peerId].sort().join('-');
+        const record = await this._get(STORES.SENDING_CHAIN_KEYS, `sendingChainKey-${sendingKeyChainId}`);
+        if (!record) return null;
+
+        const decrypted = await this._decrypt(record.ciphertext, record.nonce);
+        const data = JSON.parse(decrypted);
+        const key = typeof data.sendingChainKey === 'string'
+            ? this._base64ToUint8(data.sendingChainKey)
+            : data.sendingChainKey;
+        if (!(key instanceof Uint8Array) || key.length !== 32) {
+            console.warn('[ELD] Invalid sending chain key stored; deleting:', { sendingKeyChainId, length: key?.length });
+            await this.deleteSendingChainKey(peerId);
+            return null;
+        }
+        return { sendingChainKey: key };
+    }
+
+    async deleteSendingChainKey(peerId) {
+        this._ensureUnlocked();
+        const sendingKeyChainId = [this.currentUserId, peerId].sort().join('-');
+        await this._delete(STORES.SENDING_CHAIN_KEYS, `sendingChainKey-${sendingKeyChainId}`);
+    }
+
+    async deleteRootKey(peerId) {
+        this._ensureUnlocked();
+        const rootKeyId = [this.currentUserId, peerId].sort().join('-');
+        await this._delete(STORES.ROOT_KEYS, `root-${rootKeyId}`);
+    }
+
+    // ROOT KEYS
+
+    async storeRootKey(peerId, rootKey) {
+        this._ensureUnlocked();
+        if (!(rootKey instanceof Uint8Array) || rootKey.length !== 32) {
+            throw new Error(`Invalid root key length: ${rootKey?.length} (expected 32)`);
+        }
+        const rootKeyId = [this.currentUserId, peerId].sort().join('-');
+
+        const data = {
+            rootKey: this._uint8ToBase64(rootKey),
+            peerId,
+            updatedAt: Date.now()
+        }
+        const encrypted = await this._encrypt(data);
+        await this._put(STORES.ROOT_KEYS, {
+            id: `root-${rootKeyId}`,
+            userId: this.currentUserId,
+            rootKeyId,
+            ...encrypted
+        });
+    }
+
+    async getRootKey(peerId) {
+        this._ensureUnlocked();
+        const root_key = [this.currentUserId, peerId].sort().join('-');
+        const record = await this._get(STORES.ROOT_KEYS, `root-${root_key}`);
+        if (!record) return null;
+
+        const rootKeyId = [this.currentUserId, peerId].sort().join('-');
+
+        const decrypted = await this._decrypt(record.ciphertext, record.nonce);
+        const data = JSON.parse(decrypted);
+        const key = typeof data.rootKey === 'string'
+            ? this._base64ToUint8(data.rootKey)
+            : data.rootKey;
+        if (!(key instanceof Uint8Array) || key.length !== 32) {
+            console.warn('[ELD] Invalid ROOT key stored; deleting:', { rootKeyId, length: key?.length });
+            await this.deleteRootKey(peerId);
+            return null;
+        }
+        return { rootKey: key };
+    }
+
+    async deleteRootKey(peerId) {
+        this._ensureUnlocked();
+        const rootKeyId = [this.currentUserId, peerId].sort().join('-');
+        await this._delete(STORES.ROOT_KEYS, `root-${rootKeyId}`);
+    }
+
+
+    //MESSAGES 
 
     async storeMessage(peerId, message) {
         this._ensureUnlocked();
@@ -418,13 +554,7 @@ class EncryptedLocalDatabase {
             }
         }
 
-        return messages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-    }
-
-    async deleteSessionKey(peerId) {
-        this._ensureUnlocked();
-        const sessionId = [this.currentUserId, peerId].sort().join('-');
-        await this._delete(STORES.SESSION_KEYS, `session-${sessionId}`);
+        return messages.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
     }
 
     // ============== EPHEMERAL KEYS ==============
