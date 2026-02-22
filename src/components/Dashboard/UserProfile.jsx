@@ -14,7 +14,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
-import { getSocket } from "../../socket";
+import { getSocket } from "../../services/socket";
 import Toast from "../common/Toast";
 import ParticlesBackground from "../HomepageComponents/ParticlesBackground.jsx";
 

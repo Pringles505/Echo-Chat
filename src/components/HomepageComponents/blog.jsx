@@ -19,7 +19,7 @@ const BlogPage = () => {
       date: "June 1, 2025",
       excerpt:
         "Discover how Echo implements end-to-end encryption inspired by Signal Protocol using custom Rust modules for maximum security.",
-      imageUrl: "EchoProtocolLogo.png",
+      imageUrl: "/EchoProtocolLogo.png",
       link: "#",
       category: "Announcement",
     },
@@ -60,7 +60,7 @@ const BlogPage = () => {
       date: "June 8, 2025",
       excerpt:
         "A comprehensive guide to XEdDSA and how it enables secure authentication in the Echo protocol.",
-      imageUrl: "echo-logo-text.png",
+      imageUrl: "/echo-logo-text.png",
       link: "#",
       category: "Technical",
     },
@@ -160,7 +160,7 @@ const BlogPage = () => {
       date: "July 3, 2025",
       excerpt:
         "How Echo's security model differs from and improves upon existing secure messaging protocols.",
-      imageUrl: "EchoProtocolLogo.png",
+      imageUrl: "/EchoProtocolLogo.png",
       link: "#",
       category: "Analysis",
     },
@@ -275,7 +275,7 @@ const BlogPage = () => {
                       <div className="md:w-1/2 relative min-h-[300px] md:min-h-[400px]">
                         <img
                           className="absolute inset-0 w-full h-full object-contain p-6 md:p-8 bg-black/20"
-                          src={`EchoProtocolLogo.png`}
+                          src="/EchoProtocolLogo.png"
                           alt={blogPosts[0].title}
                           loading="eager"
                         />

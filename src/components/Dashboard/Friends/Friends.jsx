@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import io from "socket.io-client";
+import { useState, useEffect, useCallback } from "react";
+import { getSocket } from "../../../services/socket";
 import PropTypes from "prop-types";
 import { jwtDecode } from "jwt-decode";
 import { formatProfileImage } from "../DashboardComponents/utils/helpers";
@@ -8,38 +8,14 @@ const Friends = ({ token, onActiveChatChange, searchTerm }) => {
   const [chatList, setSearchList] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
-  const socketRef = useRef(null);
-
-  useEffect(() => {
-    // Initialize persistent socket connection
-    const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      auth: { token },
-    });
-
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      console.log("Socket connected");
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
-
-    // Cleanup
-    return () => {
-      socket.disconnect();
-    };
-  }, [token]);
-
   const handleSearch = useCallback(() => {
     const user = token ? jwtDecode(token) : "";
     if (!searchTerm || searchTerm === user.username) {
       return;
     }
 
-    const socket = socketRef.current;
-    if (!socket) return;
+    const socket = getSocket();
+    if (!socket?.connected) return;
 
     socket.emit("searchUser", { searchTerm }, (response) => {
       if (response && response.user) {

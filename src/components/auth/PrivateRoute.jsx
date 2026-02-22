@@ -1,15 +1,14 @@
 import { Navigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 
-//Checks if the user is authenticated by checking if the token is present in the local storage
+// Redirects to /login if no auth token is found in localStorage
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  console.log('CHECKING TOKEN', token);
-  return token ? children : <Navigate to="/login" />;
+  return token ? children : <Navigate to="/login" replace />;
 };
 
 PrivateRoute.propTypes = {
-  children: PropTypes.func.isRequired,
+  children: PropTypes.node.isRequired,
 };
 
 export default PrivateRoute;

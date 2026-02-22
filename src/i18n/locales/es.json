@@ -164,32 +164,50 @@
     }
   },
   "pricing": {
-    "title": "Precios Simples y Transparentes",
-    "description": "Elige el plan que se adapte a tus necesidades de privacidad. Sin tarifas ocultas, nunca.",
+    "title": "Seguridad Militar, Precio Racional",
+    "description": "Elige el plan que escala con tu equipo. Sin costes ocultos. Cancela cuando quieras.",
     "monthly": "Mensual",
     "yearly": "Anual",
     "save": "Ahorra 20%",
     "recommended": "MÁS POPULAR",
-    "getStarted": "Empezar",
-    "startFreeTrial": "Iniciar Prueba Gratuita",
+    "getStarted": "Empezar Gratis",
+    "startFreeTrial": "Prueba Gratuita 14 días",
     "contactSales": "Contactar Ventas",
-    "billedYearly": "/mes (facturado anualmente)",
+    "billedYearly": " (facturado anualmente)",
     "perUserMonth": "/usuario/mes",
     "plans": {
       "starter": {
-        "name": "Inicial",
-        "desc": "Privacidad esencial para individuos.",
-        "features": ["Encriptación de Extremo a Extremo", "Mensajes autodestructivos", "Hasta 3 dispositivos", "1GB Almacenamiento", "Soporte Comunitario"]
+        "name": "ECHO PUBLIC",
+        "desc": "Privacidad personal sin rastreo. Ideal para uso individual.",
+        "features": [
+          "Encriptación Zero-Knowledge", 
+          "Chat, Voz y Video HD", 
+          "Sin anuncios ni venta de datos", 
+          "Mensajes que se autodestruyen", 
+          "Soporte comunitario"
+        ]
       },
       "pro": {
-        "name": "Pro",
-        "desc": "Herramientas avanzadas para usuarios avanzados.",
-        "features": ["Todo en Inicial", "Dispositivos ilimitados", "50GB Almacenamiento", "Videollamadas HD", "Soporte Prioritario", "Temas Personalizados"]
+        "name": "ECHO TEAMS",
+        "desc": "Control y cumplimiento para Pymes. Reemplaza WhatsApp.",
+        "features": [
+          "Panel de Admin: Altas y Bajas", 
+          "Logs de Auditoría (Compliance)", 
+          "Soporte Prioritario", 
+          "Facturación Centralizada", 
+          "Videollamadas grupales ilimitadas"
+        ]
       },
       "business": {
-        "name": "Negocios",
-        "desc": "Control y cumplimiento para equipos.",
-        "features": ["Todo en Pro", "Panel de Admin", "Integración SSO", "Registros de Auditoría", "Retención de Datos", "Gerente Dedicado"]
+        "name": "ECHO PROTOCOL",
+        "desc": "Infraestructura soberana para Banca, Gobierno y Gran Empresa.",
+        "features": [
+          "Self-Hosted (En tus servidores)", 
+          "Marca Blanca (Tu Branding)", 
+          "Integración API completa", 
+          "SLA Garantizado", 
+          "Cumplimiento DORA/NIS2"
+        ]
       }
     }
   },

@@ -7,18 +7,17 @@ import Chat from "./Chat/Chat";
 import Sidebar from "./DashboardComponents/Sidebar/Sidebar";
 import ChatHeader from "./DashboardComponents/Header/ChatHeader";
 import ConversationList from "./DashboardComponents/Conversations/ConversationList";
-import { useConversations } from "./DashboardComponents/hooks/useConversations";
+import { useConversations } from "../../hooks/useConversations";
 import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatProfileImage } from "./DashboardComponents/utils/helpers";
 import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/Wallpaper";
-import io from 'socket.io-client';
+import { getSocket, connectSocket, disconnectSocket } from "../../services/socket";
 
 const Dashboard = () => {
   const { t } = useTranslation();
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const { username, userId, profileImage } = getUserData(token);
-  localStorage.setItem('userId', userId);
-  
+
   // Estados
   const [activeChat, setActiveChat] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,42 +32,38 @@ const Dashboard = () => {
     return saved && WALLPAPER_PREVIEWS[saved] ? saved : 'default';
   });
   const [userProfileImage, setUserProfileImage] = useState(profileImage);
-  const [socket, setSocket] = useState(null);
 
-  // Initialize socket connection and fetch user profile
+  // Persist userId once on mount
+  useEffect(() => {
+    if (userId) localStorage.setItem('userId', userId);
+  }, [userId]);
+
+  // Connect shared socket and fetch user profile
   useEffect(() => {
     if (!token || !userId) return;
 
-    console.log('Initializing socket connection for profile fetching...');
-    const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
-      auth: { token },
-    });
+    connectSocket();
+    const socket = getSocket();
 
-    newSocket.on('connect', () => {
-      console.log('Socket connected for profile fetching');
-      setSocket(newSocket);
-      
-      // Fetch user profile immediately after connection
-      fetchUserProfileFromSocket(newSocket, userId)
+    const onConnect = () => {
+      fetchUserProfileFromSocket(socket, userId)
         .then((profileData) => {
-          console.log('Profile data fetched:', profileData);
-          if (profileData.profilePicture) {
-            const formattedImage = formatProfileImage(profileData.profilePicture, username);
-            setUserProfileImage(formattedImage);
+          if (profileData?.profilePicture) {
+            setUserProfileImage(formatProfileImage(profileData.profilePicture, username));
           }
         })
         .catch((error) => {
-          console.error('Error fetching user profile:', error);
+          console.error('[Dashboard] Failed to fetch user profile:', error);
         });
-    });
+    };
 
-    newSocket.on('disconnect', () => {
-      console.log('Socket disconnected');
-      setSocket(null);
-    });
+    socket.on('connect', onConnect);
+
+    // If already connected, fetch immediately
+    if (socket.connected) onConnect();
 
     return () => {
-      newSocket.disconnect();
+      socket.off('connect', onConnect);
     };
   }, [token, userId, username]);
 
@@ -147,16 +142,13 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    // Clear all cached data
+    disconnectSocket();
     localStorage.clear();
-    if (socket) {
-      socket.disconnect();
-    }
     navigate("/");
   };
 
   const handleSearch = () => {
-    console.log("Searching for:", searchTerm);
+    // Search is driven by controlled input — no extra action needed
   };
 
   const handleViewChange = (view) => {
@@ -176,34 +168,33 @@ const Dashboard = () => {
       unreadCount: unreadMessages[conv.id] || 0
     }));
 
-  // Componente EmptyState
-  const EmptyState = ({ activeView }) => (
-    <div className="flex justify-center items-center h-full p-8">
-      <div className="text-center max-w-[300px]">
-        <div className="animate-bounce mb-6">
-          <MessageCircle size={64} strokeWidth={1.5} className="text-gray-400 mx-auto" />
-        </div>
-        <h3 className="text-xl font-semibold text-white mt-4 mb-2">
-          {activeView === 'chats' ? t('dashboard.emptyState.selectChat') : t('dashboard.emptyState.noChatSelected')}
-        </h3>
-        <p className="text-gray-300 max-w-md text-center">
-          {activeView === 'chats' 
-            ? t('dashboard.emptyState.chooseConversation')
-            : t('dashboard.emptyState.searchFriend')}
-        </p>
-        
-        <div className="flex items-center justify-center text-xs text-gray-400 mt-8 pt-8 pb-4 border-t border-gray-700">
-          <Lock className="w-4 h-4 mr-1.5" />
-          <span>{t('dashboard.emptyState.encrypted')}</span>
-          <img 
-            src="/EchoProtocolLogo.png" 
-            alt="Echo Protocol" 
-            className="h-12 ml-1.5" 
-          />
-        </div>
+// ─── Extracted to avoid re-creation on every Dashboard render ─────────────────
+const EmptyState = ({ activeView, t }) => (
+  <div className="flex justify-center items-center h-full p-8">
+    <div className="text-center max-w-[300px]">
+      <div className="animate-bounce mb-6">
+        <MessageCircle size={64} strokeWidth={1.5} className="text-gray-400 mx-auto" />
+      </div>
+      <h3 className="text-xl font-semibold text-white mt-4 mb-2">
+        {activeView === 'chats' ? t('dashboard.emptyState.selectChat') : t('dashboard.emptyState.noChatSelected')}
+      </h3>
+      <p className="text-gray-300 max-w-md text-center">
+        {activeView === 'chats'
+          ? t('dashboard.emptyState.chooseConversation')
+          : t('dashboard.emptyState.searchFriend')}
+      </p>
+      <div className="flex items-center justify-center text-xs text-gray-400 mt-8 pt-8 pb-4 border-t border-gray-700">
+        <Lock className="w-4 h-4 mr-1.5" />
+        <span>{t('dashboard.emptyState.encrypted')}</span>
+        <img
+          src="/EchoProtocolLogo.png"
+          alt="Echo Protocol"
+          className="h-12 ml-1.5"
+        />
       </div>
     </div>
-  );
+  </div>
+);
 
   return (
     <div className="flex h-screen bg-black text-white">
@@ -225,7 +216,7 @@ const Dashboard = () => {
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center gap-3 mb-4">
             <img
-              src="./echo-logo-text.png"
+              src="/echo-logo-text.png"
               alt="ECHO Logo"
               className="h-8"
             />
@@ -305,7 +296,7 @@ const Dashboard = () => {
             </div>
           </div>
         ) : (
-          <EmptyState activeView={activeView} />
+          <EmptyState activeView={activeView} t={t} />
         )}
       </div>
     </div>
