@@ -4,7 +4,6 @@ import { useLocation, Link } from 'react-router-dom';
 import { ChevronRight, Search, Menu, X, Copy, Check, Play, RotateCcw, Wifi, Database, Lock, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/HomepageComponents/Navbar';
-import Footer from '../components/HomepageComponents/Footer';
 
 const ApiPlayground = () => {
   const [method, setMethod] = useState('GET');
@@ -709,20 +708,20 @@ Environment Variables:
         
         return (
           <div key={index} className="relative my-6 group">
-            <div className="absolute -top-3 right-4 px-2 py-1 bg-neutral-800 rounded text-xs text-neutral-400 uppercase tracking-wider border border-white/10">
-              {language}
-            </div>
-            <div className="bg-black/50 border border-white/10 rounded-xl p-6 overflow-x-auto backdrop-blur-sm">
-              <pre className="text-sm font-mono text-zinc-300 leading-relaxed">
+            <div className="bg-black/50 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-white/[0.03]">
+                <span className="text-xs text-violet-300 uppercase tracking-wider font-semibold">{language}</span>
+                <button
+                  onClick={() => handleCopy(code)}
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  {copiedCode === code ? <Check size={14} /> : <Copy size={14} />}
+                </button>
+              </div>
+              <pre className="text-sm font-mono text-zinc-300 leading-relaxed p-6 overflow-x-auto">
                 {code}
               </pre>
             </div>
-            <button
-              onClick={() => handleCopy(code)}
-              className="absolute top-4 right-4 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-            >
-              {copiedCode === code ? <Check size={16} /> : <Copy size={16} />}
-            </button>
           </div>
         );
       }
@@ -743,7 +742,7 @@ Environment Variables:
   };
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-violet-500/30">
+    <div className="min-h-screen flex flex-col bg-black text-white selection:bg-violet-500/30">
       <Navbar />
 
       {/* Background Effects */}
@@ -752,11 +751,15 @@ Environment Variables:
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-600/10 rounded-full blur-[100px]" />
       </div>
 
-      {/* Sidebar Fija */}
+      {/* Sidebar + Main Content wrapper */}
+      <div className="flex flex-1 pt-20 relative z-10">
+
+      {/* Sidebar — fixed overlay on mobile, sticky in-flow on desktop */}
       <aside
-        className={`fixed top-20 bottom-0 left-0 w-72 bg-black/95 backdrop-blur-xl border-r border-white/10 overflow-y-auto transition-transform duration-300 z-40 
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-          lg:translate-x-0`}
+        className={`w-72 shrink-0 bg-black/95 backdrop-blur-xl border-r border-white/10 overflow-y-auto transition-transform duration-300 z-40
+          fixed top-20 left-0 bottom-0
+          lg:sticky lg:top-20 lg:bottom-auto lg:h-[calc(100vh-5rem)] lg:translate-x-0
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="p-6">
           {/* Search */}
@@ -785,6 +788,7 @@ Environment Variables:
                       onClick={() => {
                         setCurrentSection(sub.id);
                         setSidebarOpen(false);
+                        window.scrollTo({ top: 0, behavior: 'instant' });
                       }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                         currentSection === sub.id
@@ -803,7 +807,7 @@ Environment Variables:
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-72 flex flex-col min-h-screen pt-20 relative z-10">
+      <main className="flex-1 flex flex-col relative z-10">
         <div className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
           {/* Mobile Menu Button */}
           <button
@@ -849,11 +853,11 @@ Environment Variables:
           <div className="flex justify-between items-center mt-16 pt-8 border-t border-white/10">
             <button
               onClick={() => {
-                // Logic to find previous section
                 const allSections = sections.flatMap((s) => s.subsections);
                 const currentIndex = allSections.findIndex((s) => s.id === currentSection);
                 if (currentIndex > 0) {
                   setCurrentSection(allSections[currentIndex - 1].id);
+                  window.scrollTo({ top: 0, behavior: 'instant' });
                 }
               }}
               className="group flex items-center space-x-2 text-zinc-400 hover:text-violet-400 transition-colors"
@@ -869,6 +873,7 @@ Environment Variables:
                 const currentIndex = allSections.findIndex((s) => s.id === currentSection);
                 if (currentIndex < allSections.length - 1) {
                   setCurrentSection(allSections[currentIndex + 1].id);
+                  window.scrollTo({ top: 0, behavior: 'instant' });
                 }
               }}
               className="group flex items-center space-x-2 text-zinc-400 hover:text-violet-400 transition-colors"
@@ -879,8 +884,8 @@ Environment Variables:
           </div>
         </div>
         
-        <Footer />
       </main>
+      </div>{/* end flex row */}
     </div>
   );
 };

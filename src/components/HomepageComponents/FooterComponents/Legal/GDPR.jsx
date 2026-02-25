@@ -1,122 +1,97 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
+import { Globe, Shield, Eye, Trash2, Download, UserCheck, Mail } from 'lucide-react';
 import Navbar from '../../Navbar';
 import Footer from '../../Footer';
-import { Shield, Lock, UserCheck, FileCheck, Globe } from 'lucide-react';
+import PageWrapper from '../../../common/PageWrapper';
+
+const SectionCard = ({ title, icon: Icon, children }) => (
+  <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-6">
+    <div className="flex items-center gap-3 mb-5">
+      {Icon && <div className="p-2 rounded-lg bg-violet-500/10"><Icon className="w-5 h-5 text-violet-400" /></div>}
+      <h2 className="text-xl font-bold text-white">{title}</h2>
+    </div>
+    <div className="text-white/60 leading-relaxed space-y-3">{children}</div>
+  </div>
+);
 
 const GDPR = () => {
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
+  useEffect(() => { window.scrollTo(0, 0); }, []);
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans selection:bg-primary-500/30">
+    <PageWrapper>
       <Navbar />
-      
       <main className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center p-3 bg-primary-500/10 rounded-2xl mb-6 ring-1 ring-primary-500/20">
-            <Globe className="w-8 h-8 text-primary-400" />
+
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center p-3 bg-violet-500/10 rounded-2xl mb-6 ring-1 ring-violet-500/20">
+            <Globe className="w-8 h-8 text-violet-400" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
-            GDPR Compliance
-          </h1>
-          <p className="text-lg text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-            Echo is fully committed to compliance with the General Data Protection Regulation (GDPR). We prioritize your data privacy and security.
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">GDPR Compliance</h1>
+          <p className="text-lg text-white/50 max-w-2xl mx-auto leading-relaxed">
+            Echo is fully compliant with the General Data Protection Regulation (EU) 2016/679. Your data rights are a core part of how we build our product.
           </p>
-          <p className="mt-4 text-sm text-neutral-500">
-            Last Updated: December 1, 2025
-          </p>
+          <span className="inline-block mt-4 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-white/40">
+            Last Updated: February 1, 2026
+          </span>
         </div>
 
-        {/* Content */}
-        <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-a:text-primary-400 hover:prose-a:text-primary-300 prose-strong:text-white">
-          
-          <section className="mb-12">
-            <h2>What is GDPR?</h2>
-            <p>
-              The General Data Protection Regulation (GDPR) is a regulation in EU law on data protection and privacy in the European Union (EU) and the European Economic Area (EEA). It also addresses the transfer of personal data outside the EU and EEA areas. The GDPR's primary aim is to give control to individuals over their personal data and to simplify the regulatory environment for international business by unifying the regulation within the EU.
-            </p>
-          </section>
+        <SectionCard title="What is GDPR?" icon={Globe}>
+          <p>The General Data Protection Regulation (GDPR) is a regulation in EU law on data protection and privacy. It applies to all organisations that process personal data of individuals in the European Union, regardless of where the organisation is based.</p>
+          <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <p className="font-bold text-emerald-300 mb-2">Echo's Privacy-First Architecture</p>
+            <p className="text-emerald-300/80 text-sm">All messages in Echo are end-to-end encrypted client-side using the Signal Protocol. This means Echo cannot read your messages  they are private by design, not just by policy.</p>
+          </div>
+        </SectionCard>
 
-          <section className="mb-12">
-            <h2>Your Rights Under GDPR</h2>
-            <p>
-              Echo undertakes to respect the confidentiality of your Personal Data and to guarantee you can exercise your rights. You have the right under this Privacy Policy, and by law if you are within the EU, to:
-            </p>
-            
-            <div className="grid sm:grid-cols-2 gap-6 mt-8 not-prose">
-              <div className="bg-neutral-900/50 p-6 rounded-xl border border-neutral-800">
-                <UserCheck className="w-6 h-6 text-primary-400 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">Request Access</h3>
-                <p className="text-sm text-neutral-400">
-                  The right to access, update or delete the information we have on you. Whenever made possible, you can access, update or request deletion of your Personal Data directly within your account settings section.
-                </p>
-              </div>
-
-              <div className="bg-neutral-900/50 p-6 rounded-xl border border-neutral-800">
-                <FileCheck className="w-6 h-6 text-primary-400 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">Request Correction</h3>
-                <p className="text-sm text-neutral-400">
-                  The right to have any incomplete or inaccurate information we hold about you corrected.
-                </p>
-              </div>
-
-              <div className="bg-neutral-900/50 p-6 rounded-xl border border-neutral-800">
-                <Lock className="w-6 h-6 text-primary-400 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">Object to Processing</h3>
-                <p className="text-sm text-neutral-400">
-                  The right to object to our processing of your Personal Data. This right exists where we are relying on a legitimate interest as the legal basis for our processing.
-                </p>
-              </div>
-
-              <div className="bg-neutral-900/50 p-6 rounded-xl border border-neutral-800">
-                <Shield className="w-6 h-6 text-primary-400 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">Request Erasure</h3>
-                <p className="text-sm text-neutral-400">
-                  The right to ask us to delete or remove Personal Data when there is no good reason for us to continue processing it.
-                </p>
-              </div>
+        <SectionCard title="Your Rights Under GDPR" icon={Shield}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div className="bg-black/30 border border-white/10 rounded-xl p-5">
+              <p className="font-semibold text-white mb-2 flex items-center gap-2"><Eye className="w-4 h-4 text-violet-400" /> Right to Access</p>
+              <p className="text-sm">Request a copy of all personal data we hold about you at any time from your account settings.</p>
             </div>
-          </section>
-
-          <section className="mb-12">
-            <h2>Data Transfer</h2>
-            <p>
-              Your information, including Personal Data, is processed at the Company's operating offices and in any other places where the parties involved in the processing are located. It means that this information may be transferred to — and maintained on — computers located outside of your state, province, country or other governmental jurisdiction where the data protection laws may differ than those from your jurisdiction.
-            </p>
-            <p>
-              Echo will take all steps reasonably necessary to ensure that your data is treated securely and in accordance with this Privacy Policy and no transfer of your Personal Data will take place to an organization or a country unless there are adequate controls in place including the security of your data and other personal information.
-            </p>
-          </section>
-
-          <section className="mb-12">
-            <h2>Data Protection Officer</h2>
-            <p>
-              We have appointed a Data Protection Officer (DPO) who is responsible for overseeing questions in relation to this privacy policy. If you have any questions about this privacy policy, including any requests to exercise your legal rights, please contact the DPO using the details set out below.
-            </p>
-            <div className="bg-neutral-900/50 p-6 rounded-xl border border-neutral-800 mt-6 not-prose">
-              <h3 className="text-white font-semibold mb-2">Contact Details</h3>
-              <ul className="space-y-2 text-neutral-400">
-                <li><strong className="text-white">Full name of legal entity:</strong> Echo Technologies Ltd.</li>
-                <li><strong className="text-white">Email address:</strong> <a href="mailto:dpo@echo.app" className="text-primary-400 hover:text-primary-300">dpo@echo.app</a></li>
-                <li><strong className="text-white">Postal address:</strong> 123 Tech Boulevard, Dublin, Ireland</li>
-              </ul>
+            <div className="bg-black/30 border border-white/10 rounded-xl p-5">
+              <p className="font-semibold text-white mb-2 flex items-center gap-2"><Trash2 className="w-4 h-4 text-violet-400" /> Right to Erasure</p>
+              <p className="text-sm">Request deletion of your personal data ("right to be forgotten"). We will process this within 30 days.</p>
             </div>
-          </section>
+            <div className="bg-black/30 border border-white/10 rounded-xl p-5">
+              <p className="font-semibold text-white mb-2 flex items-center gap-2"><Download className="w-4 h-4 text-violet-400" /> Data Portability</p>
+              <p className="text-sm">Export your data in a machine-readable format (JSON/CSV) directly from your account dashboard.</p>
+            </div>
+            <div className="bg-black/30 border border-white/10 rounded-xl p-5">
+              <p className="font-semibold text-white mb-2 flex items-center gap-2"><UserCheck className="w-4 h-4 text-violet-400" /> Right to Rectification</p>
+              <p className="text-sm">Correct any inaccurate or incomplete personal data we hold about you via your profile settings.</p>
+            </div>
+          </div>
+        </SectionCard>
 
-          <section className="mb-12">
-            <h2>Complaints</h2>
-            <p>
-              You have the right to make a complaint at any time to the Data Protection Commission (DPC), the Irish supervisory authority for data protection issues (<a href="https://www.dataprotection.ie" target="_blank" rel="noopener noreferrer">www.dataprotection.ie</a>). We would, however, appreciate the chance to deal with your concerns before you approach the DPC so please contact us in the first instance.
-            </p>
-          </section>
+        <SectionCard title="Data Transfers" icon={Globe}>
+          <p>Echo Technologies Ltd. is registered in Ireland (EU). All personal data is stored on servers within the European Economic Area (EEA). We do not transfer personal data to third countries without appropriate safeguards (Standard Contractual Clauses or adequacy decisions).</p>
+        </SectionCard>
 
-        </div>
+        <SectionCard title="Data Protection Officer" icon={Shield}>
+          <p>We have appointed a Data Protection Officer (DPO) to oversee GDPR compliance. You can contact our DPO directly if you have concerns about how we handle your data.</p>
+          <div className="mt-4 p-5 bg-white/5 border border-white/10 rounded-xl flex items-start gap-4">
+            <div className="p-2 rounded-lg bg-violet-500/10 flex-shrink-0">
+              <Mail className="w-5 h-5 text-violet-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-white">Data Protection Officer</p>
+              <p className="text-sm text-white/50 mt-1">Echo Technologies Ltd.</p>
+              <a href="mailto:dpo@echo.app" className="text-violet-400 hover:text-violet-300 transition-colors text-sm">dpo@echo.app</a>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Lodge a Complaint" icon={Shield}>
+          <p>If you believe we have not handled your personal data in accordance with GDPR, you have the right to lodge a complaint with your national supervisory authority. In Ireland, this is the Data Protection Commission (DPC):</p>
+          <div className="mt-3 space-y-1">
+            <p> <a href="https://www.dataprotection.ie" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 transition-colors">www.dataprotection.ie</a></p>
+            <p> <a href="mailto:info@dataprotection.ie" className="text-violet-400 hover:text-violet-300 transition-colors">info@dataprotection.ie</a></p>
+          </div>
+        </SectionCard>
+
       </main>
-
       <Footer />
-    </div>
+    </PageWrapper>
   );
 };
 

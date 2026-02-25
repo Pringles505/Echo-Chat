@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Route, Routes, useParams, Navigate, useLocation } from 'react-router-dom';
 import './App.css';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import ScrollToTop from './components/common/ScrollToTop';
 import Spinner from './components/common/Spinner';
 import PrivateRoute from './components/auth/PrivateRoute'; // NOT lazy — used as synchronous route wrapper
 
@@ -18,6 +19,10 @@ const Community        = lazy(() => import('./pages/Community'));
 const SecuritySummit   = lazy(() => import('./pages/CommunityEvents/SecuritySummit'));
 const GlobalHackathon  = lazy(() => import('./pages/CommunityEvents/GlobalHackathon'));
 const TownHall         = lazy(() => import('./pages/CommunityEvents/TownHall'));
+const EchoCon          = lazy(() => import('./pages/CommunityEvents/EchoCon'));
+const PrivacyWorkshop  = lazy(() => import('./pages/CommunityEvents/PrivacyWorkshop'));
+const OpenSourceDay    = lazy(() => import('./pages/CommunityEvents/OpenSourceDay'));
+const Leaderboard      = lazy(() => import('./pages/Leaderboard'));
 const Demo             = lazy(() => import('./pages/Demo'));
 const APIPlayground    = lazy(() => import('./pages/APIPlayground'));
 const PrivacyPolicy    = lazy(() => import('./components/HomepageComponents/FooterComponents/Legal/PrivacyPolicy'));
@@ -28,6 +33,12 @@ const ContactUs        = lazy(() => import('./components/HomepageComponents/Foot
 const AboutUs          = lazy(() => import('./components/HomepageComponents/FooterComponents/AboutUs'));
 const BlogPage         = lazy(() => import('./components/HomepageComponents/Blog'));
 const CommunityPage    = lazy(() => import('./components/HomepageComponents/FooterComponents/Community'));
+const DownloadPage     = lazy(() => import('./pages/Download'));
+const RoadmapPage      = lazy(() => import('./pages/Roadmap'));
+const HelpPage         = lazy(() => import('./pages/Help'));
+const StatusPage       = lazy(() => import('./pages/Status'));
+const CareersPage      = lazy(() => import('./pages/Careers'));
+const LicensesPage     = lazy(() => import('./components/HomepageComponents/FooterComponents/Legal/Licenses'));
 const EchoChatWidget   = lazy(() => import('./components/EchoChatWidget/EchoChatWidget'));
 
 // Use shared Spinner — no duplicate spinner code
@@ -52,6 +63,7 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
+        <ScrollToTop />
         <Suspense fallback={<Spinner />}>
           <Routes>
             {/* Public */}
@@ -73,17 +85,29 @@ function App() {
             <Route path="/community/events/security-summit" element={<SecuritySummit />} />
             <Route path="/community/events/hackathon"       element={<GlobalHackathon />} />
             <Route path="/community/events/town-hall"       element={<TownHall />} />
+            <Route path="/community/events/echocon"         element={<EchoCon />} />
+            <Route path="/community/events/privacy-workshop" element={<PrivacyWorkshop />} />
+            <Route path="/community/events/open-source-day" element={<OpenSourceDay />} />
+            <Route path="/community/leaderboard"            element={<Leaderboard />} />
             <Route path="/demo"            element={<Demo />} />
             <Route path="/api-playground"  element={<APIPlayground />} />
             <Route path="/contact-us"      element={<ContactUs />} />
             <Route path="/about-us"        element={<AboutUs />} />
             <Route path="/blog"            element={<BlogPage />} />
 
+            {/* Product pages */}
+            <Route path="/download"    element={<DownloadPage />} />
+            <Route path="/roadmap"     element={<RoadmapPage />} />
+            <Route path="/help"        element={<HelpPage />} />
+            <Route path="/status"      element={<StatusPage />} />
+            <Route path="/careers"     element={<CareersPage />} />
+
             {/* Legal */}
             <Route path="/legal/privacy-policy"   element={<PrivacyPolicy />} />
             <Route path="/legal/terms-of-service" element={<TermsOfService />} />
             <Route path="/legal/cookie-policy"    element={<CookiePolicy />} />
             <Route path="/legal/gdpr"             element={<GDPR />} />
+            <Route path="/legal/licenses"         element={<LicensesPage />} />
 
             {/* Legacy redirects */}
             <Route path="/documentation-legacy" element={<Navigate to="/docs" replace />} />

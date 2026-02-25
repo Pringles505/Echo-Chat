@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Github, Eye, EyeOff, ArrowRight, Check } from 'lucide-react';
 import Navbar from '../HomepageComponents/Navbar';
 import Footer from '../HomepageComponents/Footer';
+import PageWrapper from '../common/PageWrapper';
 
 const Register = () => {
   const { t } = useTranslation();
@@ -54,10 +55,10 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col">
+    <PageWrapper>
       <Navbar />
 
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
+      <div className="flex-1 flex items-center justify-center px-4 py-12 pt-28">
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-8">
@@ -229,10 +230,10 @@ const Register = () => {
           {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-primary-800/20"></div>
+              <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-neutral-950 text-neutral-500">
+              <span className="px-2 bg-black text-white/40">
                 {t('auth.orSignUpWith')}
               </span>
             </div>
@@ -271,7 +272,7 @@ const Register = () => {
       </div>
 
       <Footer />
-    </div>
+    </PageWrapper>
   );
 };
 

@@ -105,9 +105,9 @@ const TownHall = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { title: 'March Town Hall', date: 'March 1, 2025', views: '1.2k views', topic: 'Security Audit Results' },
-              { title: 'February Town Hall', date: 'Feb 1, 2025', views: '980 views', topic: 'Community Governance' },
-              { title: 'January Town Hall', date: 'Jan 1, 2025', views: '1.5k views', topic: '2025 Vision' },
+              { title: 'March Town Hall', date: 'March 1, 2026', views: '1.2k views', topic: 'Security Audit Results' },
+              { title: 'February Town Hall', date: 'Feb 1, 2026', views: '980 views', topic: 'Community Governance' },
+              { title: 'January Town Hall', date: 'Jan 1, 2026', views: '1.5k views', topic: '2026 Vision' },
             ].map((video, i) => (
               <motion.div
                 key={i}

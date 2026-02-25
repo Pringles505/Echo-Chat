@@ -303,5 +303,357 @@
   "languageSelector": {
     "es": "Español",
     "en": "English"
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "Have questions or feedback? We'd love to hear from you. Reach out through our contact form or directly via our contact information.",
+    "sendMessage": "Send us a message",
+    "successMessage": "Thank you! Your message has been sent successfully.",
+    "errorMessage": "Something went wrong. Please try again later.",
+    "yourName": "Your Name",
+    "yourEmail": "Your Email",
+    "yourMessage": "Your Message",
+    "sending": "Sending...",
+    "sendButton": "Send Message",
+    "contactInfo": "Contact Information",
+    "email": "Email",
+    "phone": "Phone",
+    "phoneHours": "Mon-Fri: 09:00 to 17:00 CEST",
+    "office": "Office",
+    "pageTitle": "Get in touch",
+    "pageSubtitle": "Whether you have a question, found a bug, or just want to say hi — we are happy to hear from you.",
+    "formTitle": "Send a message",
+    "nameLabel": "Your name",
+    "emailLabel": "Email address",
+    "subjectLabel": "Subject",
+    "subjectPlaceholder": "Select a topic\u2026",
+    "messageLabel": "Message",
+    "messageHint": "Be as detailed as you like — the more context the faster we can help.",
+    "messagePlaceholder": "Hi, I wanted to ask about\u2026",
+    "successTitle": "Message sent!",
+    "successDesc": "We will get back to you within 24 hours.",
+    "errorTitle": "Something went wrong",
+    "errorDesc": "Please try again or email us directly.",
+    "subjects": ["General question", "Bug report", "Feature request", "Partnership / Business", "Security vulnerability", "Press & Media", "Other"],
+    "channels": {
+      "email":        { "title": "Email",          "body": "For general questions and partnership enquiries.",                         "value": "contact@echo-chat.app",              "cta": "Send an email"    },
+      "github":       { "title": "GitHub Issues",  "body": "Found a bug or want to request a feature? Open an issue.",              "value": "github.com/Pringles505/Echo-Chat",   "cta": "Open an issue"   },
+      "discord":      { "title": "Discord",        "body": "Join the community for real-time help from the team.",                 "value": "discord.gg/echo",                  "cta": "Join the server" },
+      "responseTime": { "title": "Response time", "body": "We typically reply within 24 hours on business days.",                  "value": "Mon \u2013 Fri, 9:00 \u2013 18:00 CET" }
+    }
+  },
+  "securitySummit": {
+    "date": "March 15, 2026 \u2022 Virtual",
+    "title": "Echo Security",
+    "titleHighlight": "Summit 2026",
+    "description": "A deep dive into post-quantum cryptography, privacy protocols, and the future of secure communications.",
+    "register": "Register Now \u2014 Free",
+    "stats": {
+      "attendees": "Attendees",
+      "speakers": "Speakers",
+      "sessions": "Sessions",
+      "workshops": "Workshops"
+    },
+    "agenda": {
+      "title": "Agenda",
+      "items": [
+        { "time": "09:00", "title": "Opening Keynote", "speaker": "Echo Core Team" },
+        { "time": "10:00", "title": "Post-Quantum Cryptography", "speaker": "Dr. Alice Chen" },
+        { "time": "11:30", "title": "Zero-Knowledge Proofs in Practice", "speaker": "Bob Martinez" },
+        { "time": "14:00", "title": "Privacy by Design Workshop", "speaker": "Elena Rossi" },
+        { "time": "16:00", "title": "Panel: The Future of Secure Messaging", "speaker": "Multiple Speakers" }
+      ]
+    },
+    "whyAttend": {
+      "title": "Why Attend?",
+      "items": [
+        { "title": "Learn from Experts", "desc": "Hear from leading cryptographers and security researchers worldwide." },
+        { "title": "Network with Builders", "desc": "Connect with developers building the next generation of privacy tools." },
+        { "title": "Shape the Roadmap", "desc": "Participate in discussions that directly influence Echo\u2019s development." }
+      ]
+    },
+    "form": {
+      "title": "Reserve Your Spot",
+      "desc": "Free virtual event. Limited seats available.",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email Address",
+      "submit": "Register Free"
+    }
+  },
+  "globalHackathon": {
+    "badge": "GLOBAL HACKATHON 2026",
+    "title": "BUILD THE",
+    "titleHighlight": "FUTURE",
+    "description": "Build privacy-first apps on top of the Echo Protocol. $50k in prizes. April 1\u20133, 2026.",
+    "register": "Register Now",
+    "rules": "View Rules",
+    "tracks": {
+      "title": "Tracks",
+      "privacy": { "title": "Privacy Tools", "desc": "Build tools that help users protect their data and communications." },
+      "decentralization": { "title": "Decentralization", "desc": "Create decentralized infrastructure that removes single points of failure." },
+      "social": { "title": "Social Impact", "desc": "Leverage privacy tech to solve real-world problems for underserved communities." }
+    },
+    "timeline": {
+      "title": "Timeline",
+      "items": [
+        { "day": "Apr 1", "time": "09:00 CET", "title": "Kickoff", "desc": "Opening ceremony and team formation." },
+        { "day": "Apr 1", "time": "12:00 CET", "title": "Hacking Begins", "desc": "48 hours to build your project." },
+        { "day": "Apr 2", "time": "18:00 CET", "title": "Midpoint Check-in", "desc": "Optional mentorship session with industry experts." },
+        { "day": "Apr 3", "time": "12:00 CET", "title": "Submissions Close", "desc": "Push your code and submit your demo video." },
+        { "day": "Apr 3", "time": "17:00 CET", "title": "Demos & Awards", "desc": "Live presentations and prize announcements." }
+      ]
+    },
+    "prizes": {
+      "title": "Prizes",
+      "first": { "title": "\ud83e\udd47 1st Place", "amount": "$25,000", "perks": ["Cash prize", "Echo Pro for life", "Mentorship from core team", "Featured on Echo blog"] },
+      "second": { "title": "\ud83e\udd48 2nd Place", "amount": "$15,000", "perks": ["Cash prize", "Echo Pro (1 yr)", "Guest blog post"] },
+      "third": { "title": "\ud83e\udd49 3rd Place", "amount": "$10,000", "perks": ["Cash prize", "Echo Pro (6 mo)"] }
+    }
+  },
+  "townHall": {
+    "badge": "EVERY FRIDAY",
+    "title": "Community",
+    "titleHighlight": "Town Hall",
+    "description": "Weekly live sessions with the Echo core team. Ask questions, shape the roadmap, and connect with the community.",
+    "watch": "Watch Live",
+    "submit": "Submit a Question",
+    "nextEvent": {
+      "title": "Next Session",
+      "date": "Every Friday \u2022 18:00 CET"
+    },
+    "featured": {
+      "items": [
+        { "title": "Echo v2.1 Roadmap", "desc": "What\u2019s coming next: group calls, improved UI, and protocol upgrades." },
+        { "title": "Community Governance", "desc": "How the community will vote on feature prioritization going forward." }
+      ]
+    },
+    "questions": {
+      "items": [
+        { "q": "When will voice calls be available?", "votes": 245 },
+        { "q": "Will there be a mobile app?", "votes": 189 },
+        { "q": "How is key rotation handled on device switch?", "votes": 134 }
+      ]
+    }
+  },
+  "communityPage": {
+    "badge": "Global Community",
+    "heroTitle": "Build with",
+    "heroTitleHighlight": "thousands of builders",
+    "heroDesc": "Join the Echo community. Contribute to the protocol, share ideas, and help shape the future of private communications.",
+    "platforms": {
+      "discordDesc": "Join real-time conversations with developers and privacy enthusiasts.",
+      "githubDesc": "Contribute to the open-source codebase and report issues.",
+      "twitterDesc": "Stay up to date with the latest Echo news and announcements.",
+      "members": "members",
+      "join": "Join"
+    },
+    "events": {
+      "title": "Upcoming Events",
+      "viewAll": "View all",
+      "showLess": "Show less",
+      "attending": "attending"
+    },
+    "contributors": {
+      "title": "Top Contributors",
+      "leaderboard": "Full leaderboard",
+      "commits": "commits",
+      "ctaTitle": "Become a Contributor",
+      "ctaDesc": "Help us build the future of private communications. Every contribution matters.",
+      "ctaButton": "Start Contributing"
+    },
+    "updates": {
+      "title": "Community Updates",
+      "tabs": {
+        "all": "All",
+        "announcements": "Announcements",
+        "devs": "Devs",
+        "security": "Security"
+      },
+      "share": "Share"
+    }
+  },
+  "roadmap": {
+    "pageTitle": "Where Echo is going",
+    "pageSubtitle": "A transparent look at what we have shipped, what is being built right now, and what comes next.",
+    "shipped": "Shipped",
+    "inProgress": "In progress",
+    "planned": "Planned",
+    "overallProgress": "Overall progress",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "milestones": [
+      {
+        "quarter": "Q4 2024", "title": "Foundation",
+        "description": "Standing up the full project stack from scratch.",
+        "items": [
+          { "text": "Project inception & architecture design",  "status": "done" },
+          { "text": "React + Vite + Tailwind CSS setup",        "status": "done" },
+          { "text": "Initial Socket.io real-time messaging",    "status": "done" }
+        ],
+        "details": [
+          { "label": "Stack chosen",   "value": "React 18, Vite 5, Tailwind CSS 3, Socket.io v4" },
+          { "label": "Backend",        "value": "Node.js + Express with Supabase (auth & DB)" },
+          { "label": "Socket rooms",   "value": "Per-conversation isolation via Socket.io rooms" },
+          { "label": "Repo structure", "value": "Monorepo with independent Rust wasm crates" },
+          { "label": "Auth",           "value": "Supabase JWT with refresh token rotation" }
+        ]
+      },
+      {
+        "quarter": "Q1 2025", "title": "Crypto Core",
+        "description": "All cryptographic primitives compiled to WebAssembly.",
+        "items": [
+          { "text": "X25519 Diffie-Hellman in Rust (dh-wasm)",  "status": "done" },
+          { "text": "XEdDSA signature scheme (xeddsa-wasm)",    "status": "done" },
+          { "text": "AES-256 GCM encryption (aes-wasm)",        "status": "done" },
+          { "text": "X3DH key agreement protocol",              "status": "done" }
+        ],
+        "details": [
+          { "label": "dh-wasm",      "value": "wasm-pack Rust crate \u2014 32-byte shared secret via X25519" },
+          { "label": "xeddsa-wasm",  "value": "Converts X25519 keypairs to Ed25519 for signing & verification" },
+          { "label": "aes-wasm",     "value": "AES-256-GCM: 12-byte IV, 16-byte auth tag, per-message keys" },
+          { "label": "X3DH",         "value": "IK + SPK + OPK bundle exchange with Double Ratchet seed" },
+          { "label": "Key storage",  "value": "Private keys kept in memory only, never written to localStorage" }
+        ]
+      },
+      {
+        "quarter": "Q2 \u2013 Q3 2025", "title": "Product & UI",
+        "description": "Full product surface: dashboard, chat, profiles, i18n, desktop.",
+        "items": [
+          { "text": "Dashboard, chat, and friend system",       "status": "done" },
+          { "text": "User profiles with avatar upload",         "status": "done" },
+          { "text": "Internationalisation \u2014 EN ES FR DE ZH",    "status": "done" },
+          { "text": "Tauri desktop wrapper",                    "status": "done" }
+        ],
+        "details": [
+          { "label": "Chat features",   "value": "Real-time typing indicators, read receipts, emoji reactions" },
+          { "label": "File upload",     "value": "Supabase Storage up to 50 MB \u2014 images preview inline" },
+          { "label": "i18n",            "value": "react-i18next with 5 locales; browser language auto-detected" },
+          { "label": "Desktop",         "value": "Tauri 2.0 \u2014 native system tray, OS notifications, auto-update" },
+          { "label": "Friend system",   "value": "Send/accept/reject requests, online presence via Socket.io" }
+        ]
+      },
+      {
+        "quarter": "Q4 2025 \u2013 Q1 2026", "title": "Public Release",
+        "description": "Open-source launch, docs, and wiring encryption end-to-end.",
+        "items": [
+          { "text": "Open-source release under MIT licence",    "status": "done" },
+          { "text": "Landing page & documentation site",        "status": "done" },
+          { "text": "API centralisation & AuthContext refactor", "status": "inprogress" },
+          { "text": "E2E encryption wired in production",       "status": "inprogress" }
+        ],
+        "details": [
+          { "label": "GitHub release",  "value": "MIT licence with SECURITY.md, CONTRIBUTING.md, and issue templates" },
+          { "label": "Docs site",       "value": "API reference + integration guide + self-hosting walkthrough" },
+          { "label": "AuthContext",     "value": "Centralises JWT refresh, socket auth, and session persistence" },
+          { "label": "Wasm loading",    "value": "Crypto modules lazy-loaded in a dedicated Web Worker thread" },
+          { "label": "CI / CD",         "value": "GitHub Actions \u2014 lint, test, Vite build, Vercel preview deploy" }
+        ]
+      },
+      {
+        "quarter": "Q2 2026", "title": "Mobile",
+        "description": "Native iOS and Android apps via Tauri mobile.",
+        "items": [
+          { "text": "iOS app (Tauri mobile)",                   "status": "planned" },
+          { "text": "Android app",                              "status": "planned" },
+          { "text": "Push notifications & background sync",     "status": "planned" }
+        ],
+        "details": [
+          { "label": "iOS bridge",      "value": "Tauri mobile alpha \u2014 Swift-based platform plugin layer" },
+          { "label": "Android bridge",  "value": "Kotlin JNI bridge for Tauri mobile on Android 10+" },
+          { "label": "Push gateway",    "value": "FCM + APNs with E2E encrypted notification payloads" },
+          { "label": "Offline queue",   "value": "Local SQLite via tauri-plugin-sql for offline message storage" },
+          { "label": "Crypto on mobile","value": "Same wasm modules re-used via WKWebView / Android WebView" }
+        ]
+      },
+      {
+        "quarter": "Q3 \u2013 Q4 2026", "title": "Enterprise",
+        "description": "Group forward-secrecy, self-hosting, and SSO for teams.",
+        "items": [
+          { "text": "Group chats with forward secrecy",         "status": "planned" },
+          { "text": "Self-hosted server option",                "status": "planned" },
+          { "text": "Enterprise SSO integration",               "status": "planned" }
+        ],
+        "details": [
+          { "label": "Group crypto",    "value": "Sender Keys protocol (Signal style) \u2014 O(1) encryption per member" },
+          { "label": "Self-hosting",    "value": "Docker image + Helm chart; Postgres-compatible DB required" },
+          { "label": "SSO",             "value": "SAML 2.0 + OIDC adapter with directory sync (SCIM)" },
+          { "label": "Audit logs",      "value": "Immutable audit trail for compliance (SOC 2, ISO 27001 path)" },
+          { "label": "Admin panel",     "value": "Web-based org management: roles, channels, data retention" }
+        ]
+      },
+      {
+        "quarter": "2027", "title": "Protocol v2",
+        "description": "Post-quantum cryptography and decentralised routing.",
+        "items": [
+          { "text": "Post-quantum key exchange (Kyber)",         "status": "planned" },
+          { "text": "P2P mesh routing",                         "status": "planned" },
+          { "text": "Independent third-party security audit",   "status": "planned" }
+        ],
+        "details": [
+          { "label": "PQC scheme",    "value": "CRYSTALS-Kyber-1024 hybrid with X25519 (NIST PQC standard)" },
+          { "label": "P2P routing",   "value": "libp2p mesh with Kademlia DHT \u2014 no central relay required" },
+          { "label": "Security audit","value": "Trail of Bits or NCC Group \u2014 full crypto + infrastructure scope" },
+          { "label": "Protocol spec", "value": "Public specification document for third-party implementations" },
+          { "label": "Federation",    "value": "Optional server federation so different deployments can message" }
+        ]
+      }
+    ]
+  },
+  "download": {
+    "pageTitle": "Download Echo",
+    "pageSubtitle": "Private, encrypted messaging \u2014 now as a native desktop app.",
+    "windows": {
+      "badge": "Available now",
+      "sub": "Windows 10 or later \u00b7 64-bit \u00b7 ~8 MB",
+      "features": [
+        "Native desktop experience \u2014 fast, lightweight, always ready",
+        "System tray integration with desktop notifications",
+        "Automatic background updates"
+      ],
+      "downloadBtn": "Download for Windows",
+      "releasesBtn": "View all releases"
+    },
+    "comingSoonLabel": "Coming soon",
+    "soonLabel": "Coming soon",
+    "platforms": {
+      "macos":   { "label": "macOS",   "sub": "macOS 13 Ventura or later" },
+      "android": { "label": "Android", "sub": "Android 10 or later" },
+      "ios":     { "label": "iOS",     "sub": "iOS 16 or later" }
+    },
+    "security": {
+      "title": "The same on every platform",
+      "guarantees": [
+        "End-to-end encrypted \u2014 no one can read your messages, not even us",
+        "Cryptographic operations run entirely on your device",
+        "No telemetry, no ads, no tracking of any kind",
+        "100 % open source \u2014 verify every claim yourself"
+      ]
+    },
+    "buildFromSource": "Prefer to build from source?",
+    "viewOnGithub": "View on GitHub"
+  },
+  "statusPage": {
+    "pageTitle": "System Status",
+    "lastChecked": "Last checked",
+    "allOperational": "All systems operational",
+    "disruption": "Service disruption detected",
+    "operational": "Operational",
+    "degraded": "Degraded",
+    "outage": "Outage",
+    "maintenance": "Maintenance",
+    "incidentHistory": "Incident history",
+    "services": [
+      { "label": "REST API",            "desc": "Auth, users, profiles" },
+      { "label": "WebSocket",            "desc": "Live messaging & presence" },
+      { "label": "AES-256 module",       "desc": "Client-side encryption" },
+      { "label": "DH key exchange",      "desc": "X25519 Diffie-Hellman" },
+      { "label": "XEdDSA signatures",    "desc": "Signature verification" },
+      { "label": "CDN / Static assets",  "desc": "Web app delivery" }
+    ],
+    "incidents": [
+      { "date": "Feb 20, 2026", "title": "All systems operational",        "type": "operational", "body": "No incidents recorded." },
+      { "date": "Feb 10, 2026", "title": "Scheduled backend maintenance",   "type": "maintenance", "body": "API & WebSocket updated. ~4 min downtime at 03:00 UTC." }
+    ]
   }
 }

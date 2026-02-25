@@ -1,281 +1,365 @@
-import React, { useRef, useState, useEffect } from "react";
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
+﻿import React, { useState, useRef } from "react";
+import {
+  motion,
+  useAnimationFrame,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  AnimatePresence,
+} from "framer-motion";
+import { X } from "lucide-react";
 
-const securityLayers = [
-  { 
-    id: "aes", 
-    label: "AES-256", 
-    description: "Military-grade encryption standard used by governments worldwide.", 
-    position: { top: "20%", left: "20%" },
-    delay: 0 
+/*  data  */
+const INNER_R = 155;
+const OUTER_R = 255;
+const INNER_SPEED = 0.009;  // deg / ms
+const OUTER_SPEED = 0.0055;
+
+const innerNodes = [
+  {
+    id: "aes",
+    label: "AES-256",
+    startAngle: 90,
+    desc: "Military-grade symmetric encryption. Every message is protected with a unique AES-256-GCM key generated on your device.",
   },
-  { 
-    id: "e2ee", 
-    label: "E2EE", 
-    description: "End-to-End Encryption: Only you and the recipient can read messages.", 
-    position: { bottom: "40%", right: "10%" },
-    delay: 1.2 
+  {
+    id: "e2ee",
+    label: "E2EE",
+    startAngle: 210,
+    desc: "End-to-End Encryption. Only sender and recipient can read messages  not even Echo servers have access.",
   },
-  { 
-    id: "audit", 
-    label: "No Logs", 
-    description: "Zero-knowledge architecture. We never store your metadata.", 
-    position: { top: "15%", left: "50%" },
-    delay: 0.5 
-  },
-  { 
-    id: "keys", 
-    label: "RSA-4096", 
-    description: "Robust asymmetric cryptography for secure key exchange.", 
-    position: { bottom: "20%", right: "25%" },
-    delay: 1.5 
-  },
-  { 
-    id: "pfs", 
-    label: "PFS", 
-    description: "Perfect Forward Secrecy ensures past sessions remain secure.", 
-    position: { top: "25%", right: "15%" },
-    delay: 1 
-  },
-  { 
-    id: "hash", 
-    label: "SHA-256", 
-    description: "Cryptographic hashing verifies message integrity instantly.", 
-    position: { bottom: "30%", left: "15%" },
-    delay: 2 
-  },
-  { 
-    id: "tor", 
-    label: "Onion Routing", 
-    description: "Traffic is bounced through random nodes to hide your location.", 
-    position: { top: "40%", left: "10%" },
-    delay: 0.8 
+  {
+    id: "sha",
+    label: "SHA-256",
+    startAngle: 330,
+    desc: "Cryptographic hashing verifies message integrity and instantly detects any tampering in transit.",
   },
 ];
 
+const outerNodes = [
+  {
+    id: "rsa",
+    label: "RSA-4096",
+    startAngle: 45,
+    desc: "Asymmetric cryptography used for secure key exchange and digital identity verification.",
+  },
+  {
+    id: "pfs",
+    label: "PFS",
+    startAngle: 135,
+    desc: "Perfect Forward Secrecy. Every session uses unique keys  compromise of one never exposes past messages.",
+  },
+  {
+    id: "nologs",
+    label: "No Logs",
+    startAngle: 225,
+    desc: "Zero-knowledge architecture. Echo never stores your messages, encryption keys, or metadata.",
+  },
+  {
+    id: "onion",
+    label: "Onion Routing",
+    startAngle: 315,
+    desc: "Traffic is bounced through multiple encrypted relay nodes, hiding your IP address and physical location.",
+  },
+];
+
+/*  helpers  */
+const toRad = (deg) => (deg - 90) * (Math.PI / 180);
+const circleXY = (deg, r) => [
+  Math.cos(toRad(deg)) * r,
+  Math.sin(toRad(deg)) * r,
+];
+
+/*  OrbitNode  */
+const OrbitNode = ({ node, r, speed, active, setActive, paused }) => {
+  const nx = useMotionValue(circleXY(node.startAngle, r)[0]);
+  const ny = useMotionValue(circleXY(node.startAngle, r)[1]);
+  const isActive = active === node.id;
+
+  const speedRef  = useRef(speed);
+  const pausedRef = useRef(paused);
+  const lastTRef  = useRef(null);
+  const angleRef  = useRef(node.startAngle);
+  speedRef.current  = speed;
+  pausedRef.current = paused;
+
+  useAnimationFrame((t) => {
+    const dt = lastTRef.current !== null ? t - lastTRef.current : 0;
+    lastTRef.current = t;
+    if (!pausedRef.current) {
+      angleRef.current = (angleRef.current + dt * speedRef.current) % 360;
+    }
+    const [x, y] = circleXY(angleRef.current, r);
+    nx.set(x);
+    ny.set(y);
+  });
+
+  return (
+    <motion.div
+      className="absolute"
+      style={{ x: nx, y: ny, translateX: "-50%", translateY: "-50%", zIndex: isActive ? 50 : 10 }}
+    >
+      <div
+        className="relative flex flex-col items-center cursor-pointer group"
+        onMouseEnter={() => setActive(node.id)}
+        onMouseLeave={() => setActive(null)}
+      >
+        {/* glowing dot */}
+        <motion.div
+          className="w-2.5 h-2.5 rounded-full mb-1.5"
+          animate={
+            isActive
+              ? { backgroundColor: "rgb(167,139,250)", boxShadow: "0 0 18px 5px rgba(139,92,246,0.65)" }
+              : { backgroundColor: "rgba(255,255,255,0.75)", boxShadow: "0 0 8px 1px rgba(255,255,255,0.15)" }
+          }
+          transition={{ duration: 0.2 }}
+        />
+
+        {/* label */}
+        <span
+          className={`text-[11px] font-mono font-semibold whitespace-nowrap transition-colors duration-200 ${
+            isActive ? "text-violet-300" : "text-white/80 group-hover:text-white"
+          }`}
+        >
+          {node.label}
+        </span>
+
+        {/* tooltip */}
+        <AnimatePresence>
+          {isActive && (
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.93 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-1/2 -translate-x-1/2 bottom-full mb-4 w-56 p-4 rounded-xl pointer-events-none"
+              style={{
+                background: "rgba(9,9,11,0.97)",
+                border: "1px solid rgba(139,92,246,0.28)",
+                boxShadow: "0 8px 40px rgba(139,92,246,0.18)",
+                zIndex: 200,
+              }}
+            >
+              <p className="text-[10px] font-bold text-violet-400 mb-1.5 uppercase tracking-widest">
+                {node.label}
+              </p>
+              <p className="text-xs text-white/50 leading-relaxed">{node.desc}</p>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-violet-500/25" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+};
+
+/*  main component  */
 const HeroAnimation = () => {
-  const [activeLayer, setActiveLayer] = useState(null);
+  const [active, setActive]       = useState(null);
+  const [logoOpen, setLogoOpen]   = useState(false);
+  const paused = active !== null;
   const ref = useRef(null);
 
-  // Valores del mouse
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const smx = useSpring(mx, { stiffness: 150, damping: 22 });
+  const smy = useSpring(my, { stiffness: 150, damping: 22 });
+  const rotX = useTransform(smy, [-0.5, 0.5], ["8deg", "-8deg"]);
+  const rotY = useTransform(smx, [-0.5, 0.5], ["-8deg", "8deg"]);
 
-  // Suavizado del movimiento
-  const mouseX = useSpring(x, { stiffness: 300, damping: 30 });
-  const mouseY = useSpring(y, { stiffness: 300, damping: 30 });
-
-  // Transformar posición del mouse a grados de rotación
-  const rotateX = useTransform(mouseY, [-0.5, 0.5], ["15deg", "-15deg"]);
-  const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-15deg", "15deg"]);
-
-  // 1. CORRECCIÓN: Restricción del Área de Efecto
   const handleMouseMove = (e) => {
     if (!ref.current) return;
-    
     const rect = ref.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    
-    // Calcular centro
-    const centerX = rect.left + width / 2;
-    const centerY = rect.top + height / 2;
-    
-    // Calcular distancia del mouse al centro
-    const dist = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
-    const maxDist = 350; // Radio de activación (px)
-
-    if (dist < maxDist) {
-      // Dentro del radio: calcular tilt normal
-      const mouseXVal = (e.clientX - rect.left) / width - 0.5;
-      const mouseYVal = (e.clientY - rect.top) / height - 0.5;
-      x.set(mouseXVal);
-      y.set(mouseYVal);
+    const dist = Math.hypot(
+      e.clientX - (rect.left + rect.width / 2),
+      e.clientY - (rect.top + rect.height / 2)
+    );
+    if (dist < 380) {
+      mx.set((e.clientX - rect.left) / rect.width - 0.5);
+      my.set((e.clientY - rect.top) / rect.height - 0.5);
     } else {
-      // Fuera del radio: resetear a 0 (suavizado por useSpring)
-      x.set(0);
-      y.set(0);
+      mx.set(0);
+      my.set(0);
     }
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-    setActiveLayer(null);
   };
 
   return (
     <section
-      className="relative w-full h-[850px] flex items-center justify-center overflow-hidden perspective-1000"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
       ref={ref}
-      style={{ perspective: "1000px" }}
+      className="relative w-full h-[780px] flex flex-col items-center justify-center"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => {
+        mx.set(0);
+        my.set(0);
+        setActive(null);
+      }}
+      style={{ perspective: "1200px" }}
     >
-      {/* Fondo con Viñeta sutil */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-900/50 via-black to-black pointer-events-none" />
+      {/* grid background */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+        }}
+      />
+      {/* radial vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 65% at center, transparent 30%, black 80%)",
+        }}
+      />
 
-      {/* 4. FEATURE: Partículas de Ambiente */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {Array.from({ length: 20 }).map((_, i) => (
-          <Particle key={i} />
-        ))}
-      </div>
-
-      {/* CONTENEDOR CENTRAL ANIMADO (TILT) */}
+      {/* 3D tilt container */}
       <motion.div
-        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-        className="relative z-10 w-[600px] h-[600px] flex items-center justify-center"
+        style={{ rotateX: rotX, rotateY: rotY, transformStyle: "preserve-3d" }}
+        className="relative flex items-center justify-center w-[580px] h-[580px]"
       >
-        
-        {/* Glow Central */}
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-violet-600/20 blur-[100px] rounded-full"
-          style={{ transform: "translateZ(-50px)" }}
+        {/* ambient violet glow */}
+        <div
+          className="absolute w-72 h-72 rounded-full pointer-events-none"
+          style={{
+            background: "radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)",
+            filter: "blur(40px)",
+          }}
         />
 
-        {/* LOGO CENTRAL */}
-        <div 
-            className="w-40 h-40 bg-black/80 backdrop-blur-md border border-violet-500/30 rounded-full flex items-center justify-center shadow-2xl relative z-20"
-            style={{ transform: "translateZ(50px)" }}
-        >
-          <img 
-            src="/EchoProtocolLogo.png" 
-            alt="Echo Protocol" 
-            className="w-24 h-24 object-contain drop-shadow-[0_0_15px_rgba(139,92,246,0.8)]" 
-          />
-        </div>
+        {/* outer orbit ring */}
+        <div
+          className="absolute border border-white/[0.06] rounded-full"
+          style={{ width: OUTER_R * 2, height: OUTER_R * 2, transform: "translateZ(-20px)" }}
+        />
 
-        {/* Capas de Seguridad Interactivas */}
-        {securityLayers.map((layer) => (
-          <FloatingText
-            key={layer.id}
-            data={layer}
-            isActive={activeLayer === layer.id}
-            isDimmed={activeLayer !== null && activeLayer !== layer.id}
-            onHover={() => setActiveLayer(layer.id)}
-            onLeave={() => setActiveLayer(null)}
+        {/* inner orbit ring  dashed */}
+        <div
+          className="absolute border border-white/[0.08] border-dashed rounded-full"
+          style={{ width: INNER_R * 2, height: INNER_R * 2, transform: "translateZ(-10px)" }}
+        />
+
+        {/* inner nodes */}
+        {innerNodes.map((n) => (
+          <OrbitNode
+            key={n.id}
+            node={n}
+            r={INNER_R}
+            speed={INNER_SPEED}
+            active={active}
+            setActive={setActive}
+            paused={paused}
           />
         ))}
-        
-        {/* Círculos decorativos orbitando */}
-        <motion.div 
-            animate={{ rotate: 360 }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 border border-violet-500/10 rounded-full w-full h-full pointer-events-none"
-            style={{ transform: "translateZ(-20px)" }}
-        />
-        <motion.div 
-            animate={{ rotate: -360 }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-12 border border-violet-500/20 rounded-full border-dashed pointer-events-none"
-            style={{ transform: "translateZ(-10px)" }}
-        />
 
-      </motion.div>
-      
-      {/* Texto descriptivo */}
-      <div className="absolute bottom-12 text-center z-20 pointer-events-none">
-        <h3 className="text-2xl font-bold text-white mb-2 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-white">
-          Interactive Security
-        </h3>
-        <p className="text-zinc-400 text-sm max-w-md mx-auto">
-          Hover over the elements to explore our encryption layers.
-        </p>
-      </div>
-    </section>
-  );
-};
+        {/* outer nodes */}
+        {outerNodes.map((n) => (
+          <OrbitNode
+            key={n.id}
+            node={n}
+            r={OUTER_R}
+            speed={OUTER_SPEED}
+            active={active}
+            setActive={setActive}
+            paused={paused}
+          />
+        ))}
 
-// Componente de Partícula Individual
-const Particle = () => {
-  const randomX = Math.random() * 100;
-  const randomY = Math.random() * 100;
-  const duration = 10 + Math.random() * 20;
-  
-  return (
-    <motion.div
-      className="absolute w-1 h-1 bg-white/20 rounded-full"
-      style={{ 
-        left: `${randomX}%`, 
-        top: `${randomY}%` 
-      }}
-      animate={{
-        y: [0, -30, 0],
-        opacity: [0, 0.5, 0],
-        scale: [0, 1, 0]
-      }}
-      transition={{
-        duration: duration,
-        repeat: Infinity,
-        ease: "linear",
-        delay: Math.random() * 5
-      }}
-    />
-  );
-};
-
-// Componente Interactivo para los textos flotantes
-const FloatingText = ({ data, isActive, isDimmed, onHover, onLeave }) => {
-  return (
-    <motion.div
-      // 2. CORRECCIÓN B: Hitbox aumentado (p-6) para facilitar el hover
-      className={`absolute p-6 cursor-pointer font-mono text-sm font-bold transition-all duration-300 flex items-center justify-center ${
-        isActive 
-          ? "text-cyan-400 z-50 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" 
-          : isDimmed 
-            ? "text-violet-300/20 blur-[1px]" 
-            : "text-violet-300/60 hover:text-violet-200"
-      }`}
-      style={{ 
-        ...data.position, 
-        transform: "translateZ(30px)",
-        textShadow: isActive ? "0 0 20px rgba(34,211,238,0.5)" : "none"
-      }}
-      initial={{ y: 0 }}
-      animate={isActive ? { y: 0, scale: 1.1 } : { y: [0, -15, 0], scale: 1 }}
-      transition={{
-        y: {
-          duration: 3 + Math.random() * 2,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: data.delay,
-        },
-        scale: { duration: 0.2 }
-      }}
-      onMouseEnter={onHover}
-      onMouseLeave={onLeave}
-    >
-      {/* El texto real */}
-      <span className="relative z-10">{data.label}</span>
-
-      {/* Tooltip Educativo */}
-      <AnimatePresence>
-        {isActive && (
+        {/* center logo */}
+        <motion.div
+          className="relative z-20 w-36 h-36 rounded-full flex items-center justify-center cursor-pointer"
+          style={{
+            transform: "translateZ(50px)",
+            background: "rgba(9,9,11,1)",
+            border: "1px solid rgba(139,92,246,0.25)",
+            boxShadow: "0 0 60px -8px rgba(139,92,246,0.45), 0 0 0 1px rgba(139,92,246,0.1)",
+          }}
+          whileHover={{ scale: 1.07 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          onClick={() => setLogoOpen(true)}
+          title="Click to expand"
+        >
+          {/* outer pulse ring */}
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 5, scale: 0.9 }}
+            className="absolute inset-0 rounded-full"
+            style={{ border: "1px solid rgba(139,92,246,0.2)" }}
+            animate={{ scale: [1, 1.45, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+          {/* second pulse, offset */}
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            style={{ border: "1px solid rgba(139,92,246,0.12)" }}
+            animate={{ scale: [1, 1.7, 1], opacity: [0.3, 0, 0.3] }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          />
+          <img
+            src="/EchoProtocolLogo.png"
+            alt="Echo Protocol"
+            className="w-20 h-20 object-contain"
+            style={{ filter: "drop-shadow(0 0 14px rgba(139,92,246,0.7))" }}
+          />
+        </motion.div>
+      </motion.div>
+
+      {/* bottom label */}
+      <div className="relative z-20 mt-10 text-center pointer-events-none">
+        <p className="text-xs uppercase tracking-[0.2em] text-white/60 mb-3">
+          Security Architecture
+        </p>
+        <h3
+          className="text-3xl font-extrabold text-white tracking-tighter"
+          style={{ textShadow: "0 0 40px rgba(255,255,255,0.25)" }}
+        >
+          Hover the nodes to explore each encryption layer
+        </h3>
+      </div>
+
+      {/* logo lightbox */}
+      <AnimatePresence>
+        {logoOpen && (
+          <motion.div
+            className="fixed inset-0 z-[999] flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            // 2. CORRECCIÓN A: pointer-events-none para evitar parpadeo
-            // 3. CORRECCIÓN: translateZ(100px) para evitar ocultamiento
-            className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 p-4 bg-black/90 backdrop-blur-xl border border-cyan-500/30 rounded-xl shadow-[0_0_30px_rgba(6,182,212,0.15)] pointer-events-none z-50"
-            style={{ transform: "translateZ(200px)", zIndex: 100 }} 
+            onClick={() => setLogoOpen(false)}
+            style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)" }}
           >
-            <div className="text-xs text-cyan-100 font-sans leading-relaxed text-center">
-              <span className="block font-bold text-cyan-400 mb-1 text-xs uppercase tracking-wider">
-                {data.label} Protocol
-              </span>
-              {data.description}
-            </div>
-            {/* Flecha del tooltip */}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-cyan-500/30" />
+            <motion.div
+              className="relative flex flex-col items-center gap-6"
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1,   opacity: 1 }}
+              exit={{ scale: 0.75,  opacity: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 22 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* glow */}
+              <div
+                className="absolute w-72 h-72 rounded-full pointer-events-none"
+                style={{ background: "radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%)", filter: "blur(50px)" }}
+              />
+              <img
+                src="/EchoProtocolLogo.png"
+                alt="Echo Protocol"
+                className="w-64 h-64 object-contain relative z-10"
+                style={{ filter: "drop-shadow(0 0 40px rgba(139,92,246,0.8))" }}
+              />
+              <p className="text-white/40 text-sm tracking-widest uppercase relative z-10">
+                Echo Protocol
+              </p>
+              <button
+                className="relative z-10 w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.07] hover:bg-white/[0.12] border border-white/10 transition-colors duration-150"
+                onClick={() => setLogoOpen(false)}
+              >
+                <X className="w-4 h-4 text-white/50" />
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </section>
   );
 };
 

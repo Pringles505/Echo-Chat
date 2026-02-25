@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Menu, X, Globe, ChevronDown, ArrowRight } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import gsap from 'gsap';
 import Logo from './Logo';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [langDropdown, setLangDropdown] = useState(false);
+
   const { t, i18n } = useTranslation();
   const location = useLocation();
 
@@ -55,12 +55,8 @@ const Navbar = () => {
     { code: 'en', label: 'English', flag: '🇬🇧' },
   ];
 
-  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
-
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
-    localStorage.setItem('i18nextLng', lng);
-    setLangDropdown(false);
   };
 
   return (
@@ -98,34 +94,20 @@ const Navbar = () => {
           {/* Right Actions */}
           <div className="flex items-center space-x-3">
             {/* Language Selector */}
-            <div className="relative hidden sm:block">
-              <button
-                onClick={() => setLangDropdown(!langDropdown)}
-                className="flex items-center space-x-2 px-3 py-2 rounded-full text-neutral-300 hover:text-white hover:bg-white/5 transition-colors duration-250 text-sm"
-              >
-                <span className="text-lg">{currentLanguage.flag}</span>
-                <ChevronDown className="w-3 h-3" />
-              </button>
-
-              {/* Language Dropdown */}
-              {langDropdown && (
-                <div className="absolute right-0 mt-2 w-44 bg-neutral-900 border border-white/10 rounded-xl shadow-xl overflow-hidden py-1">
-                  {languages.map((lang) => (
-                    <button
-                      key={lang.code}
-                      onClick={() => changeLanguage(lang.code)}
-                      className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-250 flex items-center space-x-3 ${
-                        i18n.language === lang.code
-                          ? 'bg-primary-600 text-white'
-                          : 'text-neutral-300 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      <span className="text-lg">{lang.flag}</span>
-                      <span>{lang.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="hidden sm:flex items-center gap-0 bg-white/5 rounded-full p-0.5 border border-white/10">
+              {languages.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => changeLanguage(lang.code)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold tracking-widest transition-all duration-200 ${
+                    i18n.language === lang.code
+                      ? 'bg-white text-black shadow'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {lang.code.toUpperCase()}
+                </button>
+              ))}
             </div>
 
             {/* Auth Buttons */}

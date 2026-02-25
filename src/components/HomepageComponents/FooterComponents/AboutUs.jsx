@@ -4,7 +4,7 @@ import { useInView } from 'react-intersection-observer';
 import { Lock, Cpu, Code, Shield, GitMerge, Key, Server } from 'lucide-react';
 import Navbar from '../Navbar';
 import Footer from '../Footer';
-import ParticlesBackground from '../ParticlesBackground';
+import PageWrapper from '../../common/PageWrapper';
 
 const AboutUs = () => {
   const [ref, inView] = useInView({
@@ -51,8 +51,7 @@ const AboutUs = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans relative overflow-hidden">
-      <ParticlesBackground />
+    <PageWrapper>
       <div className="relative z-10">
         <Navbar />
         <div className="max-w-6xl mx-auto px-6 py-20">
@@ -225,7 +224,7 @@ const AboutUs = () => {
         </div>
         <Footer />
       </div>
-    </div>
+    </PageWrapper>
   );
 };
 

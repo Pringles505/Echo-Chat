@@ -41,6 +41,7 @@ const Footer = () => {
     { label: t('footer.legal.privacy'), href: '/legal/privacy-policy' },
     { label: t('footer.legal.terms'), href: '/legal/terms-of-service' },
     { label: t('footer.legal.cookies'), href: '/legal/cookie-policy' },
+    { label: t('footer.legal.gdpr'), href: '/legal/gdpr' },
     { label: t('footer.legal.licenses'), href: '/legal/licenses' },
   ];
 
@@ -115,7 +116,7 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           {/* Copyright */}
           <p className="text-zinc-500 text-sm">
-            {t('footer.rights')}
+            &copy; {currentYear} Echo. {t('footer.rights')}
           </p>
 
           {/* Legal Links */}

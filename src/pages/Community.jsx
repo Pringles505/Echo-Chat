@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { 
-  Heart, MessageCircle, Share2, Zap, Shield, Users, 
-  Github, Twitter, MessageSquare, Calendar, Star, 
-  ArrowRight, Globe, Code, Award, ExternalLink 
+  Heart, MessageCircle, Share2, Users, 
+  Github, Calendar, ChevronDown, ChevronUp,
+  ArrowRight, Globe, Code, ExternalLink 
 } from 'lucide-react';
+import { FaDiscord, FaXTwitter } from 'react-icons/fa6';
 import { motion } from 'framer-motion';
 import Navbar from '../components/HomepageComponents/Navbar';
 import Footer from '../components/HomepageComponents/Footer';
@@ -13,13 +14,14 @@ import Footer from '../components/HomepageComponents/Footer';
 const Community = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('all');
+  const [showAllEvents, setShowAllEvents] = useState(false);
   
   // Mock Data
   const platforms = [
     {
       name: 'Discord',
       description: t('communityPage.platforms.discordDesc'),
-      icon: MessageSquare,
+      icon: FaDiscord,
       color: 'bg-[#5865F2]',
       link: '#',
       members: '12.5k'
@@ -33,10 +35,10 @@ const Community = () => {
       members: '4.2k'
     },
     {
-      name: 'Twitter',
+      name: 'X',
       description: t('communityPage.platforms.twitterDesc'),
-      icon: Twitter,
-      color: 'bg-[#1DA1F2]',
+      icon: FaXTwitter,
+      color: 'bg-zinc-900 border border-white/20',
       link: '#',
       members: '25k'
     }
@@ -44,20 +46,22 @@ const Community = () => {
 
   const events = [
     {
-      title: 'Echo Security Summit 2025',
-      date: 'March 15, 2025',
+      title: 'Echo Security Summit 2026',
+      date: 'March 15, 2026',
       type: 'Virtual Conference',
       description: 'Deep dive into post-quantum cryptography and the future of privacy.',
       attendees: 1200,
-      link: '/community/events/security-summit'
+      link: '/community/events/security-summit',
+      color: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
     },
     {
       title: 'Global Hackathon',
-      date: 'April 1-3, 2025',
+      date: 'April 1–3, 2026',
       type: 'Competition',
       description: 'Build privacy-first apps on top of the Echo Protocol. $50k in prizes.',
       attendees: 500,
-      link: '/community/events/hackathon'
+      link: '/community/events/hackathon',
+      color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
     },
     {
       title: 'Community Town Hall',
@@ -65,8 +69,36 @@ const Community = () => {
       type: 'Live Stream',
       description: 'Weekly updates from the core team and Q&A session.',
       attendees: 300,
-      link: '/community/events/town-hall'
-    }
+      link: '/community/events/town-hall',
+      color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    },
+    {
+      title: 'EchoCon 2026',
+      date: 'June 10–11, 2026',
+      type: 'Developer Conference',
+      description: 'Two days of talks, workshops and networking in Madrid — plus full live stream.',
+      attendees: 800,
+      link: '/community/events/echocon',
+      color: 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/20',
+    },
+    {
+      title: 'Privacy Workshop Series',
+      date: 'Monthly • First Friday',
+      type: 'Workshop',
+      description: 'Monthly live sessions on cryptography, ZK proofs and secure systems. Free.',
+      attendees: 120,
+      link: '/community/events/privacy-workshop',
+      color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    },
+    {
+      title: 'Open Source Contributors Day',
+      date: 'July 4, 2026',
+      type: 'Hackday',
+      description: 'A full day pushing Echo’s open source projects forward. Pick an issue, get merged.',
+      attendees: 200,
+      link: '/community/events/open-source-day',
+      color: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+    },
   ];
 
   const contributors = [
@@ -141,10 +173,6 @@ const Community = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-flex items-center justify-center bg-violet-500/10 text-violet-400 px-4 py-1.5 rounded-full mb-6 border border-violet-500/20">
-              <Globe className="w-4 h-4 mr-2" />
-              <span className="text-sm font-medium">{t('communityPage.badge')}</span>
-            </div>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
               {t('communityPage.heroTitle')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">{t('communityPage.heroTitleHighlight')}</span>
             </h1>
@@ -197,10 +225,19 @@ const Community = () => {
           <div>
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-bold">{t('communityPage.events.title')}</h2>
-              <button className="text-violet-400 hover:text-violet-300 text-sm font-medium">{t('communityPage.events.viewAll')}</button>
+              <button
+                onClick={() => setShowAllEvents(v => !v)}
+                className="flex items-center gap-1.5 text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
+              >
+                {showAllEvents ? (
+                  <>{t('communityPage.events.showLess')} <ChevronUp className="w-4 h-4" /></>
+                ) : (
+                  <>{t('communityPage.events.viewAll')} <ChevronDown className="w-4 h-4" /></>
+                )}
+              </button>
             </div>
             <div className="space-y-4">
-              {events.map((event, index) => (
+              {(showAllEvents ? events : events.slice(0, 3)).map((event, index) => (
                 <Link to={event.link} key={index} className="block">
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -211,7 +248,7 @@ const Community = () => {
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <span className="inline-block px-3 py-1 rounded-full bg-violet-500/10 text-violet-400 text-xs font-bold mb-2">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 border ${event.color}`}>
                           {event.type}
                         </span>
                         <h3 className="text-xl font-bold group-hover:text-violet-400 transition-colors">{event.title}</h3>
@@ -238,7 +275,9 @@ const Community = () => {
           <div>
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-bold">{t('communityPage.contributors.title')}</h2>
-              <button className="text-violet-400 hover:text-violet-300 text-sm font-medium">{t('communityPage.contributors.leaderboard')}</button>
+              <Link to="/community/leaderboard" className="text-violet-400 hover:text-violet-300 text-sm font-medium flex items-center gap-1 transition-colors">
+                {t('communityPage.contributors.leaderboard')} <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {contributors.map((contributor, index) => (

@@ -2,7 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Scrollbar completamente oculto ───────────────────────────────────────── */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Focus global ─────────────────────────────────────────────────────────── */
 *:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.6);
+}
+
+/* ── Base global ──────────────────────────────────────────────────────────── */
+html {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #000000;
+  color: #ffffff;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #000000;
+  color: #ffffff;
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── Selección coherente con la landing ───────────────────────────────────── */
+::selection {
+  background-color: rgba(139, 92, 246, 0.3);
+  color: #ffffff;
 }
