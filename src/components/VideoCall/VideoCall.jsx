@@ -38,6 +38,16 @@ const VideoCall = () => {
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
+  const callIdRef = useRef('');
+  const recognitionRef = useRef(null);
+  const captionThrottleRef = useRef({ lastText: '', lastSentAt: 0 });
+  const remoteCaptionClearTimeoutRef = useRef(null);
+  const captionsStateRef = useRef({
+    captionsEnabled: true,
+    callStatus: 'idle',
+    isMuted: false,
+    hasAudioPermission: true,
+  });
 
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
@@ -49,6 +59,12 @@ const VideoCall = () => {
   const [remoteVideoEnabled, setRemoteVideoEnabled] = useState(true);
   const [localUserProfile, setLocalUserProfile] = useState(null);
   const [remoteUserProfile, setRemoteUserProfile] = useState(null);
+  const [captionsEnabled, setCaptionsEnabled] = useState(true);
+  const [captionsSupported, setCaptionsSupported] = useState(true);
+  const [remoteCaption, setRemoteCaption] = useState('');
+  const [remoteCaptionIsFinal, setRemoteCaptionIsFinal] = useState(false);
+  const [localCaption, setLocalCaption] = useState('');
+  const [localCaptionIsFinal, setLocalCaptionIsFinal] = useState(false);
 
   const hasStartedCallRef = useRef(false);
 
@@ -221,6 +237,224 @@ const VideoCall = () => {
       remoteVideoEnabled
     });
   }, [isCameraOff, hasVideoPermission, localUserProfile, remoteUserProfile, callStatus, remoteVideoEnabled]);
+
+  useEffect(() => {
+    callIdRef.current = callId;
+  }, [callId]);
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const supported = !!SpeechRecognition;
+    setCaptionsSupported(supported);
+    if (!supported) setCaptionsEnabled(false);
+  }, []);
+
+  useEffect(() => {
+    captionsStateRef.current = {
+      captionsEnabled,
+      callStatus,
+      isMuted,
+      hasAudioPermission,
+    };
+  }, [captionsEnabled, callStatus, isMuted, hasAudioPermission]);
+
+  const stopCaptionsRecognition = () => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+    try {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.stop();
+    } catch {
+      // ignore
+    }
+    recognitionRef.current = null;
+  };
+
+  const startCaptionsRecognition = ({ isUserGesture } = { isUserGesture: false }) => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    if (recognitionRef.current) return;
+
+    const state = captionsStateRef.current;
+    const canRun =
+      state.captionsEnabled &&
+      state.callStatus === 'connected' &&
+      !state.isMuted &&
+      state.hasAudioPermission;
+
+    if (!canRun) return;
+
+    const socket = getSocket();
+    const fromUserId = localStorage.getItem('userId');
+    const fromUsername =
+      localUserProfile?.username || localStorage.getItem('username') || 'Someone';
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.lang = 'en-US';
+
+    const sendCaption = (eventName, text) => {
+      const trimmed = typeof text === 'string' ? text.trim() : '';
+      if (!trimmed) return;
+      socket.emit(eventName, {
+        targetUserId: odebukiUserId,
+        callId: callIdRef.current,
+        text: trimmed,
+        fromUserId,
+        fromUsername,
+      });
+    };
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      let finalText = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result?.[0]?.transcript || '';
+        if (result.isFinal) finalText += transcript;
+        else interim += transcript;
+      }
+
+      const now = Date.now();
+      const interimTrimmed = interim.trim();
+      if (interimTrimmed) {
+        setLocalCaption(interimTrimmed);
+        setLocalCaptionIsFinal(false);
+
+        const { lastText, lastSentAt } = captionThrottleRef.current;
+        const isDifferent = interimTrimmed !== lastText;
+        const isThrottledOk = now - lastSentAt >= 250;
+        if (isDifferent && isThrottledOk) {
+          captionThrottleRef.current = { lastText: interimTrimmed, lastSentAt: now };
+          sendCaption('captionInterim', interimTrimmed);
+        }
+      }
+
+      const finalTrimmed = finalText.trim();
+      if (finalTrimmed) {
+        setLocalCaption(finalTrimmed);
+        setLocalCaptionIsFinal(true);
+        captionThrottleRef.current = { lastText: '', lastSentAt: now };
+        sendCaption('captionFinal', finalTrimmed);
+
+        setTimeout(() => {
+          setLocalCaption('');
+          setLocalCaptionIsFinal(false);
+        }, 4500);
+      }
+    };
+
+    recognition.onerror = (e) => {
+      console.log('[Captions] SpeechRecognition error:', e?.error || e);
+      if (isUserGesture) {
+        console.log('[Captions] If you see not-allowed/service-not-allowed, check mic permission and HTTPS/localhost.');
+      }
+    };
+
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      const next = captionsStateRef.current;
+      const shouldRestart =
+        next.captionsEnabled &&
+        next.callStatus === 'connected' &&
+        !next.isMuted &&
+        next.hasAudioPermission;
+      if (!shouldRestart) return;
+
+      setTimeout(() => {
+        const again = captionsStateRef.current;
+        const restartOk =
+          again.captionsEnabled &&
+          again.callStatus === 'connected' &&
+          !again.isMuted &&
+          again.hasAudioPermission;
+        if (!restartOk) return;
+        if (recognitionRef.current) return;
+        try {
+          recognition.start();
+          recognitionRef.current = recognition;
+        } catch {
+          // ignore InvalidStateError etc.
+        }
+      }, 250);
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+    } catch (e) {
+      // Some browsers require this to be triggered by a user gesture.
+      recognitionRef.current = null;
+      if (!isUserGesture) {
+        console.log('[Captions] SpeechRecognition start failed (try clicking CC):', e?.name || e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const socket = getSocket();
+
+    const handleCaptionInterim = (payload) => {
+      if (!payload) return;
+      if (payload.callId && callIdRef.current && payload.callId !== callIdRef.current) return;
+      setRemoteCaption(payload.text || '');
+      setRemoteCaptionIsFinal(false);
+      if (remoteCaptionClearTimeoutRef.current) {
+        clearTimeout(remoteCaptionClearTimeoutRef.current);
+        remoteCaptionClearTimeoutRef.current = null;
+      }
+    };
+
+    const handleCaptionFinal = (payload) => {
+      if (!payload) return;
+      if (payload.callId && callIdRef.current && payload.callId !== callIdRef.current) return;
+      setRemoteCaption(payload.text || '');
+      setRemoteCaptionIsFinal(true);
+
+      if (remoteCaptionClearTimeoutRef.current) {
+        clearTimeout(remoteCaptionClearTimeoutRef.current);
+      }
+      remoteCaptionClearTimeoutRef.current = setTimeout(() => {
+        setRemoteCaption('');
+        setRemoteCaptionIsFinal(false);
+        remoteCaptionClearTimeoutRef.current = null;
+      }, 4500);
+    };
+
+    socket.on('captionInterim', handleCaptionInterim);
+    socket.on('captionFinal', handleCaptionFinal);
+
+    return () => {
+      socket.off('captionInterim', handleCaptionInterim);
+      socket.off('captionFinal', handleCaptionFinal);
+      if (remoteCaptionClearTimeoutRef.current) {
+        clearTimeout(remoteCaptionClearTimeoutRef.current);
+        remoteCaptionClearTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const shouldRun =
+      captionsEnabled &&
+      captionsSupported &&
+      callStatus === 'connected' &&
+      !isMuted &&
+      hasAudioPermission;
+
+    if (!shouldRun) {
+      stopCaptionsRecognition();
+      return;
+    }
+
+    // Auto-start attempt (may fail in some browsers unless initiated by a user gesture)
+    startCaptionsRecognition({ isUserGesture: false });
+  }, [captionsEnabled, captionsSupported, callStatus, isMuted, hasAudioPermission]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -590,6 +824,11 @@ const VideoCall = () => {
       pcRef.current = null;
     }
 
+    // Stop captions
+    if (recognitionRef.current) {
+      stopCaptionsRecognition();
+    }
+
     navigate(-1);
   };
 
@@ -736,6 +975,24 @@ const VideoCall = () => {
               )}
             </div>
           )}
+
+          {callStatus === 'connected' && captionsEnabled && remoteCaption && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-[85%] px-4 py-2 rounded-lg bg-black/60">
+              <p className={`text-white text-lg leading-snug ${remoteCaptionIsFinal ? '' : 'opacity-80'}`}>
+                <span className="opacity-70 mr-2">{remoteUserProfile?.username || 'Remote'}:</span>
+                {remoteCaption}
+              </p>
+            </div>
+          )}
+
+          {callStatus === 'connected' && captionsEnabled && localCaption && (
+            <div className="absolute top-20 left-4 max-w-[60%] px-3 py-2 rounded-lg bg-black/45">
+              <p className={`text-white text-sm leading-snug ${localCaptionIsFinal ? '' : 'opacity-80'}`}>
+                <span className="opacity-70 mr-2">You:</span>
+                {localCaption}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Local video (small overlay) */}
@@ -810,6 +1067,26 @@ const VideoCall = () => {
           onClick={toggleCamera}
         >
           <i className={`fa-solid ${isCameraOff ? 'fa-video-slash' : 'fa-video'} text-white text-xl`}></i>
+        </button>
+
+        <button
+          className={`p-4 rounded-full transition-colors ${captionsEnabled ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-800 hover:bg-gray-700'} ${!captionsSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+          aria-label="Toggle captions"
+          onClick={() => {
+            if (!captionsSupported) return;
+            const next = !captionsEnabled;
+            setCaptionsEnabled(next);
+            setRemoteCaption('');
+            setRemoteCaptionIsFinal(false);
+            setLocalCaption('');
+            setLocalCaptionIsFinal(false);
+
+            if (next) startCaptionsRecognition({ isUserGesture: true });
+            else stopCaptionsRecognition();
+          }}
+          title={captionsSupported ? (captionsEnabled ? 'Captions on' : 'Captions off') : 'Captions not supported in this browser'}
+        >
+          <i className="fa-solid fa-closed-captioning text-white text-xl"></i>
         </button>
 
         <button

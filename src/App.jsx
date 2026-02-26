@@ -9,7 +9,6 @@ import HomePage from './components/HomePage';
 
 // Dashboard Components
 import Dashboard from './components/Dashboard/Dashboard';
-import Chat from './components/Dashboard/Chat/Chat';
 import UserProfile from './components/UserProfile';
 import PrivateRoute from './components/auth/PrivateRoute';
 import VideoCall from './components/VideoCall/VideoCall';
@@ -62,7 +61,8 @@ function App() {
         
         {/* Protected Routes */}
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
+        {/* Legacy route: Chat lives inside Dashboard; keep /chat as a safe redirect. */}
+        <Route path="/chat" element={<PrivateRoute><Navigate to="/dashboard" replace /></PrivateRoute>} />
         <Route path="/video-call/:odebukiUserId" element={<PrivateRoute><VideoCall /></PrivateRoute>} />
         <Route path="/profile/:userId" element={<UserProfileRoute />} />
       </Routes>

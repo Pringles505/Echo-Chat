@@ -4,17 +4,23 @@ import dhInit, { hkdf_derive } from 'dh-wasm';
 
 // Constants
 const DB_NAME = 'EchoEncryptedDB';
-const DB_VERSION = 3;
+const DB_VERSION = 8;
 
 const STORES = {
     META: 'meta',              //SALTS
     IDENTITY_KEYS: 'identity_keys',
+    PEER_IDENTITY_KEYS: 'peer_identity_keys',
     SESSION_KEYS: 'session_keys',
     MESSAGES: 'messages',
     MEDIA: 'media',
     ROOT_KEYS: 'root_keys',
     SENDING_CHAIN_KEYS: 'sending_chain_keys',
     RECEIVING_CHAIN_KEYS: 'receiving_chain_keys',
+    CURRENT_SENDING_NUMBER: 'current_sending_number',
+    CURRENT_RECEIVING_NUMBER: 'current_receiving_number',
+    PREVIOUS_SENDING_NUMBER: 'previous_sending_number',
+    SKIPPED_MESSAGE_KEYS: 'skipped_message_keys',
+    OPK_PRIVATE_KEYS: 'opk_private_keys',
 };
 
 class EncryptedLocalDatabase {
@@ -54,6 +60,13 @@ class EncryptedLocalDatabase {
                     store.createIndex('userId', 'userId', { unique: false });
                 }
 
+                // PEER_IDENTITY_KEYS - index by userId + peerId
+                if (!db.objectStoreNames.contains(STORES.PEER_IDENTITY_KEYS)) {
+                    const store = db.createObjectStore(STORES.PEER_IDENTITY_KEYS, { keyPath: 'id' });
+                    store.createIndex('userId', 'userId', { unique: false });
+                    store.createIndex('peerId', 'peerId', { unique: false });
+                }
+
                 // SESSION_KEYS - index by userId
                 if (!db.objectStoreNames.contains(STORES.SESSION_KEYS)) {
                     const store = db.createObjectStore(STORES.SESSION_KEYS, { keyPath: 'id' });
@@ -88,6 +101,36 @@ class EncryptedLocalDatabase {
                 // RECEIVING_CHAIN_KEYS - index by userId
                 if (!db.objectStoreNames.contains(STORES.RECEIVING_CHAIN_KEYS)) {
                     const store = db.createObjectStore(STORES.RECEIVING_CHAIN_KEYS, { keyPath: 'id' });
+                    store.createIndex('userId', 'userId', { unique: false });
+                }
+
+                // CURRENT_SENDING_NUMBER - index by userId
+                if (!db.objectStoreNames.contains(STORES.CURRENT_SENDING_NUMBER)) {
+                    const store = db.createObjectStore(STORES.CURRENT_SENDING_NUMBER, { keyPath: 'id' });
+                    store.createIndex('userId', 'userId', { unique: false });
+                }
+
+                // CURRENT_RECEIVING_NUMBER - index by userId
+                if (!db.objectStoreNames.contains(STORES.CURRENT_RECEIVING_NUMBER)) {
+                    const store = db.createObjectStore(STORES.CURRENT_RECEIVING_NUMBER, { keyPath: 'id' });
+                    store.createIndex('userId', 'userId', { unique: false });
+                }
+
+                // PREVIOUS_SENDING_NUMBER - index by userId
+                if (!db.objectStoreNames.contains(STORES.PREVIOUS_SENDING_NUMBER)) {
+                    const store = db.createObjectStore(STORES.PREVIOUS_SENDING_NUMBER, { keyPath: 'id' });
+                    store.createIndex('userId', 'userId', { unique: false });
+                }
+
+                // SKIPPED_MESSAGE_KEYS - index by userId
+                if (!db.objectStoreNames.contains(STORES.SKIPPED_MESSAGE_KEYS)) {
+                    const store = db.createObjectStore(STORES.SKIPPED_MESSAGE_KEYS, { keyPath: 'id' });
+                    store.createIndex('userId', 'userId', { unique: false });
+                }
+
+                // OPK_PRIVATE_KEYS - one record per opkId, indexed by userId
+                if (!db.objectStoreNames.contains(STORES.OPK_PRIVATE_KEYS)) {
+                    const store = db.createObjectStore(STORES.OPK_PRIVATE_KEYS, { keyPath: 'id' });
                     store.createIndex('userId', 'userId', { unique: false });
                 }
             };
@@ -351,6 +394,41 @@ class EncryptedLocalDatabase {
         console.log('[ELD] Database locked');
     }
 
+    async storePeerIdentityKey(peerId, keys) {
+        this._ensureUnlocked();
+
+        if (peerId == null || peerId === '') {
+            throw new Error('Missing peerId');
+        }
+        if (keys == null) {
+            throw new Error('Missing peer identity keys');
+        }
+
+        const encrypted = await this._encrypt(keys);
+
+        // Do NOT sort: this record belongs to the *current* user and a specific peer.
+        const peerIdentityKeyId = `${this.currentUserId}->${peerId}`;
+
+        await this._put(STORES.PEER_IDENTITY_KEYS, {
+            id: `peerIdentityKey-${peerIdentityKeyId}`,
+            userId: this.currentUserId,
+            peerId,
+            updatedAt: Date.now(),
+            ...encrypted
+        });
+    }
+
+    async getPeerIdentityKey(peerId) {
+        this._ensureUnlocked();
+        if (peerId == null || peerId === '') return null;
+
+        const peerIdentityKeyId = `${this.currentUserId}->${peerId}`;
+        const record = await this._get(STORES.PEER_IDENTITY_KEYS, `peerIdentityKey-${peerIdentityKeyId}`);
+        if (!record) return null;
+        const decrypted = await this._decrypt(record.ciphertext, record.nonce);
+        return JSON.parse(decrypted);
+    }
+
     async storeIdentityKeys(keys) {
         this._ensureUnlocked();
         const encrypted = await this._encrypt(keys);
@@ -594,8 +672,154 @@ class EncryptedLocalDatabase {
     getCurrentUserId() {
         return this.currentUserId;
     }
-}
 
+    // MESSAGE NUMBERS
+
+    async storeCurrentSendingNumber(peerId, number) {
+        this._ensureUnlocked();
+        const id = `currentSendingNumber-${[this.currentUserId, peerId].sort().join('-')}`;
+        const encrypted = await this._encrypt({ number });
+        await this._put(STORES.CURRENT_SENDING_NUMBER, {
+            id,
+            userId: this.currentUserId,
+            ...encrypted
+        });
+    }
+
+    async getCurrentNs(peerId) {
+        this._ensureUnlocked();
+        const id = `currentSendingNumber-${[this.currentUserId, peerId].sort().join('-')}`;
+        const record = await this._get(STORES.CURRENT_SENDING_NUMBER, id);
+        if (!record) return null;
+        const decrypted = await this._decrypt(record.ciphertext, record.nonce);
+        return JSON.parse(decrypted).number;
+    }
+
+    async storeCurrentReceivingNumber(peerId, number) {
+        this._ensureUnlocked();
+        const id = `currentReceivingNumber-${[this.currentUserId, peerId].sort().join('-')}`;
+        const encrypted = await this._encrypt({ number });
+        await this._put(STORES.CURRENT_RECEIVING_NUMBER, {
+            id,
+            userId: this.currentUserId,
+            ...encrypted
+        });
+    }
+
+    async getCurrentNr(peerId) {
+        this._ensureUnlocked();
+        const id = `currentReceivingNumber-${[this.currentUserId, peerId].sort().join('-')}`;
+        const record = await this._get(STORES.CURRENT_RECEIVING_NUMBER, id);
+        if (!record) return null;
+        const decrypted = await this._decrypt(record.ciphertext, record.nonce);
+        return JSON.parse(decrypted).number;
+    }
+
+    async storePreviousSendingNumber(peerId, number) {
+        this._ensureUnlocked();
+        const id = `previousSendingNumber-${[this.currentUserId, peerId].sort().join('-')}`;
+        const encrypted = await this._encrypt({ number });
+        await this._put(STORES.PREVIOUS_SENDING_NUMBER, {
+            id,
+            userId: this.currentUserId,
+            ...encrypted
+        });
+    }
+
+    async getPn(peerId) {
+        this._ensureUnlocked();
+        const id = `previousSendingNumber-${[this.currentUserId, peerId].sort().join('-')}`;
+        const record = await this._get(STORES.PREVIOUS_SENDING_NUMBER, id);
+        if (!record) return null;
+        const decrypted = await this._decrypt(record.ciphertext, record.nonce);
+        return JSON.parse(decrypted).number;
+    }
+
+    async storeSkippedMessageKeys(peerId, skippedKeys) {
+        this._ensureUnlocked();
+        const id = `skippedMessageKeys-${[this.currentUserId, peerId].sort().join('-')}`;
+        const encrypted = await this._encrypt({ skippedKeys });
+        await this._put(STORES.SKIPPED_MESSAGE_KEYS, {
+            id,
+            userId: this.currentUserId,
+            ...encrypted
+        });
+    }
+
+    async getSkippedMessageKeys(peerId) {
+        this._ensureUnlocked();
+        const id = `skippedMessageKeys-${[this.currentUserId, peerId].sort().join('-')}`;
+        const record = await this._get(STORES.SKIPPED_MESSAGE_KEYS, id);
+        if (!record) return null;
+        const decrypted = await this._decrypt(record.ciphertext, record.nonce);
+        return JSON.parse(decrypted).skippedKeys;
+    }
+
+    async deleteCurrentSendingNumber(peerId) {
+        this._ensureUnlocked();
+        const id = `currentSendingNumber-${[this.currentUserId, peerId].sort().join('-')}`;
+        await this._delete(STORES.CURRENT_SENDING_NUMBER, id);
+    }
+
+    async deleteCurrentReceivingNumber(peerId) {
+        this._ensureUnlocked();
+        const id = `currentReceivingNumber-${[this.currentUserId, peerId].sort().join('-')}`;
+        await this._delete(STORES.CURRENT_RECEIVING_NUMBER, id);
+    }
+
+    async deletePreviousSendingNumber(peerId) {
+        this._ensureUnlocked();
+        const id = `previousSendingNumber-${[this.currentUserId, peerId].sort().join('-')}`;
+        await this._delete(STORES.PREVIOUS_SENDING_NUMBER, id);
+    }
+
+    async deleteSkippedMessageKeys(peerId) {
+        this._ensureUnlocked();
+        const id = `skippedMessageKeys-${[this.currentUserId, peerId].sort().join('-')}`;
+        await this._delete(STORES.SKIPPED_MESSAGE_KEYS, id);
+    }
+
+    // OPK PRIVATE KEYS
+
+    // Store a batch of OPK private keys: opks is an array of { opkId, privateKey (Uint8Array) }
+    async storeOPKs(opks) {
+        this._ensureUnlocked();
+        for (const { opkId, privateKey } of opks) {
+            const encrypted = await this._encrypt({ privateKey: this._uint8ToBase64(privateKey) });
+            await this._put(STORES.OPK_PRIVATE_KEYS, {
+                id: `opk-${opkId}`,
+                userId: this.currentUserId,
+                opkId,
+                ...encrypted,
+            });
+        }
+        console.log(`[ELD] Stored ${opks.length} OPK private keys`);
+    }
+
+    // Retrieve the private key for a single opkId (returns Uint8Array or null)
+    async getOPK(opkId) {
+        this._ensureUnlocked();
+        const record = await this._get(STORES.OPK_PRIVATE_KEYS, `opk-${opkId}`);
+        if (!record) return null;
+        const decrypted = await this._decrypt(record.ciphertext, record.nonce);
+        const data = JSON.parse(decrypted);
+        return this._base64ToUint8(data.privateKey);
+    }
+
+    // Delete a consumed OPK (call after using it in X3DH response)
+    async deleteOPK(opkId) {
+        this._ensureUnlocked();
+        await this._delete(STORES.OPK_PRIVATE_KEYS, `opk-${opkId}`);
+        console.log(`[ELD] Deleted consumed OPK: ${opkId}`);
+    }
+
+    // Return the count of remaining stored OPKs
+    async getOPKCount() {
+        this._ensureUnlocked();
+        const records = await this._getAllByIndex(STORES.OPK_PRIVATE_KEYS, 'userId', this.currentUserId);
+        return records.length;
+    }
+}
 // Create singleton instance
 const eld = new EncryptedLocalDatabase();
 

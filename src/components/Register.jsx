@@ -16,6 +16,7 @@ import init, {
   generate_private_prekey,
   derive_x25519_from_ed25519_private,
 } from "/dh-wasm/pkg";
+import { generateOneTimePreKeys } from './Dashboard/Chat/utils/crypto/opk';
 import init_xeddsa, {
   convert_x25519_to_xeddsa,
   compute_determenistic_nonce,
@@ -107,7 +108,8 @@ const Register = () => {
       console.log("X25519 Private Key:", new Uint8Array(x25519_private_key));
       console.log("X25519 Public Key:", new Uint8Array(x25519_public_key));
 
-      const xeddsaKey = convert_x25519_to_xeddsa(privateKey);
+      // XEdDSA expects an X25519 private key (not the Ed25519 seed).
+      const xeddsaKey = convert_x25519_to_xeddsa(x25519_private_key);
       const edPrivScaler = xeddsaKey.slice(0, 32);
       const prefix = xeddsaKey.slice(32, 64);
       const deterministicNonce = compute_determenistic_nonce(
@@ -115,7 +117,7 @@ const Register = () => {
         publicPreKey
       );
       const noncePoint = compute_nonce_point(deterministicNonce);
-      const publicEdKey = derive_ed25519_keypair_from_x25519(privateKey);
+      const publicEdKey = derive_ed25519_keypair_from_x25519(x25519_private_key);
       const challenge_hash = compute_challenge_hash(
         noncePoint,
         publicEdKey,
@@ -133,7 +135,7 @@ const Register = () => {
       console.log("publicEdKey", Array.from(publicEdKey));
       console.log("publicPreKey (message)", Array.from(publicPreKey));
 
-      console.log("Xeddsa Public Key:", convert_x25519_to_xeddsa(privateKey));
+      console.log("Xeddsa Public Key:", convert_x25519_to_xeddsa(x25519_private_key));
       console.log("Deterministic nonce:", deterministicNonce);
       console.log("Nonce Point:", noncePoint);
       console.log("publicEdKey:", publicEdKey);
@@ -169,10 +171,15 @@ const Register = () => {
       console.log("PreKey used as message", Array.from(publicPreKey));
       console.log("Challenge hash (k)", Array.from(challenge_hash));
 
+      // Generate one-time prekey batch
+      const { privateKeys: opkPrivateKeys, publicBundle: opkPublicBundle } =
+        await generateOneTimePreKeys(100);
+
       // Emit the registration event
       const publicKeyStringX25519 =
         Buffer.from(x25519_public_key).toString("base64");
-      const publicKeyStringED25519 = Buffer.from(publicKey).toString("base64");
+      // Publish the Ed25519 verification key that corresponds to our X25519 identity key (used by XEdDSA verify).
+      const publicKeyStringED25519 = Buffer.from(publicEdKey).toString("base64");
       const publicPreKeyString = Buffer.from(publicPreKey).toString("base64");
       const signatureString = Buffer.from(signature).toString("base64");
 
@@ -189,6 +196,7 @@ const Register = () => {
         publicIdentityKeyX25519: publicKeyStringX25519,
         publicIdentityKeyEd25519: publicKeyStringED25519,
         publicSignedPreKey: [publicPreKeyString, signatureString],
+        oneTimePreKeys: opkPublicBundle,
       };
 
       console.log("Key bundle:", keyBundle);
@@ -210,7 +218,9 @@ const Register = () => {
               privatePreKey: privatePreKeyBase64,
             });
 
-            console.log("[ELD] Identity keys stored securely");
+            await eld.storeOPKs(opkPrivateKeys);
+
+            console.log("[ELD] Identity keys and OPKs stored securely");
 
             // Lock database (user will unlock on login)
             eld.lock();

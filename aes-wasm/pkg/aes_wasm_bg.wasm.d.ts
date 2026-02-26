@@ -3,6 +3,8 @@
 export const memory: WebAssembly.Memory;
 export const encrypt: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
 export const decrypt: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+export const encrypt_aad: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
+export const decrypt_aad: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
 export const __wbindgen_export_0: WebAssembly.Table;
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

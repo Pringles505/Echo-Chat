@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Send, X } from 'lucide-react';
 import { compressImage } from '../utils/imageUtils';
 
-const SendText = ({ sendMessage }) => {
+const SendText = ({ sendMessage, disabled = false, disabledReason = '' }) => {
   const [text, setText] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -15,16 +15,23 @@ const SendText = ({ sendMessage }) => {
     setText(event.target.value);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (text.trim()) {
-      sendMessage(text);
+    if (disabled) return;
+    const next = text.trim();
+    if (!next) return;
+    try {
+      await Promise.resolve(sendMessage(next));
       setText('');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[SendText] Failed to send message:', err);
     }
   };
 
   // Trigger hidden file input when image icon clicked
   const handleImageClick = () => {
+    if (disabled) return;
     fileInputRef.current?.click();
   };
 
@@ -44,6 +51,7 @@ const SendText = ({ sendMessage }) => {
 
   // Send image with optional text
   const handleImageSend = async () => {
+    if (disabled) return;
     if (selectedImage) {
       // Compress the image
       const compressedBlob = await compressImage(selectedImage);
@@ -52,7 +60,10 @@ const SendText = ({ sendMessage }) => {
       const reader = new FileReader();
       reader.onload = () => {
         const base64Image = reader.result;
-        sendMessage(imageText, base64Image);
+        Promise.resolve(sendMessage(imageText, base64Image)).catch((err) => {
+          // eslint-disable-next-line no-console
+          console.error('[SendText] Failed to send image:', err);
+        });
 
         // Reset state
         setShowImageModal(false);
@@ -82,7 +93,9 @@ const SendText = ({ sendMessage }) => {
         <button
           type="button"
           onClick={handleImageClick}
+          disabled={disabled}
           className="pl-4 pr-2 py-3 text-gray-400 hover:text-white"
+          title={disabled ? (disabledReason || 'Sending is disabled') : 'Attach image'}
         >
           <i className="fa-solid fa-image text-lg"></i>
         </button>
@@ -117,17 +130,21 @@ const SendText = ({ sendMessage }) => {
           </div>
         )}
         <input
+          data-testid="chat-input"
           type="text"
           value={text}
           onChange={handleChange}
-          placeholder="Type a message..."
+          placeholder={disabled ? (disabledReason || 'Sending is disabled') : 'Type a message...'}
+          disabled={disabled}
           className="flex-1 py-3 px-5 bg-white/10 text-white rounded-full focus:outline-none focus:ring-2 focus:ring-[#8e79f2] placeholder-gray-400 border border-gray-700"
         />
       </div>
       <button
+        data-testid="chat-send"
         type="submit"
-        disabled={!text.trim()}
-        className={`ml-3 p-3 rounded-full ${text.trim() ? 'bg-indigo-700 text-white hover:bg-[#8e79f2]' : 'bg-gray-700 text-gray-500 cursor-not-allowed'} transition-colors`}
+        disabled={disabled || !text.trim()}
+        className={`ml-3 p-3 rounded-full ${(!disabled && text.trim()) ? 'bg-indigo-700 text-white hover:bg-[#8e79f2]' : 'bg-gray-700 text-gray-500 cursor-not-allowed'} transition-colors`}
+        title={disabled ? (disabledReason || 'Sending is disabled') : 'Send'}
       >
         <Send className="w-5 h-5" />
       </button>
@@ -137,6 +154,8 @@ const SendText = ({ sendMessage }) => {
 
 SendText.propTypes = {
   sendMessage: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+  disabledReason: PropTypes.string,
 };
 
 export default SendText;

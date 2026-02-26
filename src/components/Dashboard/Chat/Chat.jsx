@@ -20,41 +20,23 @@ import { fetchLatestMessageNumber, checkFirstMessage } from "./utils/api";
 
 // Key management functions for session keys
 import {
-  getSendingChainKey,
-  setOwnEphemeralKeys,
-  setSendingChainKey,
-  getRootKey,
-  setRootKey,
   updateSavedMessages,
   getIdentityKeys,
   getSavedMessages,
   updateMessageSeenStatus,
-  getOwnEphemeralKeys,
+  storePeerIdentityKeys,
 } from "./utils/chat/keyManagement";
 
-// Double Ratchet Rust module
-import {
-  initializeDoubleRatchet,
-} from "./utils/crypto/dr";
-
-// Diffie-Hellman Rust Module
-import init_dh, {
-  generate_private_ephemeral_key,
-  generate_public_ephemeral_key,
-} from "dh-wasm";
-
-// AES Encryption primitives
-import { encrypt } from "./utils/crypto/aes";
-
-import {
-  chain_key_KDF,
-  deriveChainKeys
-} from './utils/crypto/hkdf';
+import { encryptOutgoingMessage } from "./utils/chat/messageEncryption";
 
 // Main chat component
-function Chat({ token, activeChat, currentWallpaper = "default" }) {
+function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
   // Use shared socket connection
   const socket = getSocket();
+
+  // Allow Chat to be rendered from different routes/layouts.
+  // If a parent does not pass a token prop, fall back to localStorage.
+  const token = tokenProp ?? localStorage.getItem("token") ?? "";
 
   // Extract userId and targetUserId from the token and activeChat
   const userId = token ? jwtDecode(token).id : "";
@@ -62,11 +44,31 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
   const username = token ? jwtDecode(token).username : "";
   const [messages, setMessages] = useState([]);
   const [privateKeyArray, setPrivateKeyArray] = useState(null);
+  const [sendBlocked, setSendBlocked] = useState(false);
+  const [sendBlockedReason, setSendBlockedReason] = useState("");
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const previousMessageCountRef = useRef(0);
   const isInitialLoadRef = useRef(true);
+
+  useEffect(() => {
+    // Reset on chat switch.
+    setSendBlocked(false);
+    setSendBlockedReason("");
+
+    const onPeerIdentityChanged = (event) => {
+      const peerId = String(event?.detail?.peerId ?? "");
+      if (!peerId) return;
+      if (peerId !== String(targetUserId ?? "")) return;
+
+      setSendBlocked(true);
+      setSendBlockedReason("Peer identity key changed. Verify this contact before sending.");
+    };
+
+    window.addEventListener("peerIdentityChanged", onPeerIdentityChanged);
+    return () => window.removeEventListener("peerIdentityChanged", onPeerIdentityChanged);
+  }, [targetUserId]);
 
   // Load private key from ELD on mount
   useEffect(() => {
@@ -237,120 +239,56 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
       window.removeEventListener('localStorageUpdated', handleEldUpdate);
       console.log("✅ Chat cleanup complete (session keys preserved for ratchet continuity)");
     };
-  }, [userId, targetUserId, privateKeyArray]);
+  }, [userId, targetUserId]);
 
   // Send message function
   const sendMessage = async (text, imageData = null) => {
-    const HKDF_SALT = new Uint8Array();
+    if (sendBlocked) {
+      throw new Error(sendBlockedReason || "Sending is blocked");
+    }
 
-    // Fetch the latest message number and derive the current message number
-    // Generate unique nonce for this message, NOT private
-    const nonceArray = crypto.getRandomValues(new Uint8Array(12));
+    const ensurePrivateKey = async () => {
+      if (privateKeyArray instanceof Uint8Array) return privateKeyArray;
+      const keys = await getIdentityKeys();
+      if (keys?.privateKeyX25519) {
+        const loaded = base64ToArrayBuffer(keys.privateKeyX25519);
+        setPrivateKeyArray(loaded);
+        console.log("[Chat] Lazy-loaded private key from ELD");
+        return loaded;
+      }
+      throw new Error("No private key available in ELD");
+    };
 
-    let root_key = await getRootKey(userId, targetUserId);
+    const privateKey = await ensurePrivateKey();
 
-    // If no existing root key, this is the initial message and we need to initialize the double ratchet
-    if (!root_key) {
-      console.log("🔐 No existing root key, initializing new Double Ratchet session");
-
-      const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-
-      // Generate private and public ephemeral key for this session
-      await init_dh();
-      const privateEphemeralKey = await generate_private_ephemeral_key(randomBytes);
-      const publicEphemeralKey = await generate_public_ephemeral_key(privateEphemeralKey);
-
-      root_key = await initializeDoubleRatchet(
+    let outgoing;
+    try {
+      outgoing = await encryptOutgoingMessage({
+        text,
+        imageData,
+        userId,
+        targetUserId,
+        username,
         socket,
-        targetUserId,
-        privateEphemeralKey,
-        publicEphemeralKey,
-        privateKeyArray
-      );
-      await setRootKey(userId, targetUserId, root_key);
-
-      const { sendingChainKey } = deriveChainKeys(root_key, userId, targetUserId);
-
-      const chain_key_material = chain_key_KDF(sendingChainKey);
-      const messageKey = chain_key_material.slice(0, 32);
-      const newChainKey = chain_key_material.slice(32);
-
-      await setSendingChainKey(userId, targetUserId, newChainKey);
-      console.log("✅ Sending Key Chain Initialized and stored");
-
-      const publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
-      await setOwnEphemeralKeys(userId, targetUserId, publicEphemeralKeyBase64, arrayBufferToBase64(privateEphemeralKey));
-      console.log("✅ Own ephemeral keys stored");
-
-      const payload = JSON.stringify({
-        text: text || '',
-        image: imageData || null
+        privateKeyArray: privateKey,
       });
-      const encryptedPayload = await encrypt(payload, messageKey, nonceArray);
-      console.log("✅ Message encrypted");
-      console.log("✅ Sensitive keys zeroed out");
-
-      socket.emit("newMessage", {
-        payload: encryptedPayload,
-        nonce: arrayBufferToBase64(nonceArray),
-        userId,
-        targetUserId,
-        username,
-        publicEphemeralKey: publicEphemeralKeyBase64
-      });
-
-      console.log("✅ First message sent");
-      await updateSavedMessages(userId, targetUserId, {
-        _id: crypto.randomUUID(),
-        userId,
-        targetUserId,
-        username,
-        text: text || '',
-        image: imageData || null,
-        seenStatus: false,
-        createdAt: new Date().toISOString(),
-      }, setMessages);
-      return;
+    } catch (err) {
+      if (err?.code === "PEER_IDENTITY_CHANGED") {
+        setSendBlocked(true);
+        setSendBlockedReason("Peer identity key changed. Verify this contact before sending.");
+      }
+      throw err;
     }
 
-    let sendingChainKey = await getSendingChainKey(userId, targetUserId);
-    if (!sendingChainKey) {
-      console.error("❌ No sending chain key found for existing session, creating SENDING chain from ROOT key");
-      const { sendingChainKey: derivedSendingChainKey } = deriveChainKeys(root_key, userId, targetUserId);
-      sendingChainKey = derivedSendingChainKey;
-      await setSendingChainKey(userId, targetUserId, sendingChainKey);
-      console.log("✅ Derived and stored missing sending chain key from root key");
-    }
-
-    const chain_key_material = chain_key_KDF(sendingChainKey);
-    const messageKey = chain_key_material.slice(0, 32);
-    const newChainKey = chain_key_material.slice(32);
-
-
-    await setSendingChainKey(userId, targetUserId, newChainKey);
-    console.log("✅ Derived message key for encryption");
-
-    const ownKeys = await getOwnEphemeralKeys(userId, targetUserId);
-    const publicEphemeralKeyBase64 = ownKeys.public;
-
-    const payload = JSON.stringify({
-      text: text || '',
-      image: imageData || null
-    });
-    const encryptedPayload = await encrypt(payload, messageKey, nonceArray);
-    console.log("✅ Message encrypted");
-    console.log("✅ Sensitive keys zeroed out");
-
-    socket.emit("newMessage", {
-      payload: encryptedPayload,
-      nonce: arrayBufferToBase64(nonceArray),
-      userId,
-      targetUserId,
-      username,
-      publicEphemeralKey: publicEphemeralKeyBase64
+    // Save the peer IK on the sender side the first time we fetch it (TOFU),
+    // but only after we successfully send a message that used that identity.
+    socket.emit("newMessage", outgoing, (ack) => {
+      if (!ack?.success) return;
+      if (!outgoing?.peerIdentityToPin) return;
+      storePeerIdentityKeys(targetUserId, { ...outgoing.peerIdentityToPin, firstSeenAt: Date.now() });
     });
 
-    console.log("✅ First message sent");
+
     await updateSavedMessages(userId, targetUserId, {
       _id: crypto.randomUUID(),
       userId,
@@ -386,7 +324,7 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
     }
   };
 
-  return (
+    return (
     <div className="app-container h-full flex flex-col">
 
       <div className="chat-container flex-1 flex flex-col relative overflow-y-auto">
@@ -409,13 +347,18 @@ function Chat({ token, activeChat, currentWallpaper = "default" }) {
           </div>
         </div>
       </div>
-      <SendText sendMessage={sendMessage} />
+      {sendBlocked && (
+        <div className="px-4 py-2 text-sm bg-red-950/70 text-red-100 border-t border-red-900">
+          {sendBlockedReason || "Sending is blocked due to a safety warning."}
+        </div>
+      )}
+      <SendText sendMessage={sendMessage} disabled={sendBlocked} disabledReason={sendBlockedReason} />
     </div>
   );
 };
 
 Chat.propTypes = {
-  token: PropTypes.string.isRequired,
+  token: PropTypes.string,
   activeChat: PropTypes.string.isRequired,
 };
 

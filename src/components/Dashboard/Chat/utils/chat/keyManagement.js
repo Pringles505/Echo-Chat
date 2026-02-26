@@ -1,4 +1,3 @@
-import { tr } from 'date-fns/locale';
 import eld from '../../../../../utils/storage/EncryptedLocalDatabase';
 
 // In-memory caches
@@ -7,7 +6,7 @@ const ephemeralCache = new Map();
 const sendingChainKeyCache = new Map();
 const receivingChainKeyCache = new Map();
 const rootKeyCache = new Map();
-const sessionKeyCache = new Map(); 
+const sessionKeyCache = new Map();
 
 export const setOwnEphemeralKeys = async (userId, targetUserId, publicKey, privateKey) => {
   if (!publicKey || !privateKey) {
@@ -40,6 +39,44 @@ export const getOwnEphemeralKeys = async (userId, targetUserId) => {
   return null;
 }
 
+// Message Numbers  
+
+export const getCurrentSendingNumber = async (targetUserId) => {
+  const data = await eld.getCurrentNs(targetUserId);
+  return data;
+}
+
+export const setCurrentSendingNumber = async (targetUserId, number) => {
+  await eld.storeCurrentSendingNumber(targetUserId, number);
+}
+
+export const getCurrentReceivingNumber = async (targetUserId) => {
+  const data = await eld.getCurrentNr(targetUserId);
+  return data;
+}
+
+export const setCurrentReceivingNumber = async (targetUserId, number) => {
+  await eld.storeCurrentReceivingNumber(targetUserId, number);
+}
+
+export const getPreviousSendingNumber = async (targetUserId) => {
+  const data = await eld.getPn(targetUserId);
+  return data;
+}
+
+export const setPreviousSendingNumber = async (targetUserId, number) => {
+  await eld.storePreviousSendingNumber(targetUserId, number);
+}
+
+export const setSkippedMessages = async (targetUserId, skippedKeys) => {
+  await eld.storeSkippedMessageKeys(targetUserId, skippedKeys);
+}
+
+export const getSkippedMessages = async (targetUserId) => {
+  const data = await eld.getSkippedMessageKeys(targetUserId);
+  return data;
+}
+
 export const deleteOwnEphemeralKeys = async (userId, targetUserId) => {
   const existingData = await getEphemeralData(userId, targetUserId);
 
@@ -59,7 +96,7 @@ export const setSessionKey = (userId, targetUserId, messageKey) => {
   console.log(`[KeyMgmt] Stored session key for ${sessionId}`);
 };
 
-export const getSessionKey = (userId, targetUserId) => { 
+export const getSessionKey = (userId, targetUserId) => {
   const sessionId = `${userId}->${targetUserId}`;
   const key = sessionKeyCache.get(sessionId);
   if (key) {
@@ -190,6 +227,68 @@ export const getReceivingChainKey = async (userId, targetUserId) => {
   return null;
 };
 
+// PEER IDENTITY KEYS
+
+export const storePeerIdentityKeys = async (peerId, keys) => {
+  if (!peerId) throw new Error("storePeerIdentityKeys requires peerId");
+
+  if (!eld.isUnlocked()) {
+    console.error("[KeyMgmt] Database locked - cannot store peer identity keys");
+    return;
+  }
+
+  try {
+    await eld.storePeerIdentityKey(peerId, keys);
+    console.log(`[KeyMgmt] Stored peer IK for peerId=${peerId}`);
+  } catch (err) {
+    console.error("[KeyMgmt] Failed to store peer IK data:", err);
+  }
+};
+
+export const getPeerIdentityKeys = async (peerId) => {
+  if (!eld.isUnlocked()) {
+    console.error('[KeyMgmt] Database locked - cannot get peer identity keys');
+    return null;
+  }
+  return await eld.getPeerIdentityKey(peerId);
+};
+
+export const resetConversationState = async (userId, targetUserId) => {
+  if (!userId || !targetUserId) {
+    throw new Error("resetConversationState requires userId and targetUserId");
+  }
+  if (!eld.isUnlocked()) {
+    console.error("[KeyMgmt] Database locked - cannot reset conversation state");
+    return;
+  }
+
+  const rootKeyId = [userId, targetUserId].sort().join('-');
+  const sessionId = [userId, targetUserId].sort().join('-');
+  const sendingId = `${userId}->${targetUserId}`;
+  const receivingId = `${targetUserId}->${userId}`;
+  const sessionKeyId = `${userId}->${targetUserId}`;
+
+  rootKeyCache.delete(rootKeyId);
+  ephemeralCache.delete(sessionId);
+  sendingChainKeyCache.delete(sendingId);
+  receivingChainKeyCache.delete(receivingId);
+  sessionKeyCache.delete(sessionKeyId);
+
+  try {
+    await eld.deleteRootKey(targetUserId);
+    await eld.deleteSendingChainKey(targetUserId);
+    await eld.deleteReceivingChainKey(targetUserId);
+    await eld.deleteEphemeralData(targetUserId);
+    await eld.deleteCurrentSendingNumber(targetUserId);
+    await eld.deleteCurrentReceivingNumber(targetUserId);
+    await eld.deletePreviousSendingNumber(targetUserId);
+    await eld.deleteSkippedMessageKeys(targetUserId);
+    console.log(`[KeyMgmt] Reset conversation state for ${userId}<->${targetUserId}`);
+  } catch (err) {
+    console.error("[KeyMgmt] Failed to reset conversation state:", err);
+  }
+};
+
 // IDENTITY KEYS
 
 export const getIdentityKeys = async () => {
@@ -198,6 +297,27 @@ export const getIdentityKeys = async () => {
     return null;
   }
   return await eld.getIdentityKeys();
+};
+
+// OPK (One-Time PreKeys)
+
+export const getOPKPrivateKey = async (opkId) => {
+  if (!opkId) return null;
+  if (!eld.isUnlocked()) {
+    console.error('[KeyMgmt] Database locked - cannot get OPK');
+    return null;
+  }
+  return await eld.getOPK(opkId);
+};
+
+export const deleteOPKPrivateKey = async (opkId) => {
+  if (!opkId) return;
+  if (!eld.isUnlocked()) return;
+  try {
+    await eld.deleteOPK(opkId);
+  } catch (err) {
+    console.error('[KeyMgmt] Failed to delete OPK:', err);
+  }
 };
 
 // EPHEMERAL KEYS 

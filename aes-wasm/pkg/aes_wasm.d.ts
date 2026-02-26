@@ -2,6 +2,8 @@
 /* eslint-disable */
 export function encrypt(text: string, key: Uint8Array, nonce: Uint8Array): string;
 export function decrypt(text: string, key: Uint8Array, nonce: Uint8Array): string;
+export function encrypt_aad(text: string, key: Uint8Array, nonce: Uint8Array, aad: Uint8Array): string;
+export function decrypt_aad(cipher_hex: string, key: Uint8Array, nonce: Uint8Array, aad: Uint8Array): string;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -9,6 +11,8 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly encrypt: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
   readonly decrypt: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+  readonly encrypt_aad: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
+  readonly decrypt_aad: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
   readonly __wbindgen_export_0: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

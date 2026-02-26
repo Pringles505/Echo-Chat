@@ -82,6 +82,7 @@ const Friends = ({ token, onActiveChatChange, searchTerm }) => {
         {chatList.map((targetUser, index) => (
           <li
             key={index}
+            data-testid="friend-result"
             onClick={() =>
               onActiveChatChange({
                 id: targetUser.id,

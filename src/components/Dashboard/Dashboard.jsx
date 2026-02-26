@@ -11,9 +11,11 @@ import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatPr
 import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
 import { getSocket } from "../../socket";
 import IncomingCallNotification from "../VideoCall/IncomingCallNotification";
-import { getIdentityKeys, getSavedMessages } from "./Chat/utils/chat/keyManagement";
+import { getIdentityKeys, getSavedMessages, updateSavedMessages } from "./Chat/utils/chat/keyManagement";
 import { decryptIncomingMessage } from "./Chat/utils/chat/messageDecryption";
 import { base64ToArrayBuffer } from "./Chat/utils/helpers";
+import { generateOneTimePreKeys } from "./Chat/utils/crypto/opk";
+import { createOpkReplenishHandler, requestOpkStatusAndReplenish } from "../../utils/opk/replenish";
 import eld from "../../utils/storage/EncryptedLocalDatabase";
 
 const Dashboard = () => {
@@ -70,6 +72,13 @@ const Dashboard = () => {
     const sharedSocket = getSocket();
     setSocket(sharedSocket);
 
+    const handleOpkReplenishRequested = createOpkReplenishHandler({
+      socket: sharedSocket,
+      eld,
+      generateOneTimePreKeys,
+      maxBatch: 200,
+    });
+
     const onConnect = () => {
       console.log('Socket connected for profile fetching');
 
@@ -120,6 +129,9 @@ const Dashboard = () => {
           }
         });
       }
+
+      // Ensure OPKs are topped up if the server-side public OPK count is low.
+      requestOpkStatusAndReplenish({ socket: sharedSocket, handler: handleOpkReplenishRequested });
     };
 
     if (sharedSocket.connected) {
@@ -149,6 +161,9 @@ const Dashboard = () => {
         return current;
       });
     });
+
+    // Server-requested OPK replenishment (public keys only).
+    sharedSocket.on('replenishOPKs', handleOpkReplenishRequested);
 
     // Listen for profile updates from other users
     sharedSocket.on('userProfileUpdated', (data) => {
@@ -244,6 +259,24 @@ const Dashboard = () => {
 
           // DECRYPT MESSAGE IN BACKGROUND
           try {
+            // Call event messages are not end-to-end encrypted in this project; store as-is.
+            if (message.messageType === 'call_event') {
+              await updateSavedMessages(userId, senderId, message, null);
+              console.log('✅ [Dashboard] Call event stored (no decryption)');
+              continue;
+            }
+
+            // Defensive: ignore malformed encrypted messages (prevents noisy console errors).
+            if (!message.payload || !message.nonce || !message.publicEphemeralKey) {
+              console.warn('⚠️ [Dashboard] Skipping background decryption (missing fields)', {
+                hasPayload: Boolean(message.payload),
+                hasNonce: Boolean(message.nonce),
+                hasPublicEphemeralKey: Boolean(message.publicEphemeralKey),
+                messageType: message.messageType,
+              });
+              continue;
+            }
+
             console.log('🔐 [Dashboard] Attempting background decryption...');
             const nonce = base64ToArrayBuffer(message.nonce || '');
             await decryptIncomingMessage(
@@ -334,14 +367,17 @@ const Dashboard = () => {
 
     console.log('Dashboard socket ID:', sharedSocket.id);
 
-    return () => {
-      sharedSocket.off('connect', onConnect);
-      sharedSocket.off('incomingCall');
-      sharedSocket.off('callEnded');
-      sharedSocket.off('userProfileUpdated');
-      sharedSocket.off('newMessage', handleNewMessageNotification);
-      // Don't disconnect the shared socket here
-    };
+      return () => {
+        sharedSocket.off('connect', onConnect);
+        sharedSocket.off('incomingCall');
+        sharedSocket.off('callEnded');
+        sharedSocket.off('replenishOPKs', handleOpkReplenishRequested);
+        // Back-compat cleanup (older event name)
+        sharedSocket.off('opkReplenishRequested', handleOpkReplenishRequested);
+        sharedSocket.off('userProfileUpdated');
+        sharedSocket.off('newMessage', handleNewMessageNotification);
+        // Don't disconnect the shared socket here
+      };
   }, [token, userId, username, activeChat, updateRecentConversations, recentConversations]);
 
   // Update document title with notification count
@@ -578,6 +614,7 @@ const Dashboard = () => {
           <div className="flex gap-2 mb-4">
             <div className="relative w-full">
               <input
+                data-testid="dashboard-search"
                 type="text"
                 placeholder={
                   activeView === 'friends'

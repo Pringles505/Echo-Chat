@@ -22,10 +22,22 @@ const fetchSignedPreKey = async (socket, targetUserId) => {
             if (response.success) {
                 console.log('✅ Fetched getSignedPreKey:', response.signedPreKey, response.signature);
 
-                resolve({ signedPreKey: response.signedPreKey, signature: response.signature });
+                resolve({ signedPreKey: response.signedPreKey, signature: response.signature, spkId: response.spkId ?? null });
             } else {
                 console.error('❌ Failed to fetch getSignedPreKey:', response.error);
                 reject(new Error(response.error));
+            }
+        });
+    });
+};
+
+const fetchPreKeyBundle = async (socket, targetUserId) => {
+    return new Promise((resolve, reject) => {
+        socket.emit('getPreKeyBundle', { targetUserId }, (response) => {
+            if (response.success && response.bundle) {
+                resolve(response.bundle);
+            } else {
+                reject(new Error(response.error || 'Failed to fetch PreKeyBundle'));
             }
         });
     });
@@ -71,6 +83,7 @@ const checkFirstMessage = async (socket, userId, targetUserId) => {
 
 export { fetchPublicIdentityKeyX25519, 
          fetchSignedPreKey, 
+         fetchPreKeyBundle,
          fetchPublicIdentityKeyEd25519, 
          fetchLatestMessageNumber, 
          checkFirstMessage };

@@ -114,6 +114,7 @@ const Sidebar = ({
       <nav className="flex flex-col items-center space-y-6 flex-grow">
         {/* Botón de chats */}
         <button 
+          data-testid="nav-chats"
           className={`relative p-3 rounded-xl transition-colors duration-200 ${
             activeView === 'chats' 
               ? 'bg-[#8e79f2] text-white' 
@@ -131,6 +132,7 @@ const Sidebar = ({
 
         {/* Botón de amigos */}
         <button 
+          data-testid="nav-friends"
           className={`p-3 rounded-xl transition-colors duration-200 ${
             activeView === 'friends' 
               ? 'bg-[#8e79f2] text-white' 

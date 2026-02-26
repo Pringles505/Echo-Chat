@@ -6,7 +6,8 @@ let currentToken = null;
 export function getSocket() {
   const token = localStorage.getItem('token');
   if (!socket) {
-    socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001', {
+    // Use 127.0.0.1 by default to avoid IPv6 `localhost` resolution issues in test runners.
+    socket = io(import.meta.env.VITE_SOCKET_URL || 'http://127.0.0.1:3001', {
       withCredentials: true,
       auth: token ? { token } : {},
       transports: ['websocket']
@@ -29,7 +30,7 @@ export function getSocket() {
 
 export function connectWithoutAuth() {
   if (!socket) {
-    socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001', {
+    socket = io(import.meta.env.VITE_SOCKET_URL || 'http://127.0.0.1:3001', {
       withCredentials: true,
       auth: {},
       transports: ['websocket']
