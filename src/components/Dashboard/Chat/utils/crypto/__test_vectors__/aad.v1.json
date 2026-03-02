@@ -1,0 +1,47 @@
+{
+  "name": "aead-aad-headers-v1",
+  "purpose": "Demonstrate header binding via AEAD additional authenticated data (AAD). Uses WebCrypto AES-GCM for deterministic KAT behavior; the protocol-specific part under test is Echo's AAD construction.",
+  "protocol": "Echo/v2",
+  "encoding": {
+    "bytes": "base64"
+  },
+  "inputs": {
+    "header": {
+      "userId": "ALICE",
+      "targetUserId": "BOB",
+      "publicEphemeralKey": "base64-ephemeral-pub",
+      "sendingNumber": 7,
+      "previousSendingNumber": 3,
+      "spkId": 1,
+      "opkId": "42"
+    },
+    "plaintext": "{\"text\":\"hi\",\"image\":null}",
+    "key_b64": "CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQk=",
+    "iv_b64": "BAQEBAQEBAQEBAQE"
+  },
+  "expected": {
+    "aad_utf8": "Echo/v2|ALICE|BOB|base64-ephemeral-pub|7|3|1|42",
+    "ciphertext_b64": "nJvMHJbBSRWkLAsQOHpF+67NHMUy5/M0Eyvv2F+9zSjbWARzIB9SU1RQ"
+  },
+  "negative": [
+    {
+      "name": "tamper-sendingNumber",
+      "mutateHeader": {
+        "sendingNumber": 8
+      },
+      "expected": {
+        "decrypts": false
+      }
+    },
+    {
+      "name": "tamper-publicEphemeralKey",
+      "mutateHeader": {
+        "publicEphemeralKey": "different-dh"
+      },
+      "expected": {
+        "decrypts": false
+      }
+    }
+  ]
+}
+

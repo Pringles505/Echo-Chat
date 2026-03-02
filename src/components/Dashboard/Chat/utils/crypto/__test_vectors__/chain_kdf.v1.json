@@ -1,0 +1,24 @@
+{
+  "name": "chain-kdf-evolution-v1",
+  "purpose": "Known-answer tests for the symmetric chain KDF used to derive per-message keys (MK) and advance the chain key (CK).",
+  "protocol": "EchoProtocol/v1",
+  "encoding": {
+    "bytes": "base64"
+  },
+  "inputs": {
+    "chainKey0_b64": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+  },
+  "expected": {
+    "steps": [
+      {
+        "mk_b64": "6OVkUhMFHdDC9gP2yEgdDUapvIqcepOIun/+wt2k2to=",
+        "nextChainKey_b64": "u1V/6wzto8/dEOqJpjRpNhwPwm2etpY60Rar4hCATO8="
+      },
+      {
+        "mk_b64": "wigh34JoyMChx0u/Mo+9w13gpvTzFpSu5hWApscRB/4=",
+        "nextChainKey_b64": "SmLf3Sl3rfBdSpnb7epEC+MH90JquhdGYrtctaYNxOY="
+      }
+    ]
+  }
+}
+
