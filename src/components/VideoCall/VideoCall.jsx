@@ -41,9 +41,10 @@ const VideoCall = () => {
   const callIdRef = useRef('');
   const recognitionRef = useRef(null);
   const captionThrottleRef = useRef({ lastText: '', lastSentAt: 0 });
+  const captionsRestartGateRef = useRef({ blockedUntil: 0 });
   const remoteCaptionClearTimeoutRef = useRef(null);
   const captionsStateRef = useRef({
-    captionsEnabled: true,
+    captionsEnabled: false,
     callStatus: 'idle',
     isMuted: false,
     hasAudioPermission: true,
@@ -59,10 +60,11 @@ const VideoCall = () => {
   const [remoteVideoEnabled, setRemoteVideoEnabled] = useState(true);
   const [localUserProfile, setLocalUserProfile] = useState(null);
   const [remoteUserProfile, setRemoteUserProfile] = useState(null);
-  const [captionsEnabled, setCaptionsEnabled] = useState(true);
+  const [captionsEnabled, setCaptionsEnabled] = useState(false);
   const [captionsSupported, setCaptionsSupported] = useState(true);
   const [remoteCaption, setRemoteCaption] = useState('');
   const [remoteCaptionIsFinal, setRemoteCaptionIsFinal] = useState(false);
+  const [remoteCaptionSpeaker, setRemoteCaptionSpeaker] = useState('');
   const [localCaption, setLocalCaption] = useState('');
   const [localCaptionIsFinal, setLocalCaptionIsFinal] = useState(false);
 
@@ -287,9 +289,6 @@ const VideoCall = () => {
     if (!canRun) return;
 
     const socket = getSocket();
-    const fromUserId = localStorage.getItem('userId');
-    const fromUsername =
-      localUserProfile?.username || localStorage.getItem('username') || 'Someone';
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
@@ -304,8 +303,6 @@ const VideoCall = () => {
         targetUserId: odebukiUserId,
         callId: callIdRef.current,
         text: trimmed,
-        fromUserId,
-        fromUsername,
       });
     };
 
@@ -350,9 +347,16 @@ const VideoCall = () => {
     };
 
     recognition.onerror = (e) => {
-      console.log('[Captions] SpeechRecognition error:', e?.error || e);
+      const err = e?.error || e;
+      console.log('[Captions] SpeechRecognition error:', err);
       if (isUserGesture) {
         console.log('[Captions] If you see not-allowed/service-not-allowed, check mic permission and HTTPS/localhost.');
+      }
+
+      // Prevent tight restart loops on certain errors (notably "aborted").
+      if (err === 'aborted') {
+        captionsRestartGateRef.current.blockedUntil = Date.now() + 5000;
+        stopCaptionsRecognition();
       }
     };
 
@@ -367,6 +371,7 @@ const VideoCall = () => {
       if (!shouldRestart) return;
 
       setTimeout(() => {
+        if (Date.now() < captionsRestartGateRef.current.blockedUntil) return;
         const again = captionsStateRef.current;
         const restartOk =
           again.captionsEnabled &&
@@ -375,12 +380,7 @@ const VideoCall = () => {
           again.hasAudioPermission;
         if (!restartOk) return;
         if (recognitionRef.current) return;
-        try {
-          recognition.start();
-          recognitionRef.current = recognition;
-        } catch {
-          // ignore InvalidStateError etc.
-        }
+        startCaptionsRecognition({ isUserGesture: false });
       }, 250);
     };
 
@@ -402,6 +402,7 @@ const VideoCall = () => {
     const handleCaptionInterim = (payload) => {
       if (!payload) return;
       if (payload.callId && callIdRef.current && payload.callId !== callIdRef.current) return;
+      setRemoteCaptionSpeaker(payload.fromUsername || remoteUserProfile?.username || '');
       setRemoteCaption(payload.text || '');
       setRemoteCaptionIsFinal(false);
       if (remoteCaptionClearTimeoutRef.current) {
@@ -413,6 +414,7 @@ const VideoCall = () => {
     const handleCaptionFinal = (payload) => {
       if (!payload) return;
       if (payload.callId && callIdRef.current && payload.callId !== callIdRef.current) return;
+      setRemoteCaptionSpeaker(payload.fromUsername || remoteUserProfile?.username || '');
       setRemoteCaption(payload.text || '');
       setRemoteCaptionIsFinal(true);
 
@@ -437,7 +439,7 @@ const VideoCall = () => {
         remoteCaptionClearTimeoutRef.current = null;
       }
     };
-  }, []);
+  }, [remoteUserProfile?.username]);
 
   useEffect(() => {
     const shouldRun =
@@ -452,8 +454,7 @@ const VideoCall = () => {
       return;
     }
 
-    // Auto-start attempt (may fail in some browsers unless initiated by a user gesture)
-    startCaptionsRecognition({ isUserGesture: false });
+    // Intentionally do not auto-start; start requires a user gesture in some browsers.
   }, [captionsEnabled, captionsSupported, callStatus, isMuted, hasAudioPermission]);
 
   useEffect(() => {
@@ -629,7 +630,6 @@ const VideoCall = () => {
     // Listen for call declined
     socket.on('callDeclined', () => {
       alert('Call was declined');
-      socket.emit('declineCall', { callerId, callId });
       stopMedia();
       navigate(-1);
     });
@@ -692,34 +692,14 @@ const VideoCall = () => {
     await callDoc.set({ offer });
 
     // Send call notification to target user via socket
-    const callerId = localStorage.getItem('userId');
-    // Try to get username from token if not in localStorage
-    let callerName = localStorage.getItem('username');
-    if (!callerName) {
-      try {
-        const token = localStorage.getItem('token');
-        if (token) {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          callerName = payload.username;
-        }
-      } catch (e) {
-        console.error('Error parsing token for username:', e);
-      }
-    }
-    callerName = callerName || 'Someone';
-
     console.log('Emitting initiateCall:', {
       targetUserId: odebukiUserId,
       callId: callDoc.id,
-      callerId,
-      callerName
     });
 
     socket.emit('initiateCall', {
       targetUserId: odebukiUserId,
       callId: callDoc.id,
-      callerId,
-      callerName
     });
 
     // Listen for remote answer
@@ -795,7 +775,7 @@ const VideoCall = () => {
     const socket = getSocket();
 
     // Notify the other user
-    socket.emit('endCall', { odebukiUserId, callId });
+    socket.emit('endCall', { callId });
     
     // Stop all media tracks (camera and microphone)
     if (localStreamRef.current) {
@@ -926,17 +906,18 @@ const VideoCall = () => {
   };
 
   return (
-    <div className="h-screen bg-black flex flex-col">
+    <div className="h-[100dvh] bg-black flex flex-col overflow-hidden">
       {/* Video area */}
-      <div className="flex-1 relative flex items-center justify-center">
+      <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden">
         {/* Remote video */}
-        <div className="w-full h-full bg-gray-900 flex items-center justify-center relative">
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className={`w-full h-full object-cover ${!remoteVideoEnabled && callStatus === 'connected' ? 'hidden' : ''}`}
-          />
+        <div className="w-full h-full min-h-0 bg-gray-900 flex flex-col relative overflow-hidden">
+          <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden">
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className={`w-full h-full object-cover ${!remoteVideoEnabled && callStatus === 'connected' ? 'hidden' : ''}`}
+            />
           {callStatus !== 'connected' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               {remoteUserProfile ? (
@@ -976,65 +957,67 @@ const VideoCall = () => {
             </div>
           )}
 
-          {callStatus === 'connected' && captionsEnabled && remoteCaption && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-[85%] px-4 py-2 rounded-lg bg-black/60">
-              <p className={`text-white text-lg leading-snug ${remoteCaptionIsFinal ? '' : 'opacity-80'}`}>
-                <span className="opacity-70 mr-2">{remoteUserProfile?.username || 'Remote'}:</span>
-                {remoteCaption}
-              </p>
-            </div>
-          )}
+          </div>
 
-          {callStatus === 'connected' && captionsEnabled && localCaption && (
-            <div className="absolute top-20 left-4 max-w-[60%] px-3 py-2 rounded-lg bg-black/45">
-              <p className={`text-white text-sm leading-snug ${localCaptionIsFinal ? '' : 'opacity-80'}`}>
-                <span className="opacity-70 mr-2">You:</span>
-                {localCaption}
+          {callStatus === 'connected' && captionsEnabled && remoteCaption && (
+            <div className="shrink-0 px-4 py-2 bg-black/60 border-t border-white/10">
+              <p className={`text-white text-base leading-snug ${remoteCaptionIsFinal ? '' : 'opacity-80'}`}>
+                {(remoteCaptionSpeaker || remoteUserProfile?.username || 'Remote')}: {remoteCaption}
               </p>
             </div>
           )}
         </div>
 
         {/* Local video (small overlay) */}
-        <div className="absolute bottom-4 right-4 w-64 h-48 bg-gray-800 rounded-lg border-2 border-gray-700 overflow-hidden relative">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className={`w-full h-full object-cover ${isCameraOff || !hasVideoPermission ? 'hidden' : ''}`}
-          />
-          {(isCameraOff || !hasVideoPermission) && (() => {
-            console.log('🎨 Rendering profile picture overlay for local user:', {
-              hasProfile: !!localUserProfile,
-              username: localUserProfile?.username,
-              isCameraOff,
-              hasVideoPermission
-            });
-            return (
-              <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gray-800">
-                {localUserProfile ? (
-                  <>
-                    <img
-                      src={getProfileImage(localUserProfile)}
-                      alt={localUserProfile.username}
-                      className="w-24 h-24 rounded-full object-cover mb-2"
-                      onError={(e) => {
-                        console.error('❌ Image failed to load, using fallback');
-                        e.target.src = `https://ui-avatars.com/api/?name=${localUserProfile.username}&background=${getConsistentColor(localUserProfile.username)}&color=fff`;
-                      }}
-                      onLoad={() => {
-                        console.log('✅ Profile image loaded successfully');
-                      }}
-                    />
-                    <p className="text-white text-sm">{localUserProfile.username}</p>
-                  </>
-                ) : (
-                  <i className="fa-solid fa-user text-gray-500 text-2xl"></i>
-                )}
-              </div>
-            );
-          })()}
+        <div className="absolute bottom-4 right-4 w-64 h-48 bg-gray-800 rounded-lg border-2 border-gray-700 overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 relative overflow-hidden">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className={`w-full h-full object-cover ${isCameraOff || !hasVideoPermission ? 'hidden' : ''}`}
+            />
+            {(isCameraOff || !hasVideoPermission) && (() => {
+              console.log('🎨 Rendering profile picture overlay for local user:', {
+                hasProfile: !!localUserProfile,
+                username: localUserProfile?.username,
+                isCameraOff,
+                hasVideoPermission
+              });
+              return (
+                <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gray-800">
+                  {localUserProfile ? (
+                    <>
+                      <img
+                        src={getProfileImage(localUserProfile)}
+                        alt={localUserProfile.username}
+                        className="w-24 h-24 rounded-full object-cover mb-2"
+                        onError={(e) => {
+                          console.error('❌ Image failed to load, using fallback');
+                          e.target.src = `https://ui-avatars.com/api/?name=${localUserProfile.username}&background=${getConsistentColor(localUserProfile.username)}&color=fff`;
+                        }}
+                        onLoad={() => {
+                          console.log('✅ Profile image loaded successfully');
+                        }}
+                      />
+                      <p className="text-white text-sm">{localUserProfile.username}</p>
+                    </>
+                  ) : (
+                    <i className="fa-solid fa-user text-gray-500 text-2xl"></i>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {callStatus === 'connected' && captionsEnabled && localCaption && (
+            <div className="shrink-0 px-2 py-1 bg-black/60 border-t border-white/10">
+              <p className={`text-white text-xs leading-snug ${localCaptionIsFinal ? '' : 'opacity-80'}`}>
+                {(localUserProfile?.username || localStorage.getItem('username') || 'You')}: {localCaption}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Call status */}
@@ -1052,7 +1035,7 @@ const VideoCall = () => {
       </div>
 
       {/* Controls */}
-      <div className="bg-gray-900 p-6 flex justify-center gap-6">
+      <div className="bg-gray-900 p-4 flex justify-center gap-4 shrink-0">
         <button
           className={`p-4 rounded-full transition-colors ${isMuted ? 'bg-red-600 hover:bg-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}
           aria-label="Toggle microphone"
@@ -1076,8 +1059,11 @@ const VideoCall = () => {
             if (!captionsSupported) return;
             const next = !captionsEnabled;
             setCaptionsEnabled(next);
+            captionsStateRef.current.captionsEnabled = next;
+            if (next) captionsRestartGateRef.current.blockedUntil = 0;
             setRemoteCaption('');
             setRemoteCaptionIsFinal(false);
+            setRemoteCaptionSpeaker('');
             setLocalCaption('');
             setLocalCaptionIsFinal(false);
 

@@ -28,7 +28,7 @@ import init_xeddsa, {
   verify_signature,
   test_sign_and_verify,
 } from "/xeddsa-wasm/pkg";
-import { getSocket } from '../socket';
+import { connectWithoutAuth } from '../socket';
 
 const Register = () => {
   const [username, setUsername] = useState("");
@@ -201,7 +201,7 @@ const Register = () => {
 
       console.log("Key bundle:", keyBundle);
 
-      const socket = getSocket();
+      const socket = connectWithoutAuth();
       socket.emit("register", { username, password, keyBundle, aboutme, profilePicture }, async (response) => {
         console.log("register response:", response)
         if (response.success) {

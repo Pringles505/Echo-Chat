@@ -11,12 +11,10 @@ import {
 // Utility functions for encoding and decoding
 import {
   base64ToArrayBuffer,
-  arrayBufferToBase64,
-  hexToUint8Array,
 } from "./utils/helpers";
 
 // API functions for fetching messages and checking the first message
-import { fetchLatestMessageNumber, checkFirstMessage } from "./utils/api";
+import { fetchLatestMessageNumber } from "./utils/api";
 
 // Key management functions for session keys
 import {
@@ -155,10 +153,10 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
 
             console.log("📩 Received real-time message:", message);
 
-            // Check if the message is for the active chat
-            const sender = String(message.userId);
-            if (activeChat === sender) {
-              socket.emit("messageSeen", { userId, targetUserId });
+             // Check if the message is for the active chat
+             const sender = String(message.userId);
+             if (activeChat === sender) {
+              socket.emit("messageSeen", { targetUserId });
             }
             if (message.userId == userId) {
               continue;
@@ -221,11 +219,10 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
     const initChat = async () => {
       const latestMessageNumber = await fetchLatestMessageNumber(
         socket,
-        userId,
         targetUserId
       );
       console.log("📩 Latest message number:", latestMessageNumber);
-      socket.emit("ready", { userId, targetUserId });
+      socket.emit("ready", { targetUserId });
     };
     initChat();
 
@@ -280,13 +277,32 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
       throw err;
     }
 
+    // Conversation-wide message sequence number (server enforces monotonicity).
+    // We fetch the last accepted number and send `last + 1`.
+    const lastAccepted = await fetchLatestMessageNumber(socket, targetUserId);
+    const lastInt = Number.isSafeInteger(lastAccepted) ? lastAccepted : -1;
+    outgoing.messageNumber = lastInt + 1;
+
     // Save the peer IK on the sender side the first time we fetch it (TOFU),
     // but only after we successfully send a message that used that identity.
-    socket.emit("newMessage", outgoing, (ack) => {
-      if (!ack?.success) return;
-      if (!outgoing?.peerIdentityToPin) return;
+    const sendOnce = (payload) =>
+      new Promise((resolve) => {
+        socket.emit("newMessage", payload, (ack) => resolve(ack));
+      });
+
+    let ack = await sendOnce(outgoing);
+    if (!ack?.success && (ack?.error === "out_of_sync" || ack?.error === "replay_detected")) {
+      const last = Number.isSafeInteger(ack?.lastAccepted) ? ack.lastAccepted : null;
+      if (last != null) {
+        // Retry once with the next server-expected number (ciphertext stays the same).
+        outgoing.messageNumber = last + 1;
+        ack = await sendOnce(outgoing);
+      }
+    }
+
+    if (ack?.success && outgoing?.peerIdentityToPin) {
       storePeerIdentityKeys(targetUserId, { ...outgoing.peerIdentityToPin, firstSeenAt: Date.now() });
-    });
+    }
 
 
     await updateSavedMessages(userId, targetUserId, {

@@ -58,18 +58,18 @@ const fetchPublicIdentityKeyEd25519 = async (socket, targetUserId) => {
     });
 };
 
-const fetchLatestMessageNumber = async (socket, userId, targetUserId) => {
+const fetchLatestMessageNumber = async (socket, targetUserId) => {
     return new Promise((resolve) => {
-        socket.emit('getLatestMessageNumber', { userId, targetUserId }, (response) => {
-            // Always resolve with a number
-            resolve(response.success ? response.messageNumber : 0);
+        socket.emit('getLatestMessageNumber', { targetUserId }, (response) => {
+            // Always resolve with a number; -1 means "no messages yet" (so next is 0).
+            resolve(response?.success ? response.messageNumber : -1);
         });
     });
 };
 
-const checkFirstMessage = async (socket, userId, targetUserId) => {
+const checkFirstMessage = async (socket, targetUserId) => {
     return new Promise((resolve, reject) => {
-      socket.emit('checkIfMessagesExist', { userId, targetUserId }, (response) => {
+      socket.emit('checkIfMessagesExist', { targetUserId }, (response) => {
         if (response.success) {
           console.log('✅ Messages exist for this user pair');
           resolve(true); 

@@ -64,7 +64,7 @@ export const encryptOutgoingMessage = async ({
 
   let root_key = await getRootKey(userId, targetUserId);
 
-  // If no existing root key, initialize a new session (X3DH-ish -> root key)
+  // If no existing root key, initialize a new session 
   if (!root_key) {
     const randomBytes = crypto.getRandomValues(new Uint8Array(32));
 

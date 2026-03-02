@@ -37,7 +37,6 @@ const IncomingCallNotification = ({ callData, onClose }) => {
   const handleDecline = () => {
     const socket = getSocket();
     socket.emit('declineCall', {
-      callerId: callData.callerId,
       callId: callData.callId
     });
     setIsVisible(false);
