@@ -22,7 +22,7 @@
 
 ## What is Echo?
 
-Echo is an open-source, end-to-end encrypted messaging app built on a custom security protocol inspired by the [Signal Protocol](https://signal.org/docs/). Every cryptographic operation  **X3DH key exchange**, **XEdDSA signing**, and **AES-256 encryption**  is powered by native Rust modules compiled to WebAssembly, running entirely client-side with zero server-side key access.
+Echo is an open-source, end-to-end encrypted messaging app built on a custom security protocol inspired by the [Signal Protocol](https://signal.org/docs/). Every cryptographic operation **X3DH key exchange**, **XEdDSA signing**, and **AES-256 encryption** is powered by native Rust modules compiled to WebAssembly, running entirely client-side with zero server-side key access.
 
 Available as a **web app** and a **native desktop app** (via Tauri).
 
@@ -40,6 +40,9 @@ Available as a **web app** and a **native desktop app** (via Tauri).
   - [Running](#running)
 - [Environment Variables](#environment-variables)
 - [Project Structure](#project-structure)
+- [Contributing](#contributing)
+  - [Commit Convention](#commit-convention)
+  - [Releasing](#releasing)
 - [Security Protocol](#security-protocol)
   - [X3DH (Extended Triple Diffie-Hellman)](#x3dh-extended-triple-diffie-hellman)
   - [XEdDSA (EdDSA for X25519)](#xeddsa-eddsa-for-x25519)
@@ -51,16 +54,16 @@ Available as a **web app** and a **native desktop app** (via Tauri).
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| UI Framework | React 18 + Vite 5 |
-| Styling | Tailwind CSS 3 + Framer Motion |
-| Routing | React Router 7 |
-| Real-time | Socket.io-client 4 |
-| Crypto (WASM) | Rust  `aes-wasm`, `dh-wasm`, `xeddsa-wasm` |
-| Desktop | Tauri 2 |
-| i18n | i18next (EN, ES, FR, DE, ZH) |
-| State | React Context (AuthContext) |
+| Layer         | Technology                                |
+| ------------- | ----------------------------------------- |
+| UI Framework  | React 18 + Vite 5                         |
+| Styling       | Tailwind CSS 3 + Framer Motion            |
+| Routing       | React Router 7                            |
+| Real-time     | Socket.io-client 4                        |
+| Crypto (WASM) | Rust `aes-wasm`, `dh-wasm`, `xeddsa-wasm` |
+| Desktop       | Tauri 2                                   |
+| i18n          | i18next (EN, ES, FR, DE, ZH)              |
+| State         | React Context (AuthContext)               |
 
 ---
 
@@ -126,10 +129,10 @@ Copy `.env.development` and fill in your values:
 cp .env.development .env.local
 ```
 
-| Variable | Description |
-|---|---|
-| `VITE_API_URL` | Backend REST API base URL |
-| `VITE_SOCKET_URL` | Socket.io server URL |
+| Variable          | Description               |
+| ----------------- | ------------------------- |
+| `VITE_API_URL`    | Backend REST API base URL |
+| `VITE_SOCKET_URL` | Socket.io server URL      |
 
 ---
 
@@ -154,6 +157,70 @@ echo-frontend/
  xeddsa-wasm/                # Rust XEdDSA WASM module
  src-tauri/                  # Tauri desktop configuration
  public/                     # Static assets
+```
+
+---
+
+## Contributing
+
+### Commit Convention
+
+All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. Husky enforces this automatically on every commit.
+
+```
+<type>(optional scope): <short description>
+```
+
+| Type       | When to use                          | Appears in CHANGELOG  |
+| ---------- | ------------------------------------ | --------------------- |
+| `feat`     | New feature                          | Yes — bumps **minor** |
+| `fix`      | Bug fix                              | Yes — bumps **patch** |
+| `perf`     | Performance improvement              | Yes — bumps **patch** |
+| `revert`   | Revert a previous commit             | Yes — bumps **patch** |
+| `docs`     | Documentation only                   | No                    |
+| `style`    | Formatting, whitespace               | No                    |
+| `refactor` | Code restructure, no behavior change | No                    |
+| `test`     | Adding or fixing tests               | No                    |
+| `chore`    | Build process, tooling, deps         | No                    |
+| `ci`       | CI/CD configuration                  | No                    |
+
+**Breaking changes** — add `BREAKING CHANGE:` in the commit body or append `!` after the type. This bumps the **major** version.
+
+```bash
+# Examples
+git commit -m "feat: add group chat encryption"
+git commit -m "fix: token refresh race condition"
+git commit -m "feat!: replace REST with WebSocket API"
+# or with body:
+git commit -m "feat: new auth flow" -m "BREAKING CHANGE: removes /api/v1/login endpoint"
+```
+
+> Commits that don't follow the convention will be **rejected by Husky** before they are recorded.
+
+### Releasing
+
+Once your changes are committed, generate a new version and update the changelog in one command:
+
+```bash
+# Auto-detects bump type from commit history (patch / minor / major)
+npm run release
+
+# Or force a specific bump
+npm run release:patch
+npm run release:minor
+npm run release:major
+```
+
+This will:
+
+1. Bump the `version` in `package.json`
+2. Update `CHANGELOG.md` with all commits since the last release grouped by type
+3. Create a git commit and tag (`vX.Y.Z`) automatically
+
+Then push the commit and tag:
+
+```bash
+git push --follow-tags
 ```
 
 ---
@@ -197,40 +264,40 @@ XEdDSA is a signature scheme based on the Edwards-curve Digital Signature Algori
 
 #### Prerequisites
 
-`Encoding`  For storing points, usually 64 bytes (32 for X, 32 for Y). We compress by dropping X and storing a sign bit; X is recalculated on decode.
+`Encoding` For storing points, usually 64 bytes (32 for X, 32 for Y). We compress by dropping X and storing a sign bit; X is recalculated on decode.
 
-`SHA-512`  Hashing algorithm producing a 512-bit digest from any input.
+`SHA-512` Hashing algorithm producing a 512-bit digest from any input.
 
-`Scalar Multiplication`  Repeated addition of a point on the curve to itself; the keystone operation in ECC.
+`Scalar Multiplication` Repeated addition of a point on the curve to itself; the keystone operation in ECC.
 
-`Clamping`  Byte-level adjustment of keys to prevent subgroup attacks.
+`Clamping` Byte-level adjustment of keys to prevent subgroup attacks.
 
-| Byte Index | Description | Operation | Purpose |
-|---|---|---|---|
-| 0 | Least significant | `a[0] &= 248` | Clears bits 0-2; makes scalar a multiple of 8 |
-| 130 | Middle bytes |  | Retains entropy |
-| 31 | Most significant | `a[31] &= 127; a[31] \|= 64` | Keeps scalar in [2, 2) |
+| Byte Index | Description       | Operation                    | Purpose                                       |
+| ---------- | ----------------- | ---------------------------- | --------------------------------------------- |
+| 0          | Least significant | `a[0] &= 248`                | Clears bits 0-2; makes scalar a multiple of 8 |
+| 130        | Middle bytes      |                              | Retains entropy                               |
+| 31         | Most significant  | `a[31] &= 127; a[31] \|= 64` | Keeps scalar in [2, 2)                        |
 
 #### Key Terminology
 
-| Term | Description | Curve Form |
-|---|---|---|
-| `xprivIK` | X25519 private key (32-byte scalar) | Montgomery |
-| `xpubIK` | X25519 public key (derived from `xprivIK`) | Montgomery |
-| `xpubPK` | X25519 public pre-key | Montgomery |
-| `a` | Clamped Edwards private scalar (from `xprivIK`) | Edwards |
-| `Prefix` | Generated alongside `a` from SHA-512 of `xprivIK` |  |
-| `A` | Edwards public key (derived from `a`) | Edwards |
-| `r` | Deterministic nonce |  |
-| `R` | Nonce point (`R = r * B`) | Edwards |
-| `k` | Challenge hash (`k = H(R  A  M) mod L`) |  |
-| `S` | Signature scalar (`S = (r + k * a) mod L`) |  |
-| `L` | Curve order (`2 + 27742317777372353535851937790883648493`) |  |
-| `B` | Basepoint (curve generator) | Edwards/Montgomery |
+| Term      | Description                                                | Curve Form         |
+| --------- | ---------------------------------------------------------- | ------------------ |
+| `xprivIK` | X25519 private key (32-byte scalar)                        | Montgomery         |
+| `xpubIK`  | X25519 public key (derived from `xprivIK`)                 | Montgomery         |
+| `xpubPK`  | X25519 public pre-key                                      | Montgomery         |
+| `a`       | Clamped Edwards private scalar (from `xprivIK`)            | Edwards            |
+| `Prefix`  | Generated alongside `a` from SHA-512 of `xprivIK`          |                    |
+| `A`       | Edwards public key (derived from `a`)                      | Edwards            |
+| `r`       | Deterministic nonce                                        |                    |
+| `R`       | Nonce point (`R = r * B`)                                  | Edwards            |
+| `k`       | Challenge hash (`k = H(R  A  M) mod L`)                    |                    |
+| `S`       | Signature scalar (`S = (r + k * a) mod L`)                 |                    |
+| `L`       | Curve order (`2 + 27742317777372353535851937790883648493`) |                    |
+| `B`       | Basepoint (curve generator)                                | Edwards/Montgomery |
 
 ### XEdDSA Signing
 
-1. **Initial Key Conversion**  Run `xprivIK` through SHA-512. First 32 bytes  clamped scalar `a`. Last 32 bytes  `Prefix`.
+1. **Initial Key Conversion** Run `xprivIK` through SHA-512. First 32 bytes clamped scalar `a`. Last 32 bytes `Prefix`.
 
 2. **Compute Deterministic Nonce**
 
@@ -244,7 +311,7 @@ XEdDSA is a signature scheme based on the Edwards-curve Digital Signature Algori
 
    Encode `R` to 32 bytes (Y coordinate + sign bit of X).
 
-4. **Recompute Public Key in Edwards Form**  Repeat SHA-512 on `xprivIK`, clamp first 32 bytes, then `A = B * a`. Encode to 32 bytes.
+4. **Recompute Public Key in Edwards Form** Repeat SHA-512 on `xprivIK`, clamp first 32 bytes, then `A = B * a`. Encode to 32 bytes.
 
 5. **Compute Challenge Hash**
 
@@ -260,7 +327,7 @@ XEdDSA is a signature scheme based on the Edwards-curve Digital Signature Algori
 
 ### XEdDSA Verification
 
-1. **Decompress Inputs**  Extract `R` and `S` from the signature. Convert received public key to Edwards form.
+1. **Decompress Inputs** Extract `R` and `S` from the signature. Convert received public key to Edwards form.
 
 2. **Compute Challenge Hash**
 
@@ -277,6 +344,6 @@ XEdDSA is a signature scheme based on the Edwards-curve Digital Signature Algori
 ## References
 
 - [Signal XEdDSA Specification](https://signal.org/docs/specifications/xeddsa/)
-- [RFC 8032  Edwards-Curve Digital Signature Algorithm (EdDSA)](https://datatracker.ietf.org/doc/html/rfc8032)
-- [RFC 7748  Elliptic Curves for Security (Curve25519)](https://datatracker.ietf.org/doc/html/rfc7748)
+- [RFC 8032 Edwards-Curve Digital Signature Algorithm (EdDSA)](https://datatracker.ietf.org/doc/html/rfc8032)
+- [RFC 7748 Elliptic Curves for Security (Curve25519)](https://datatracker.ietf.org/doc/html/rfc7748)
 - [The Signal Protocol](https://signal.org/docs/)
