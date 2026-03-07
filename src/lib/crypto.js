@@ -7,35 +7,35 @@
 
 // ─── Module singletons ───────────────────────────────────────────────────────
 
-let _aes = null;
-let _dh = null;
-let _xeddsa = null;
+let _aes = null
+let _dh = null
+let _xeddsa = null
 
 async function getAes() {
   if (!_aes) {
-    const mod = await import('aes-wasm');
-    await mod.default();
-    _aes = mod;
+    const mod = await import('aes-wasm')
+    await mod.default()
+    _aes = mod
   }
-  return _aes;
+  return _aes
 }
 
 async function getDh() {
   if (!_dh) {
-    const mod = await import('dh-wasm');
-    await mod.default();
-    _dh = mod;
+    const mod = await import('dh-wasm')
+    await mod.default()
+    _dh = mod
   }
-  return _dh;
+  return _dh
 }
 
 async function getXeddsa() {
   if (!_xeddsa) {
-    const mod = await import('xeddsa-wasm');
-    await mod.default();
-    _xeddsa = mod;
+    const mod = await import('xeddsa-wasm')
+    await mod.default()
+    _xeddsa = mod
   }
-  return _xeddsa;
+  return _xeddsa
 }
 
 // ─── AES-256-GCM ─────────────────────────────────────────────────────────────
@@ -48,8 +48,8 @@ async function getXeddsa() {
  * @returns {Promise<string>} Base64-encoded ciphertext
  */
 export async function aesEncrypt(text, key, nonce) {
-  const aes = await getAes();
-  return aes.encrypt(text, key, nonce);
+  const aes = await getAes()
+  return aes.encrypt(text, key, nonce)
 }
 
 /**
@@ -60,8 +60,8 @@ export async function aesEncrypt(text, key, nonce) {
  * @returns {Promise<string>} Decrypted plaintext
  */
 export async function aesDecrypt(ciphertext, key, nonce) {
-  const aes = await getAes();
-  return aes.decrypt(ciphertext, key, nonce);
+  const aes = await getAes()
+  return aes.decrypt(ciphertext, key, nonce)
 }
 
 // ─── Diffie-Hellman / HKDF ───────────────────────────────────────────────────
@@ -71,9 +71,9 @@ export async function aesDecrypt(ciphertext, key, nonce) {
  * @returns {Promise<Uint8Array>} 32-byte private key
  */
 export async function generateEphemeralKey() {
-  const dh = await getDh();
-  const randomBytes = crypto.getRandomValues(new Uint8Array(32));
-  return dh.generate_private_ephemeral_key(randomBytes);
+  const dh = await getDh()
+  const randomBytes = crypto.getRandomValues(new Uint8Array(32))
+  return dh.generate_private_ephemeral_key(randomBytes)
 }
 
 /**
@@ -85,8 +85,8 @@ export async function generateEphemeralKey() {
  * @returns {Promise<Uint8Array>}
  */
 export async function hkdfDerive(ikm, salt, info, outputLen) {
-  const dh = await getDh();
-  return dh.hkdf_derive(ikm, salt, info, outputLen);
+  const dh = await getDh()
+  return dh.hkdf_derive(ikm, salt, info, outputLen)
 }
 
 // ─── XEdDSA Signatures ───────────────────────────────────────────────────────
@@ -98,8 +98,8 @@ export async function hkdfDerive(ikm, salt, info, outputLen) {
  * @returns {Promise<Uint8Array>} 64-byte signature
  */
 export async function computeSignature(noncePoint, signatureScalar) {
-  const xeddsa = await getXeddsa();
-  return xeddsa.compute_signature(noncePoint, signatureScalar);
+  const xeddsa = await getXeddsa()
+  return xeddsa.compute_signature(noncePoint, signatureScalar)
 }
 
 /**
@@ -110,6 +110,6 @@ export async function computeSignature(noncePoint, signatureScalar) {
  * @returns {Promise<boolean>}
  */
 export async function verifySignature(signature, message, publicEdKey) {
-  const xeddsa = await getXeddsa();
-  return xeddsa.verify_signature(signature, message, publicEdKey);
+  const xeddsa = await getXeddsa()
+  return xeddsa.verify_signature(signature, message, publicEdKey)
 }

@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
-import { Scale, ExternalLink } from 'lucide-react';
-import Navbar from '../../Navbar';
-import Footer from '../../Footer';
-import PageWrapper from '../../../common/PageWrapper';
+import React, { useEffect } from 'react'
+import { Scale, ExternalLink } from 'lucide-react'
+import Navbar from '../../Navbar'
+import Footer from '../../Footer'
+import PageWrapper from '../../../common/PageWrapper'
 
 const LICENSES = [
   {
@@ -104,83 +104,89 @@ const LICENSES = [
     description: 'Runtime type checking for React props.',
     author: 'Meta Platforms, Inc.',
   },
-];
+]
 
 const LICENSE_COLOR = {
   MIT: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
   ISC: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
   'MIT / Apache-2.0': 'bg-amber-500/15 text-amber-400 border-amber-500/20',
   'Apache-2.0': 'bg-violet-500/15 text-violet-400 border-violet-500/20',
-};
+}
 
-const MIT_TEXT = `Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`;
+const MIT_TEXT = `Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`
 
 const LicenseCard = ({ pkg }) => {
-  const colorClass = LICENSE_COLOR[pkg.license] || LICENSE_COLOR.MIT;
+  const colorClass = LICENSE_COLOR[pkg.license] || LICENSE_COLOR.MIT
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-      <div className="flex items-start justify-between gap-4 mb-3">
+    <div className='bg-white/5 border border-white/10 rounded-2xl p-6'>
+      <div className='flex items-start justify-between gap-4 mb-3'>
         <div>
-          <p className="font-semibold text-white">{pkg.name}</p>
-          <p className="text-sm text-white/50 mt-0.5">{pkg.description}</p>
+          <p className='font-semibold text-white'>{pkg.name}</p>
+          <p className='text-sm text-white/50 mt-0.5'>{pkg.description}</p>
         </div>
-        <span className={`flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full border ${colorClass}`}>
+        <span
+          className={`flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full border ${colorClass}`}
+        >
           {pkg.license}
         </span>
       </div>
       {pkg.author && (
-        <p className="text-xs text-white/40 mb-3">
+        <p className='text-xs text-white/40 mb-3'>
           Copyright © {pkg.year ?? new Date().getFullYear()} {pkg.author}
         </p>
       )}
-      <p className="text-xs text-white/30 leading-relaxed whitespace-pre-wrap font-mono">{MIT_TEXT}</p>
+      <p className='text-xs text-white/30 leading-relaxed whitespace-pre-wrap font-mono'>
+        {MIT_TEXT}
+      </p>
       {pkg.url && (
         <a
           href={pkg.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 mt-4 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+          target='_blank'
+          rel='noopener noreferrer'
+          className='inline-flex items-center gap-1.5 mt-4 text-xs text-violet-400 hover:text-violet-300 transition-colors'
         >
-          View full licence <ExternalLink className="w-3 h-3" />
+          View full licence <ExternalLink className='w-3 h-3' />
         </a>
       )}
     </div>
-  );
-};
+  )
+}
 
 const LicensesPage = () => {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
   return (
     <PageWrapper>
       <Navbar />
-      <main className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
-
+      <main className='pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto'>
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center p-3 bg-violet-500/10 rounded-2xl mb-6 ring-1 ring-violet-500/20">
-            <Scale className="w-8 h-8 text-violet-400" />
+        <div className='text-center mb-12'>
+          <div className='inline-flex items-center justify-center p-3 bg-violet-500/10 rounded-2xl mb-6 ring-1 ring-violet-500/20'>
+            <Scale className='w-8 h-8 text-violet-400' />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">Open Source Licences</h1>
-          <p className="text-lg text-white/50 max-w-2xl mx-auto leading-relaxed">
+          <h1 className='text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight'>
+            Open Source Licences
+          </h1>
+          <p className='text-lg text-white/50 max-w-2xl mx-auto leading-relaxed'>
             Echo is built on the shoulders of the open-source community. Below is the full list of
             third-party libraries used in this project, along with their licence information.
           </p>
-          <span className="inline-block mt-4 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-white/40">
+          <span className='inline-block mt-4 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-white/40'>
             Last Updated: February 1, 2026
           </span>
         </div>
 
         {/* Package list */}
-        <div className="space-y-4">
+        <div className='space-y-4'>
           {LICENSES.map((pkg) => (
             <LicenseCard key={pkg.name} pkg={pkg} />
           ))}
         </div>
-
       </main>
       <Footer />
     </PageWrapper>
-  );
-};
+  )
+}
 
-export default LicensesPage;
+export default LicensesPage

@@ -1,4 +1,4 @@
-import { useAuth } from '../store/AuthContext';
+import { useAuth } from '../store/AuthContext'
 
 /**
  * Convenience re-export of useAuth from the AuthContext.
@@ -7,5 +7,5 @@ import { useAuth } from '../store/AuthContext';
  *   import { useAuth } from '@hooks/useAuth';
  *   const { isAuthenticated, user, logout } = useAuth();
  */
-export { useAuth };
-export default useAuth;
+export { useAuth }
+export default useAuth

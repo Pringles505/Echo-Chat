@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
-import { Shield, Lock, Key, RefreshCw, Zap, UserPlus, Globe, ChevronRight } from 'lucide-react';
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
+import { Shield, Lock, Key, RefreshCw, Zap, UserPlus, Globe, ChevronRight } from 'lucide-react'
 
 const Features = () => {
-  const [expandedIndex, setExpandedIndex] = useState(null);
-  const { t } = useTranslation();
+  const [expandedIndex, setExpandedIndex] = useState(null)
+  const { t } = useTranslation()
 
   const features = [
     {
@@ -64,26 +64,26 @@ const Features = () => {
       colSpan: 'md:col-span-1',
       gradient: 'from-teal-500/20 to-cyan-500/20',
     },
-  ];
+  ]
 
   const toggleExpand = (index) => {
-    setExpandedIndex(expandedIndex === index ? null : index);
-  };
+    setExpandedIndex(expandedIndex === index ? null : index)
+  }
 
   return (
-    <section id="features" className="py-32 px-6 relative">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-20">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+    <section id='features' className='py-32 px-6 relative'>
+      <div className='max-w-7xl mx-auto'>
+        <div className='mb-20'>
+          <h2 className='text-4xl md:text-5xl font-bold mb-6'>
             {t('features.titleMain')}
             <br />
-            <span className="text-zinc-500">{t('features.titleSub')}</span>
+            <span className='text-zinc-500'>{t('features.titleSub')}</span>
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-6 items-start'>
           {features.map((feature, i) => {
-            const isExpanded = expandedIndex === i;
+            const isExpanded = expandedIndex === i
             return (
               <motion.div
                 key={i}
@@ -96,13 +96,13 @@ const Features = () => {
                 <div
                   className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
                 />
-                <div className="relative z-10 h-full flex flex-col pointer-events-none">
-                  <div className="mb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <feature.icon className="w-6 h-6 text-white" />
+                <div className='relative z-10 h-full flex flex-col pointer-events-none'>
+                  <div className='mb-4'>
+                    <div className='w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300'>
+                      <feature.icon className='w-6 h-6 text-white' />
                     </div>
-                    <h3 className="text-2xl font-semibold mb-2">{feature.title}</h3>
-                    <p className="text-zinc-400 leading-relaxed">{feature.desc}</p>
+                    <h3 className='text-2xl font-semibold mb-2'>{feature.title}</h3>
+                    <p className='text-zinc-400 leading-relaxed'>{feature.desc}</p>
                   </div>
 
                   <div
@@ -110,16 +110,16 @@ const Features = () => {
                       isExpanded ? 'max-h-[500px] opacity-100 mb-4' : 'max-h-0 opacity-0'
                     }`}
                   >
-                    <div className="pt-4 border-t border-white/10">
-                      <p className="text-zinc-300 text-sm leading-relaxed">{feature.details}</p>
+                    <div className='pt-4 border-t border-white/10'>
+                      <p className='text-zinc-300 text-sm leading-relaxed'>{feature.details}</p>
                     </div>
                   </div>
 
-                  <div className="mt-auto">
+                  <div className='mt-auto'>
                     <button
-                      type="button"
+                      type='button'
                       onClick={() => toggleExpand(i)}
-                      className="pointer-events-auto flex items-center text-sm font-medium text-white/50 hover:text-white transition-colors focus:outline-none"
+                      className='pointer-events-auto flex items-center text-sm font-medium text-white/50 hover:text-white transition-colors focus:outline-none'
                     >
                       <span>{isExpanded ? t('features.showLess') : t('features.learnMore')}</span>
                       <ChevronRight
@@ -131,12 +131,12 @@ const Features = () => {
                   </div>
                 </div>
               </motion.div>
-            );
+            )
           })}
         </div>
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default Features;
+export default Features

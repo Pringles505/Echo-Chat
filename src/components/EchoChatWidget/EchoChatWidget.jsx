@@ -1,24 +1,24 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Minimize2, Maximize2, RotateCcw, ChevronLeft } from 'lucide-react';
-import gsap from 'gsap';
-import Logo from '../HomepageComponents/Logo';
-import './EchoChatWidget.css';
+﻿import React, { useState, useRef, useEffect } from 'react'
+import { X, Send, Minimize2, Maximize2, RotateCcw, ChevronLeft } from 'lucide-react'
+import gsap from 'gsap'
+import Logo from '../HomepageComponents/Logo'
+import './EchoChatWidget.css'
 
 /* FAQ DECISION TREE */
 const FAQ = {
   root: {
     text: "Hi! I'm EchoBot Echo's support assistant. What can I help you with today?",
     options: [
-      { label: 'Getting Started',      next: 'getting_started' },
-      { label: 'Security & Privacy',   next: 'security' },
-      { label: 'Account & Profile',    next: 'account' },
-      { label: 'Messages & Chats',     next: 'messages' },
-      { label: 'Calls',                next: 'calls' },
-      { label: 'Groups',               next: 'groups' },
-      { label: 'Notifications',        next: 'notifications' },
-      { label: 'Technical Issues',     next: 'technical' },
-      { label: 'Pricing & Plans',      next: 'pricing' },
-      { label: 'Contact Support',      next: 'contact' },
+      { label: 'Getting Started', next: 'getting_started' },
+      { label: 'Security & Privacy', next: 'security' },
+      { label: 'Account & Profile', next: 'account' },
+      { label: 'Messages & Chats', next: 'messages' },
+      { label: 'Calls', next: 'calls' },
+      { label: 'Groups', next: 'groups' },
+      { label: 'Notifications', next: 'notifications' },
+      { label: 'Technical Issues', next: 'technical' },
+      { label: 'Pricing & Plans', next: 'pricing' },
+      { label: 'Contact Support', next: 'contact' },
     ],
   },
 
@@ -26,19 +26,19 @@ const FAQ = {
   getting_started: {
     text: 'What do you need help with to get started?',
     options: [
-      { label: 'Create an account',         next: 'gs_create' },
-      { label: 'Add friends',               next: 'gs_add_friends' },
-      { label: 'Send my first message',     next: 'gs_first_msg' },
-      { label: 'Supported devices',         next: 'gs_devices' },
-      { label: 'Download the app',          next: 'gs_download' },
-      { label: 'Use Echo on the web',       next: 'gs_web' },
+      { label: 'Create an account', next: 'gs_create' },
+      { label: 'Add friends', next: 'gs_add_friends' },
+      { label: 'Send my first message', next: 'gs_first_msg' },
+      { label: 'Supported devices', next: 'gs_devices' },
+      { label: 'Download the app', next: 'gs_download' },
+      { label: 'Use Echo on the web', next: 'gs_web' },
     ],
   },
   gs_create: {
     text: 'To create an account:\n1. Visit echo.app or open the app.\n2. Tap Register.\n3. Enter your email and a secure password.\n4. Verify your email.\n5. Done! Your keys are generated automatically on your device.\n\nNo phone number or real name required.',
     options: [
       { label: 'Did not receive verification email', next: 'gs_no_email' },
-      { label: 'Can I change my email later?',       next: 'account_change_email' },
+      { label: 'Can I change my email later?', next: 'account_change_email' },
     ],
   },
   gs_no_email: {
@@ -48,8 +48,8 @@ const FAQ = {
   gs_add_friends: {
     text: 'You can add friends in two ways:\n\nSearch by username - go to the Search tab and type their @username.\n\nShare invite link - in your profile, tap "Share invite link".\n\nOnce they accept, they appear in your contacts.',
     options: [
-      { label: 'Friend cannot find me',    next: 'gs_not_found' },
-      { label: 'How do I set my username?',next: 'account_username' },
+      { label: 'Friend cannot find me', next: 'gs_not_found' },
+      { label: 'How do I set my username?', next: 'account_username' },
     ],
   },
   gs_not_found: {
@@ -60,7 +60,7 @@ const FAQ = {
     text: 'Once you have added a friend:\n1. Tap their name in your contacts.\n2. Type your message in the input box.\n3. Hit Send.\n\nAll messages are end-to-end encrypted from the moment you hit send.',
     options: [
       { label: 'How does encryption work?', next: 'security_e2e' },
-      { label: 'Can I send files?',          next: 'messages_files' },
+      { label: 'Can I send files?', next: 'messages_files' },
     ],
   },
   gs_devices: {
@@ -81,20 +81,20 @@ const FAQ = {
     text: 'What would you like to know about security and privacy?',
     options: [
       { label: 'How does E2E encryption work?', next: 'security_e2e' },
-      { label: 'Can Echo read my messages?',    next: 'security_read' },
-      { label: 'Who can find me?',              next: 'security_privacy_settings' },
-      { label: 'What data do you collect?',     next: 'security_data' },
-      { label: 'How do I enable 2FA?',          next: 'security_2fa' },
-      { label: 'Is the web app secure?',        next: 'security_web' },
-      { label: 'How do I report abuse?',        next: 'security_report' },
-      { label: 'What is the Signal Protocol?',  next: 'security_signal' },
+      { label: 'Can Echo read my messages?', next: 'security_read' },
+      { label: 'Who can find me?', next: 'security_privacy_settings' },
+      { label: 'What data do you collect?', next: 'security_data' },
+      { label: 'How do I enable 2FA?', next: 'security_2fa' },
+      { label: 'Is the web app secure?', next: 'security_web' },
+      { label: 'How do I report abuse?', next: 'security_report' },
+      { label: 'What is the Signal Protocol?', next: 'security_signal' },
     ],
   },
   security_e2e: {
     text: 'Echo uses end-to-end encryption powered by the Signal Protocol (X3DH + Double Ratchet).\n\nYour encryption keys are generated on your device and never leave it:\n- Only you and your recipient can read messages.\n- Even Echo servers cannot decrypt them.\n- If a server is compromised, your messages are still safe.',
     options: [
       { label: 'What is the Signal Protocol?', next: 'security_signal' },
-      { label: 'Can Echo read my messages?',   next: 'security_read' },
+      { label: 'Can Echo read my messages?', next: 'security_read' },
     ],
   },
   security_signal: {
@@ -107,9 +107,7 @@ const FAQ = {
   },
   security_data: {
     text: 'We collect only the minimum necessary:\n- Email address (for login)\n- Optional display name and avatar\n- Message delivery timestamps (not content)\n- Anonymous aggregated usage stats\n\nWe do NOT store message content, call audio/video, or your contact list.',
-    options: [
-      { label: 'GDPR & my rights', next: 'security_gdpr' },
-    ],
+    options: [{ label: 'GDPR & my rights', next: 'security_gdpr' }],
   },
   security_gdpr: {
     text: 'Under GDPR you have the right to:\n- Access your data\n- Correct inaccurate data\n- Delete your account and all data\n- Export your data\n- Withdraw consent\n\nTo exercise these rights: Settings > Privacy or email dpo@echo.app.',
@@ -128,7 +126,7 @@ const FAQ = {
     options: [{ label: 'Contact support', next: 'contact' }],
   },
   security_web: {
-    text: 'Yes. The web app uses the same E2E encryption as the desktop app. Keys are stored in your browser\'s Local Storage and never sent to our servers.\n\nWe recommend using a private/incognito window on shared computers.',
+    text: "Yes. The web app uses the same E2E encryption as the desktop app. Keys are stored in your browser's Local Storage and never sent to our servers.\n\nWe recommend using a private/incognito window on shared computers.",
     options: [],
   },
   security_report: {
@@ -140,13 +138,13 @@ const FAQ = {
   account: {
     text: 'What do you need help with regarding your account?',
     options: [
-      { label: 'Change my username',       next: 'account_username' },
-      { label: 'Change my email',          next: 'account_change_email' },
-      { label: 'Change my password',       next: 'account_password' },
-      { label: 'Delete my account',        next: 'account_delete' },
-      { label: 'Update profile picture',   next: 'account_avatar' },
-      { label: 'Forgot my password',       next: 'account_forgot_pw' },
-      { label: 'Cannot log in',            next: 'account_cant_login' },
+      { label: 'Change my username', next: 'account_username' },
+      { label: 'Change my email', next: 'account_change_email' },
+      { label: 'Change my password', next: 'account_password' },
+      { label: 'Delete my account', next: 'account_delete' },
+      { label: 'Update profile picture', next: 'account_avatar' },
+      { label: 'Forgot my password', next: 'account_forgot_pw' },
+      { label: 'Cannot log in', next: 'account_cant_login' },
     ],
   },
   account_username: {
@@ -165,15 +163,15 @@ const FAQ = {
     text: 'To reset your password:\n1. Go to the Login page.\n2. Tap Forgot password?.\n3. Enter your registered email.\n4. Click the link we send you.\n5. Set a new password.\n\nThe link expires after 1 hour.',
     options: [
       { label: 'Did not receive the email', next: 'gs_no_email' },
-      { label: 'Still cannot log in',       next: 'account_cant_login' },
+      { label: 'Still cannot log in', next: 'account_cant_login' },
     ],
   },
   account_cant_login: {
-    text: 'Let\'s troubleshoot:\n- Check your email and password.\n- Have you verified your email? Check your inbox.\n- Using 2FA? You need your authenticator app.\n- Try resetting your password.\n- Clear your browser cache and cookies.',
+    text: "Let's troubleshoot:\n- Check your email and password.\n- Have you verified your email? Check your inbox.\n- Using 2FA? You need your authenticator app.\n- Try resetting your password.\n- Clear your browser cache and cookies.",
     options: [
-      { label: 'Reset password',     next: 'account_forgot_pw' },
-      { label: 'Lost my 2FA code',   next: 'security_2fa_lost' },
-      { label: 'Contact support',    next: 'contact' },
+      { label: 'Reset password', next: 'account_forgot_pw' },
+      { label: 'Lost my 2FA code', next: 'security_2fa_lost' },
+      { label: 'Contact support', next: 'contact' },
     ],
   },
   account_delete: {
@@ -189,14 +187,14 @@ const FAQ = {
   messages: {
     text: 'What would you like to know about messages and chats?',
     options: [
-      { label: 'Send files or images',      next: 'messages_files' },
-      { label: 'Delete messages',           next: 'messages_delete' },
-      { label: 'Edit sent messages',        next: 'messages_edit' },
-      { label: 'Read receipts',             next: 'messages_receipts' },
-      { label: 'Block someone',             next: 'messages_block' },
-      { label: 'Disappearing messages',     next: 'messages_disappearing' },
-      { label: 'Search messages',           next: 'messages_search' },
-      { label: 'Export chat history',       next: 'messages_export' },
+      { label: 'Send files or images', next: 'messages_files' },
+      { label: 'Delete messages', next: 'messages_delete' },
+      { label: 'Edit sent messages', next: 'messages_edit' },
+      { label: 'Read receipts', next: 'messages_receipts' },
+      { label: 'Block someone', next: 'messages_block' },
+      { label: 'Disappearing messages', next: 'messages_disappearing' },
+      { label: 'Search messages', next: 'messages_search' },
+      { label: 'Export chat history', next: 'messages_export' },
     ],
   },
   messages_files: {
@@ -236,12 +234,12 @@ const FAQ = {
   calls: {
     text: 'What do you need help with for calls?',
     options: [
-      { label: 'Make a voice call',           next: 'calls_voice' },
-      { label: 'Make a video call',           next: 'calls_video' },
-      { label: 'Are calls encrypted?',        next: 'calls_encrypted' },
-      { label: 'Poor call quality',           next: 'calls_quality' },
+      { label: 'Make a voice call', next: 'calls_voice' },
+      { label: 'Make a video call', next: 'calls_video' },
+      { label: 'Are calls encrypted?', next: 'calls_encrypted' },
+      { label: 'Poor call quality', next: 'calls_quality' },
       { label: 'Other person cannot hear me', next: 'calls_mic' },
-      { label: 'Call non-Echo users?',        next: 'calls_external' },
+      { label: 'Call non-Echo users?', next: 'calls_external' },
     ],
   },
   calls_voice: {
@@ -273,13 +271,13 @@ const FAQ = {
   groups: {
     text: 'What do you need help with for groups?',
     options: [
-      { label: 'Create a group',            next: 'groups_create' },
-      { label: 'Add someone to a group',    next: 'groups_add' },
-      { label: 'Remove someone',            next: 'groups_remove' },
-      { label: 'Leave a group',             next: 'groups_leave' },
+      { label: 'Create a group', next: 'groups_create' },
+      { label: 'Add someone to a group', next: 'groups_add' },
+      { label: 'Remove someone', next: 'groups_remove' },
+      { label: 'Leave a group', next: 'groups_leave' },
       { label: 'Are group messages encrypted?', next: 'groups_encrypted' },
-      { label: 'Group admin permissions',   next: 'groups_admin' },
-      { label: 'Group size limit',          next: 'groups_limit' },
+      { label: 'Group admin permissions', next: 'groups_admin' },
+      { label: 'Group size limit', next: 'groups_limit' },
     ],
   },
   groups_create: {
@@ -315,11 +313,11 @@ const FAQ = {
   notifications: {
     text: 'What do you need help with for notifications?',
     options: [
-      { label: 'Not receiving notifications',         next: 'notif_not_receiving' },
-      { label: 'Mute a chat',                         next: 'notif_mute' },
-      { label: 'Change notification sounds',          next: 'notif_sounds' },
-      { label: 'Enable or disable notifications',     next: 'notif_toggle' },
-      { label: 'Desktop notifications not working',   next: 'notif_desktop' },
+      { label: 'Not receiving notifications', next: 'notif_not_receiving' },
+      { label: 'Mute a chat', next: 'notif_mute' },
+      { label: 'Change notification sounds', next: 'notif_sounds' },
+      { label: 'Enable or disable notifications', next: 'notif_toggle' },
+      { label: 'Desktop notifications not working', next: 'notif_desktop' },
     ],
   },
   notif_not_receiving: {
@@ -350,14 +348,14 @@ const FAQ = {
   technical: {
     text: 'What kind of technical issue are you experiencing?',
     options: [
-      { label: 'App crashes or will not open',  next: 'tech_crash' },
-      { label: 'Messages not sending',          next: 'tech_not_sending' },
-      { label: 'Messages not loading',          next: 'tech_not_loading' },
-      { label: 'Slow performance',              next: 'tech_slow' },
-      { label: 'Camera or mic not working',     next: 'tech_camera_mic' },
-      { label: 'Failed to connect error',       next: 'tech_connect' },
-      { label: 'Encryption key error',          next: 'tech_key_error' },
-      { label: 'How do I update the app?',      next: 'tech_update' },
+      { label: 'App crashes or will not open', next: 'tech_crash' },
+      { label: 'Messages not sending', next: 'tech_not_sending' },
+      { label: 'Messages not loading', next: 'tech_not_loading' },
+      { label: 'Slow performance', next: 'tech_slow' },
+      { label: 'Camera or mic not working', next: 'tech_camera_mic' },
+      { label: 'Failed to connect error', next: 'tech_connect' },
+      { label: 'Encryption key error', next: 'tech_key_error' },
+      { label: 'How do I update the app?', next: 'tech_update' },
     ],
   },
   tech_crash: {
@@ -397,12 +395,12 @@ const FAQ = {
   pricing: {
     text: 'What would you like to know about pricing?',
     options: [
-      { label: 'Is Echo free?',                      next: 'pricing_free' },
-      { label: 'What is Echo Premium?',              next: 'pricing_premium' },
-      { label: 'What does Premium include?',         next: 'pricing_premium_features' },
-      { label: 'Cancel subscription',               next: 'pricing_cancel' },
-      { label: 'Student discount',                  next: 'pricing_discount' },
-      { label: 'Team or enterprise plans',          next: 'pricing_enterprise' },
+      { label: 'Is Echo free?', next: 'pricing_free' },
+      { label: 'What is Echo Premium?', next: 'pricing_premium' },
+      { label: 'What does Premium include?', next: 'pricing_premium_features' },
+      { label: 'Cancel subscription', next: 'pricing_cancel' },
+      { label: 'Student discount', next: 'pricing_discount' },
+      { label: 'Team or enterprise plans', next: 'pricing_enterprise' },
     ],
   },
   pricing_free: {
@@ -442,171 +440,176 @@ const FAQ = {
     text: 'How to reach us:\n\nGeneral support: support@echo.app\nPrivacy / DPO: dpo@echo.app\nBilling: billing@echo.app\nAbuse & Safety: abuse@echo.app\nEnterprise: enterprise@echo.app\n\nResponse time: within 24 hours on business days.\n\nContact form: echo.app/contact-us',
     options: [],
   },
-};
+}
 
 /* KEYWORD ROUTING */
 const KEYWORD_MAP = [
-  { words: ['create account','register','sign up','signup'],      node: 'gs_create' },
-  { words: ['add friend','find user'],                            node: 'gs_add_friends' },
-  { words: ['download','install'],                                node: 'gs_download' },
-  { words: ['devices','platform','android','ios','mobile'],      node: 'gs_devices' },
-  { words: ['web app','browser'],                                 node: 'gs_web' },
-  { words: ['encrypt','e2e','end-to-end','signal protocol'],     node: 'security_e2e' },
-  { words: ['can you read','read my message'],                    node: 'security_read' },
-  { words: ['data collect','what data'],                          node: 'security_data' },
-  { words: ['2fa','two factor','authenticator'],                  node: 'security_2fa' },
-  { words: ['block','report','abuse'],                            node: 'messages_block' },
-  { words: ['gdpr','my rights','delete my data'],                 node: 'security_gdpr' },
-  { words: ['username'],                                          node: 'account_username' },
-  { words: ['change email'],                                      node: 'account_change_email' },
-  { words: ['forgot password','reset password'],                  node: 'account_forgot_pw' },
-  { words: ['change password'],                                   node: 'account_password' },
-  { words: ['delete account'],                                    node: 'account_delete' },
-  { words: ['profile picture','avatar','photo'],                  node: 'account_avatar' },
-  { words: ['login','log in','cant login','cannot login'],        node: 'account_cant_login' },
-  { words: ['send file','image','attachment','media'],            node: 'messages_files' },
-  { words: ['delete message'],                                    node: 'messages_delete' },
-  { words: ['edit message'],                                      node: 'messages_edit' },
-  { words: ['disappear','self-destruct','auto delete'],           node: 'messages_disappearing' },
-  { words: ['read receipt','tick','checkmark'],                   node: 'messages_receipts' },
-  { words: ['search message'],                                    node: 'messages_search' },
-  { words: ['export chat','backup'],                              node: 'messages_export' },
-  { words: ['voice call','audio call'],                           node: 'calls_voice' },
-  { words: ['video call','video chat'],                           node: 'calls_video' },
-  { words: ['call quality','poor audio'],                         node: 'calls_quality' },
-  { words: ['microphone','mic','cant hear'],                      node: 'calls_mic' },
-  { words: ['create group'],                                      node: 'groups_create' },
-  { words: ['leave group'],                                       node: 'groups_leave' },
-  { words: ['group admin'],                                       node: 'groups_admin' },
-  { words: ['mute'],                                              node: 'notif_mute' },
-  { words: ['notification','notify'],                             node: 'notif_not_receiving' },
-  { words: ['crash','wont open','not opening'],                   node: 'tech_crash' },
-  { words: ['not sending','stuck','pending'],                     node: 'tech_not_sending' },
-  { words: ['slow','lag','performance'],                          node: 'tech_slow' },
-  { words: ['failed to connect','connection error'],              node: 'tech_connect' },
-  { words: ['update','new version'],                              node: 'tech_update' },
-  { words: ['free','cost','price','how much'],                    node: 'pricing_free' },
-  { words: ['premium','subscription'],                            node: 'pricing_premium' },
-  { words: ['enterprise','team','business'],                      node: 'pricing_enterprise' },
-  { words: ['student','discount'],                                node: 'pricing_discount' },
-  { words: ['contact','support','help','email us'],               node: 'contact' },
-];
+  { words: ['create account', 'register', 'sign up', 'signup'], node: 'gs_create' },
+  { words: ['add friend', 'find user'], node: 'gs_add_friends' },
+  { words: ['download', 'install'], node: 'gs_download' },
+  { words: ['devices', 'platform', 'android', 'ios', 'mobile'], node: 'gs_devices' },
+  { words: ['web app', 'browser'], node: 'gs_web' },
+  { words: ['encrypt', 'e2e', 'end-to-end', 'signal protocol'], node: 'security_e2e' },
+  { words: ['can you read', 'read my message'], node: 'security_read' },
+  { words: ['data collect', 'what data'], node: 'security_data' },
+  { words: ['2fa', 'two factor', 'authenticator'], node: 'security_2fa' },
+  { words: ['block', 'report', 'abuse'], node: 'messages_block' },
+  { words: ['gdpr', 'my rights', 'delete my data'], node: 'security_gdpr' },
+  { words: ['username'], node: 'account_username' },
+  { words: ['change email'], node: 'account_change_email' },
+  { words: ['forgot password', 'reset password'], node: 'account_forgot_pw' },
+  { words: ['change password'], node: 'account_password' },
+  { words: ['delete account'], node: 'account_delete' },
+  { words: ['profile picture', 'avatar', 'photo'], node: 'account_avatar' },
+  { words: ['login', 'log in', 'cant login', 'cannot login'], node: 'account_cant_login' },
+  { words: ['send file', 'image', 'attachment', 'media'], node: 'messages_files' },
+  { words: ['delete message'], node: 'messages_delete' },
+  { words: ['edit message'], node: 'messages_edit' },
+  { words: ['disappear', 'self-destruct', 'auto delete'], node: 'messages_disappearing' },
+  { words: ['read receipt', 'tick', 'checkmark'], node: 'messages_receipts' },
+  { words: ['search message'], node: 'messages_search' },
+  { words: ['export chat', 'backup'], node: 'messages_export' },
+  { words: ['voice call', 'audio call'], node: 'calls_voice' },
+  { words: ['video call', 'video chat'], node: 'calls_video' },
+  { words: ['call quality', 'poor audio'], node: 'calls_quality' },
+  { words: ['microphone', 'mic', 'cant hear'], node: 'calls_mic' },
+  { words: ['create group'], node: 'groups_create' },
+  { words: ['leave group'], node: 'groups_leave' },
+  { words: ['group admin'], node: 'groups_admin' },
+  { words: ['mute'], node: 'notif_mute' },
+  { words: ['notification', 'notify'], node: 'notif_not_receiving' },
+  { words: ['crash', 'wont open', 'not opening'], node: 'tech_crash' },
+  { words: ['not sending', 'stuck', 'pending'], node: 'tech_not_sending' },
+  { words: ['slow', 'lag', 'performance'], node: 'tech_slow' },
+  { words: ['failed to connect', 'connection error'], node: 'tech_connect' },
+  { words: ['update', 'new version'], node: 'tech_update' },
+  { words: ['free', 'cost', 'price', 'how much'], node: 'pricing_free' },
+  { words: ['premium', 'subscription'], node: 'pricing_premium' },
+  { words: ['enterprise', 'team', 'business'], node: 'pricing_enterprise' },
+  { words: ['student', 'discount'], node: 'pricing_discount' },
+  { words: ['contact', 'support', 'help', 'email us'], node: 'contact' },
+]
 
 function resolveKeyword(text) {
-  const lower = text.toLowerCase();
+  const lower = text.toLowerCase()
   for (const entry of KEYWORD_MAP) {
-    if (entry.words.some(w => lower.includes(w))) return entry.node;
+    if (entry.words.some((w) => lower.includes(w))) return entry.node
   }
-  return null;
+  return null
 }
 
 /* COMPONENT */
 const EchoChatWidget = () => {
-  const [isOpen, setIsOpen]           = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [hasUnread, setHasUnread]     = useState(true);
-  const [messages, setMessages]       = useState([
+  const [isOpen, setIsOpen] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(false)
+  const [hasUnread, setHasUnread] = useState(true)
+  const [messages, setMessages] = useState([
     { id: 1, type: 'bot', text: FAQ.root.text, options: FAQ.root.options },
-  ]);
-  const [inputValue, setInputValue]   = useState('');
-  const [typing, setTyping]           = useState(false);
-  const [nodeHistory, setNodeHistory] = useState(['root']);
-  const messagesEndRef = useRef(null);
-  const widgetRef      = useRef(null);
+  ])
+  const [inputValue, setInputValue] = useState('')
+  const [typing, setTyping] = useState(false)
+  const [nodeHistory, setNodeHistory] = useState(['root'])
+  const messagesEndRef = useRef(null)
+  const widgetRef = useRef(null)
 
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
 
   useEffect(() => {
     if (isOpen) {
-      setHasUnread(false);
+      setHasUnread(false)
       if (widgetRef.current) {
         gsap.fromTo(
           widgetRef.current,
           { opacity: 0, scale: 0.85, y: 20 },
           { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: 'power2.out' }
-        );
+        )
       }
     }
-  }, [isOpen]);
+  }, [isOpen])
 
   const botReply = (nodeId, overrideHistory) => {
-    setTyping(true);
-    setTimeout(() => {
-      const node = FAQ[nodeId] || FAQ.root;
-      const base = overrideHistory ?? nodeHistory;
-      setMessages(prev => [
-        ...prev,
-        { id: Date.now(), type: 'bot', text: node.text, options: node.options ?? [] },
-      ]);
-      setNodeHistory([...base, nodeId]);
-      setTyping(false);
-    }, 450 + Math.random() * 350);
-  };
+    setTyping(true)
+    setTimeout(
+      () => {
+        const node = FAQ[nodeId] || FAQ.root
+        const base = overrideHistory ?? nodeHistory
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now(), type: 'bot', text: node.text, options: node.options ?? [] },
+        ])
+        setNodeHistory([...base, nodeId])
+        setTyping(false)
+      },
+      450 + Math.random() * 350
+    )
+  }
 
   const handleOptionChip = (opt) => {
-    setMessages(prev => [...prev, { id: Date.now(), type: 'user', text: opt.label }]);
-    botReply(opt.next);
-  };
+    setMessages((prev) => [...prev, { id: Date.now(), type: 'user', text: opt.label }])
+    botReply(opt.next)
+  }
 
   const handleBack = () => {
-    if (nodeHistory.length <= 1) return;
-    const newHistory = nodeHistory.slice(0, -1);
-    const prevNode   = newHistory[newHistory.length - 1];
-    setNodeHistory(newHistory);
-    const node = FAQ[prevNode] || FAQ.root;
-    setMessages(prev => [
+    if (nodeHistory.length <= 1) return
+    const newHistory = nodeHistory.slice(0, -1)
+    const prevNode = newHistory[newHistory.length - 1]
+    setNodeHistory(newHistory)
+    const node = FAQ[prevNode] || FAQ.root
+    setMessages((prev) => [
       ...prev,
       { id: Date.now(), type: 'bot', text: node.text, options: node.options ?? [] },
-    ]);
-  };
+    ])
+  }
 
   const handleReset = () => {
-    setMessages([{ id: Date.now(), type: 'bot', text: FAQ.root.text, options: FAQ.root.options }]);
-    setNodeHistory(['root']);
-    setInputValue('');
-  };
+    setMessages([{ id: Date.now(), type: 'bot', text: FAQ.root.text, options: FAQ.root.options }])
+    setNodeHistory(['root'])
+    setInputValue('')
+  }
 
   const handleSend = (e) => {
-    e.preventDefault();
-    const text = inputValue.trim();
-    if (!text || typing) return;
-    setMessages(prev => [...prev, { id: Date.now(), type: 'user', text }]);
-    setInputValue('');
-    const matched = resolveKeyword(text);
+    e.preventDefault()
+    const text = inputValue.trim()
+    if (!text || typing) return
+    setMessages((prev) => [...prev, { id: Date.now(), type: 'user', text }])
+    setInputValue('')
+    const matched = resolveKeyword(text)
     if (matched) {
-      botReply(matched);
+      botReply(matched)
     } else {
-      setTyping(true);
+      setTyping(true)
       setTimeout(() => {
-        setMessages(prev => [
+        setMessages((prev) => [
           ...prev,
           {
             id: Date.now(),
             type: 'bot',
-            text: "I did not find a clear match for that. Here are the main topics so you can find what you need:",
+            text: 'I did not find a clear match for that. Here are the main topics so you can find what you need:',
             options: FAQ.root.options,
           },
-        ]);
-        setNodeHistory(['root']);
-        setTyping(false);
-      }, 700);
+        ])
+        setNodeHistory(['root'])
+        setTyping(false)
+      }, 700)
     }
-  };
+  }
 
-  const lastBotMsg = [...messages].reverse().find(m => m.type === 'bot');
+  const lastBotMsg = [...messages].reverse().find((m) => m.type === 'bot')
 
   return (
     <>
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 bg-violet-600 hover:bg-violet-500 text-white rounded-full shadow-[0_0_20px_rgba(124,58,237,0.5)] hover:shadow-[0_0_30px_rgba(124,58,237,0.7)] transition-all duration-300 group"
+          className='fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 bg-violet-600 hover:bg-violet-500 text-white rounded-full shadow-[0_0_20px_rgba(124,58,237,0.5)] hover:shadow-[0_0_30px_rgba(124,58,237,0.7)] transition-all duration-300 group'
         >
-          <div className="absolute inset-0 rounded-full bg-violet-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
-          <Logo size="sm" variant="light" />
+          <div className='absolute inset-0 rounded-full bg-violet-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300' />
+          <Logo size='sm' variant='light' />
           {hasUnread && (
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(239,68,68,0.7)] animate-pulse">
+            <span className='absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(239,68,68,0.7)] animate-pulse'>
               1
             </span>
           )}
@@ -616,62 +619,79 @@ const EchoChatWidget = () => {
       {isOpen && (
         <div
           ref={widgetRef}
-          className="fixed bottom-6 right-6 z-50 w-96 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden"
+          className='fixed bottom-6 right-6 z-50 w-96 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden'
           style={{ maxHeight: '560px' }}
         >
-          <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <Logo size="md" variant="light" />
+          <div className='flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10 flex-shrink-0'>
+            <div className='flex items-center gap-3'>
+              <Logo size='md' variant='light' />
               <div>
-                <p className="text-sm font-semibold text-white leading-tight">EchoBot</p>
-                <p className="text-[11px] text-white/40 leading-tight">Support assistant</p>
+                <p className='text-sm font-semibold text-white leading-tight'>EchoBot</p>
+                <p className='text-[11px] text-white/40 leading-tight'>Support assistant</p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button onClick={handleReset} title="Start over" className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
-                <RotateCcw className="w-3.5 h-3.5 text-white/40 hover:text-white/80" />
+            <div className='flex items-center gap-1'>
+              <button
+                onClick={handleReset}
+                title='Start over'
+                className='p-1.5 hover:bg-white/10 rounded-lg transition-colors'
+              >
+                <RotateCcw className='w-3.5 h-3.5 text-white/40 hover:text-white/80' />
               </button>
-              <button onClick={() => setIsMinimized(v => !v)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
-                {isMinimized
-                  ? <Maximize2 className="w-3.5 h-3.5 text-white/40 hover:text-white/80" />
-                  : <Minimize2 className="w-3.5 h-3.5 text-white/40 hover:text-white/80" />}
+              <button
+                onClick={() => setIsMinimized((v) => !v)}
+                className='p-1.5 hover:bg-white/10 rounded-lg transition-colors'
+              >
+                {isMinimized ? (
+                  <Maximize2 className='w-3.5 h-3.5 text-white/40 hover:text-white/80' />
+                ) : (
+                  <Minimize2 className='w-3.5 h-3.5 text-white/40 hover:text-white/80' />
+                )}
               </button>
-              <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
-                <X className="w-3.5 h-3.5 text-white/40 hover:text-white/80" />
+              <button
+                onClick={() => setIsOpen(false)}
+                className='p-1.5 hover:bg-white/10 rounded-lg transition-colors'
+              >
+                <X className='w-3.5 h-3.5 text-white/40 hover:text-white/80' />
               </button>
             </div>
           </div>
 
           {!isMinimized && (
             <>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 echo-chat-messages">
+              <div className='flex-1 overflow-y-auto p-4 space-y-3 echo-chat-messages'>
                 {messages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} animate-slideUp`}>
-                    <div className={`max-w-[78%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                      msg.type === 'user'
-                        ? 'bg-violet-600 text-white rounded-br-sm'
-                        : 'bg-white/[0.07] text-white/85 border border-white/10 rounded-bl-sm'
-                    }`}>
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} animate-slideUp`}
+                  >
+                    <div
+                      className={`max-w-[78%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                        msg.type === 'user'
+                          ? 'bg-violet-600 text-white rounded-br-sm'
+                          : 'bg-white/[0.07] text-white/85 border border-white/10 rounded-bl-sm'
+                      }`}
+                    >
                       {msg.text}
                     </div>
                   </div>
                 ))}
 
                 {!typing && lastBotMsg?.options?.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-1 animate-slideUp">
+                  <div className='flex flex-wrap gap-2 mt-1 animate-slideUp'>
                     {nodeHistory.length > 1 && (
                       <button
                         onClick={handleBack}
-                        className="flex items-center gap-1 text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 rounded-full border border-white/10 transition-colors"
+                        className='flex items-center gap-1 text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 rounded-full border border-white/10 transition-colors'
                       >
-                        <ChevronLeft className="w-3 h-3" /> Back
+                        <ChevronLeft className='w-3 h-3' /> Back
                       </button>
                     )}
                     {lastBotMsg.options.map((opt, i) => (
                       <button
                         key={i}
                         onClick={() => handleOptionChip(opt)}
-                        className="text-xs px-3 py-1.5 bg-white/5 hover:bg-violet-600/30 text-violet-300 hover:text-white rounded-full border border-violet-500/20 hover:border-violet-500/50 transition-all"
+                        className='text-xs px-3 py-1.5 bg-white/5 hover:bg-violet-600/30 text-violet-300 hover:text-white rounded-full border border-violet-500/20 hover:border-violet-500/50 transition-all'
                       >
                         {opt.label}
                       </button>
@@ -680,12 +700,12 @@ const EchoChatWidget = () => {
                 )}
 
                 {typing && (
-                  <div className="flex justify-start animate-slideUp">
-                    <div className="bg-white/[0.07] border border-white/10 px-4 py-3 rounded-2xl rounded-bl-sm">
-                      <div className="flex gap-1.5 items-center">
-                        <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" />
-                        <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce delay-100" />
-                        <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce delay-200" />
+                  <div className='flex justify-start animate-slideUp'>
+                    <div className='bg-white/[0.07] border border-white/10 px-4 py-3 rounded-2xl rounded-bl-sm'>
+                      <div className='flex gap-1.5 items-center'>
+                        <div className='w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce' />
+                        <div className='w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce delay-100' />
+                        <div className='w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce delay-200' />
                       </div>
                     </div>
                   </div>
@@ -694,20 +714,23 @@ const EchoChatWidget = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              <form onSubmit={handleSend} className="flex items-center gap-2 px-3 py-3 border-t border-white/10 flex-shrink-0 bg-black/40">
+              <form
+                onSubmit={handleSend}
+                className='flex items-center gap-2 px-3 py-3 border-t border-white/10 flex-shrink-0 bg-black/40'
+              >
                 <input
-                  type="text"
+                  type='text'
                   value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
-                  placeholder="Type a question"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all"
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder='Type a question'
+                  className='flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all'
                 />
                 <button
-                  type="submit"
+                  type='submit'
                   disabled={!inputValue.trim() || typing}
-                  className="p-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+                  className='p-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-xl transition-colors'
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className='w-4 h-4' />
                 </button>
               </form>
             </>
@@ -715,7 +738,7 @@ const EchoChatWidget = () => {
         </div>
       )}
     </>
-  );
-};
+  )
+}
 
-export default EchoChatWidget;
+export default EchoChatWidget

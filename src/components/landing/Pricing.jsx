@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
+import { Check } from 'lucide-react'
 
 const Pricing = () => {
-  const [isAnnual, setIsAnnual] = useState(true);
-  const { t } = useTranslation();
+  const [isAnnual, setIsAnnual] = useState(true)
+  const { t } = useTranslation()
 
   const plans = [
     {
@@ -34,40 +34,42 @@ const Pricing = () => {
       cta: t('pricing.contactSales'),
       highlight: false,
     },
-  ];
+  ]
 
   return (
-    <section id="pricing" className="py-32 px-6 relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-violet-600/10 blur-[120px] rounded-full pointer-events-none" />
+    <section id='pricing' className='py-32 px-6 relative overflow-hidden'>
+      <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-violet-600/10 blur-[120px] rounded-full pointer-events-none' />
 
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">{t('pricing.title')}</h2>
-          <p className="text-zinc-400 text-lg max-w-2xl mx-auto mb-10">{t('pricing.description')}</p>
+      <div className='max-w-7xl mx-auto relative z-10'>
+        <div className='text-center mb-16'>
+          <h2 className='text-4xl md:text-5xl font-bold mb-6'>{t('pricing.title')}</h2>
+          <p className='text-zinc-400 text-lg max-w-2xl mx-auto mb-10'>
+            {t('pricing.description')}
+          </p>
 
           {/* Billing toggle */}
-          <div className="flex items-center justify-center gap-4 mb-12">
+          <div className='flex items-center justify-center gap-4 mb-12'>
             <span className={`text-sm font-medium ${!isAnnual ? 'text-white' : 'text-zinc-500'}`}>
               {t('pricing.monthly')}
             </span>
             <button
               onClick={() => setIsAnnual(!isAnnual)}
-              className="w-14 h-8 bg-white/10 rounded-full p-1 relative transition-colors hover:bg-white/20"
-              aria-label="Toggle billing period"
+              className='w-14 h-8 bg-white/10 rounded-full p-1 relative transition-colors hover:bg-white/20'
+              aria-label='Toggle billing period'
             >
               <motion.div
                 animate={{ x: isAnnual ? 24 : 0 }}
-                className="w-6 h-6 bg-violet-500 rounded-full shadow-lg"
+                className='w-6 h-6 bg-violet-500 rounded-full shadow-lg'
               />
             </button>
             <span className={`text-sm font-medium ${isAnnual ? 'text-white' : 'text-zinc-500'}`}>
               {t('pricing.yearly')}{' '}
-              <span className="text-violet-400 text-xs ml-1">({t('pricing.save')})</span>
+              <span className='text-violet-400 text-xs ml-1'>({t('pricing.save')})</span>
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
           {plans.map((plan, i) => (
             <motion.div
               key={i}
@@ -82,28 +84,28 @@ const Pricing = () => {
               }`}
             >
               {plan.highlight && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-xs font-bold rounded-full shadow-lg">
+                <div className='absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-xs font-bold rounded-full shadow-lg'>
                   {t('pricing.recommended')}
                 </div>
               )}
 
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-sm text-zinc-400 h-10">{plan.desc}</p>
+              <div className='mb-8'>
+                <h3 className='text-xl font-bold text-white mb-2'>{plan.name}</h3>
+                <p className='text-sm text-zinc-400 h-10'>{plan.desc}</p>
               </div>
 
-              <div className="mb-8">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-white">€{plan.price}</span>
+              <div className='mb-8'>
+                <div className='flex items-baseline gap-1'>
+                  <span className='text-4xl font-bold text-white'>€{plan.price}</span>
                   {plan.price !== '0' && (
-                    <span className="text-zinc-500 text-sm">{plan.period}</span>
+                    <span className='text-zinc-500 text-sm'>{plan.period}</span>
                   )}
                 </div>
               </div>
 
-              <ul className="space-y-4 mb-8 flex-1">
+              <ul className='space-y-4 mb-8 flex-1'>
                 {plan.features.map((f, j) => (
-                  <li key={j} className="flex items-start gap-3 text-sm text-zinc-300">
+                  <li key={j} className='flex items-start gap-3 text-sm text-zinc-300'>
                     <div
                       className={`mt-0.5 p-0.5 rounded-full ${
                         plan.highlight
@@ -132,7 +134,7 @@ const Pricing = () => {
         </div>
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default Pricing;
+export default Pricing

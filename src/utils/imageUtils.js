@@ -13,38 +13,35 @@
  */
 export function compressImage(file, maxWidth = 800, quality = 0.7) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+    const reader = new FileReader()
 
-    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.onerror = () => reject(new Error('Failed to read file'))
     reader.onload = (e) => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Failed to load image'));
+      const img = new Image()
+      img.onerror = () => reject(new Error('Failed to load image'))
       img.onload = () => {
-        let { width, height } = img;
+        let { width, height } = img
         if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
+          height = Math.round((height * maxWidth) / width)
+          width = maxWidth
         }
 
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
 
         canvas.toBlob(
-          (blob) =>
-            blob
-              ? resolve(blob)
-              : reject(new Error('Canvas toBlob returned null')),
+          (blob) => (blob ? resolve(blob) : reject(new Error('Canvas toBlob returned null'))),
           'image/jpeg',
           quality
-        );
-      };
-      img.src = e.target.result;
-    };
+        )
+      }
+      img.src = e.target.result
+    }
 
-    reader.readAsDataURL(file);
-  });
+    reader.readAsDataURL(file)
+  })
 }
 
 /**
@@ -55,11 +52,11 @@ export function compressImage(file, maxWidth = 800, quality = 0.7) {
  */
 export function fileToBase64(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.onload = (e) => resolve(e.target.result);
-    reader.readAsDataURL(file);
-  });
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.onload = (e) => resolve(e.target.result)
+    reader.readAsDataURL(file)
+  })
 }
 
 /**
@@ -70,7 +67,7 @@ export function fileToBase64(file) {
  * @returns {string}
  */
 export function base64ToDataUrl(base64, mimeType = 'image/jpeg') {
-  return `data:${mimeType};base64,${base64}`;
+  return `data:${mimeType};base64,${base64}`
 }
 
 /**
@@ -84,7 +81,7 @@ export function isValidImageType(
   file,
   accepted = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 ) {
-  return accepted.includes(file.type);
+  return accepted.includes(file.type)
 }
 
 /**
@@ -95,5 +92,5 @@ export function isValidImageType(
  * @returns {boolean}
  */
 export function isUnderSizeLimit(file, maxMB = 5) {
-  return file.size <= maxMB * 1024 * 1024;
+  return file.size <= maxMB * 1024 * 1024
 }

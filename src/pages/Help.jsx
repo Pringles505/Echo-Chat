@@ -1,9 +1,18 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, ChevronDown, MessageCircle, Book, Shield, Zap, Search, ArrowRight } from 'lucide-react';
-import Navbar from '../components/HomepageComponents/Navbar';
-import Footer from '../components/HomepageComponents/Footer';
-import ParticlesBackground from '../components/HomepageComponents/ParticlesBackground';
+import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  HelpCircle,
+  ChevronDown,
+  MessageCircle,
+  Book,
+  Shield,
+  Zap,
+  Search,
+  ArrowRight,
+} from 'lucide-react'
+import Navbar from '../components/HomepageComponents/Navbar'
+import Footer from '../components/HomepageComponents/Footer'
+import ParticlesBackground from '../components/HomepageComponents/ParticlesBackground'
 
 const CATEGORIES = [
   {
@@ -94,24 +103,24 @@ const CATEGORIES = [
       },
     ],
   },
-];
+]
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
   visible: (i = 0) => ({ opacity: 1, y: 0, transition: { delay: i * 0.05, duration: 0.5 } }),
-};
+}
 
 const FaqItem = ({ q, a }) => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false)
   return (
     <div
       className={`border rounded-xl transition-all duration-300 ${open ? 'border-violet-500/40 bg-violet-600/5' : 'border-white/10 bg-white/5'}`}
     >
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-4 p-5 text-left"
+        className='w-full flex items-center justify-between gap-4 p-5 text-left'
       >
-        <span className="text-sm font-medium text-white">{q}</span>
+        <span className='text-sm font-medium text-white'>{q}</span>
         <ChevronDown
           className={`w-4 h-4 flex-shrink-0 text-zinc-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
         />
@@ -123,45 +132,52 @@ const FaqItem = ({ q, a }) => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="overflow-hidden"
+            className='overflow-hidden'
           >
-            <p className="px-5 pb-5 text-sm text-zinc-400 leading-relaxed">{a}</p>
+            <p className='px-5 pb-5 text-sm text-zinc-400 leading-relaxed'>{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
-  );
-};
+  )
+}
 
 const HelpPage = () => {
-  const [activeCategory, setActiveCategory] = useState('general');
+  const [activeCategory, setActiveCategory] = useState('general')
 
-  const current = CATEGORIES.find((c) => c.id === activeCategory);
+  const current = CATEGORIES.find((c) => c.id === activeCategory)
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans relative overflow-hidden">
+    <div className='min-h-screen bg-black text-white font-sans relative overflow-hidden'>
       <ParticlesBackground />
-      <div className="relative z-10">
+      <div className='relative z-10'>
         <Navbar />
 
-        <div className="max-w-4xl mx-auto px-6 py-24">
+        <div className='max-w-4xl mx-auto px-6 py-24'>
           {/* Hero */}
-          <motion.div initial="hidden" animate="visible" variants={fadeUp} className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-violet-600/15 border border-violet-500/30 text-violet-300 text-sm px-4 py-1.5 rounded-full mb-6">
-              <HelpCircle className="w-4 h-4" />
+          <motion.div
+            initial='hidden'
+            animate='visible'
+            variants={fadeUp}
+            className='text-center mb-16'
+          >
+            <div className='inline-flex items-center gap-2 bg-violet-600/15 border border-violet-500/30 text-violet-300 text-sm px-4 py-1.5 rounded-full mb-6'>
+              <HelpCircle className='w-4 h-4' />
               Help Center
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+            <h1 className='text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent'>
               How can we help?
             </h1>
-            <p className="text-zinc-400 text-xl max-w-xl mx-auto">Answers to the most common questions about Echo.</p>
+            <p className='text-zinc-400 text-xl max-w-xl mx-auto'>
+              Answers to the most common questions about Echo.
+            </p>
           </motion.div>
 
           {/* Category Tabs */}
-          <div className="flex flex-wrap gap-2 mb-10 justify-center">
+          <div className='flex flex-wrap gap-2 mb-10 justify-center'>
             {CATEGORIES.map((cat) => {
-              const Icon = cat.icon;
-              const isActive = cat.id === activeCategory;
+              const Icon = cat.icon
+              const isActive = cat.id === activeCategory
               return (
                 <button
                   key={cat.id}
@@ -172,22 +188,22 @@ const HelpPage = () => {
                       : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white border border-white/10'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className='w-4 h-4' />
                   {cat.label}
                 </button>
-              );
+              )
             })}
           </div>
 
           {/* FAQs */}
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode='wait'>
             <motion.div
               key={activeCategory}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="space-y-3"
+              className='space-y-3'
             >
               {current.faqs.map((faq) => (
                 <FaqItem key={faq.q} q={faq.q} a={faq.a} />
@@ -197,23 +213,27 @@ const HelpPage = () => {
 
           {/* Still need help? */}
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-            className="mt-16 bg-gradient-to-r from-violet-600/10 to-violet-900/10 border border-violet-500/20 rounded-2xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className='mt-16 bg-gradient-to-r from-violet-600/10 to-violet-900/10 border border-violet-500/20 rounded-2xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6'
           >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-violet-600/20 flex items-center justify-center">
-                <MessageCircle className="w-6 h-6 text-violet-400" />
+            <div className='flex items-center gap-4'>
+              <div className='w-12 h-12 rounded-full bg-violet-600/20 flex items-center justify-center'>
+                <MessageCircle className='w-6 h-6 text-violet-400' />
               </div>
               <div>
-                <h3 className="font-semibold text-white mb-1">Still have questions?</h3>
-                <p className="text-zinc-400 text-sm">Our team is happy to help — reach out any time.</p>
+                <h3 className='font-semibold text-white mb-1'>Still have questions?</h3>
+                <p className='text-zinc-400 text-sm'>
+                  Our team is happy to help — reach out any time.
+                </p>
               </div>
             </div>
             <a
-              href="/contact-us"
-              className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all duration-300"
+              href='/contact-us'
+              className='flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all duration-300'
             >
-              Contact us <ArrowRight className="w-4 h-4" />
+              Contact us <ArrowRight className='w-4 h-4' />
             </a>
           </motion.div>
         </div>
@@ -221,7 +241,7 @@ const HelpPage = () => {
         <Footer />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default HelpPage;
+export default HelpPage

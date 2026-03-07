@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
-import { useInView } from 'react-intersection-observer';
-import { Code, Copy, Check } from 'lucide-react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
+import { useInView } from 'react-intersection-observer'
+import { Code, Copy, Check } from 'lucide-react'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 const CodeTypingSection = () => {
-  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 });
-  const [activeTab, setActiveTab] = useState(0);
-  const [copied, setCopied] = useState(false);
-  const [displayCode, setDisplayCode] = useState('');
-  const { t } = useTranslation();
+  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
+  const [activeTab, setActiveTab] = useState(0)
+  const [copied, setCopied] = useState(false)
+  const [displayCode, setDisplayCode] = useState('')
+  const { t } = useTranslation()
 
   const codeExamples = [
     {
@@ -81,63 +81,63 @@ async fn main() {
     client.send(&encrypted).await;
 }`,
     },
-  ];
+  ]
 
   useEffect(() => {
     if (inView) {
-      const code = codeExamples[activeTab].code;
-      let index = 0;
-      setDisplayCode('');
+      const code = codeExamples[activeTab].code
+      let index = 0
+      setDisplayCode('')
 
       const interval = setInterval(() => {
         if (index <= code.length) {
-          setDisplayCode(code.slice(0, index));
-          index++;
+          setDisplayCode(code.slice(0, index))
+          index++
         } else {
-          clearInterval(interval);
+          clearInterval(interval)
         }
-      }, 10);
+      }, 10)
 
-      return () => clearInterval(interval);
+      return () => clearInterval(interval)
     }
-  }, [activeTab, inView]);
+  }, [activeTab, inView])
 
   const copyCode = () => {
-    navigator.clipboard.writeText(codeExamples[activeTab].code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    navigator.clipboard.writeText(codeExamples[activeTab].code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
-    <section ref={ref} className="py-32 px-6 relative">
-      <div className="max-w-5xl mx-auto">
+    <section ref={ref} className='py-32 px-6 relative'>
+      <div className='max-w-5xl mx-auto'>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
-          className="text-center mb-16"
+          className='text-center mb-16'
         >
-          <div className="inline-flex items-center justify-center bg-violet-500/10 text-violet-400 px-4 py-1 rounded-full mb-4 text-sm font-medium border border-violet-500/20">
-            <Code className="w-4 h-4 mr-2" />
+          <div className='inline-flex items-center justify-center bg-violet-500/10 text-violet-400 px-4 py-1 rounded-full mb-4 text-sm font-medium border border-violet-500/20'>
+            <Code className='w-4 h-4 mr-2' />
             {t('code.badge')}
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">{t('code.title')}</h2>
-          <p className="text-zinc-400 text-lg">{t('code.description')}</p>
+          <h2 className='text-4xl md:text-5xl font-bold mb-6'>{t('code.title')}</h2>
+          <p className='text-zinc-400 text-lg'>{t('code.description')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-zinc-900/50 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm"
+          className='bg-zinc-900/50 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm'
         >
-          <div className="flex flex-wrap gap-0 border-b border-white/5 bg-black/20">
+          <div className='flex flex-wrap gap-0 border-b border-white/5 bg-black/20'>
             {codeExamples.map((example, index) => (
               <button
                 key={index}
                 onClick={() => {
-                  setActiveTab(index);
-                  setDisplayCode('');
+                  setActiveTab(index)
+                  setDisplayCode('')
                 }}
                 className={`flex-1 px-4 py-4 text-sm font-medium transition-all border-b-2 ${
                   activeTab === index
@@ -150,25 +150,25 @@ async fn main() {
             ))}
           </div>
 
-          <div className="relative p-6 bg-black/50 min-h-[300px]">
+          <div className='relative p-6 bg-black/50 min-h-[300px]'>
             <button
               onClick={copyCode}
-              className="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors flex items-center gap-2 z-10 border border-white/5"
+              className='absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors flex items-center gap-2 z-10 border border-white/5'
             >
               {copied ? (
                 <>
                   <Check size={14} />
-                  <span className="text-xs font-medium">{t('code.copied')}</span>
+                  <span className='text-xs font-medium'>{t('code.copied')}</span>
                 </>
               ) : (
                 <>
                   <Copy size={14} />
-                  <span className="text-xs font-medium">{t('code.copy')}</span>
+                  <span className='text-xs font-medium'>{t('code.copy')}</span>
                 </>
               )}
             </button>
 
-            <div className="code-block text-sm overflow-x-auto">
+            <div className='code-block text-sm overflow-x-auto'>
               {displayCode && (
                 <SyntaxHighlighter
                   language={codeExamples[activeTab].language}
@@ -194,7 +194,7 @@ async fn main() {
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4"
+          className='mt-12 grid grid-cols-2 md:grid-cols-4 gap-4'
         >
           {[
             { val: '5+', label: t('code.stats.languages') },
@@ -204,16 +204,16 @@ async fn main() {
           ].map((stat, i) => (
             <div
               key={i}
-              className="bg-white/5 border border-white/5 rounded-xl p-6 text-center hover:bg-white/10 transition-colors"
+              className='bg-white/5 border border-white/5 rounded-xl p-6 text-center hover:bg-white/10 transition-colors'
             >
-              <div className="text-2xl md:text-3xl font-bold text-white mb-2">{stat.val}</div>
-              <p className="text-sm text-zinc-400">{stat.label}</p>
+              <div className='text-2xl md:text-3xl font-bold text-white mb-2'>{stat.val}</div>
+              <p className='text-sm text-zinc-400'>{stat.label}</p>
             </div>
           ))}
         </motion.div>
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default CodeTypingSection;
+export default CodeTypingSection

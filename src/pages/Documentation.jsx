@@ -1,16 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useLocation, Link } from 'react-router-dom';
-import { ChevronRight, Search, Menu, X, Copy, Check, Play, RotateCcw, Wifi, Database, Lock, Send } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Navbar from '../components/HomepageComponents/Navbar';
+import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useLocation, Link } from 'react-router-dom'
+import {
+  ChevronRight,
+  Search,
+  Menu,
+  X,
+  Copy,
+  Check,
+  Play,
+  RotateCcw,
+  Wifi,
+  Database,
+  Lock,
+  Send,
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import Navbar from '../components/HomepageComponents/Navbar'
 
 const ApiPlayground = () => {
-  const [method, setMethod] = useState('GET');
-  const [endpoint, setEndpoint] = useState('/v1/conversations');
-  const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState(null);
-  const [activeTab, setActiveTab] = useState('params');
+  const [method, setMethod] = useState('GET')
+  const [endpoint, setEndpoint] = useState('/v1/conversations')
+  const [isLoading, setIsLoading] = useState(false)
+  const [response, setResponse] = useState(null)
+  const [activeTab, setActiveTab] = useState('params')
 
   const endpoints = [
     { method: 'GET', path: '/v1/conversations', label: 'List Conversations' },
@@ -18,26 +31,36 @@ const ApiPlayground = () => {
     { method: 'GET', path: '/v1/messages', label: 'List Messages' },
     { method: 'POST', path: '/v1/messages', label: 'Send Message' },
     { method: 'GET', path: '/v1/users/me', label: 'Get Current User' },
-  ];
+  ]
 
   const handleSend = () => {
-    setIsLoading(true);
-    setResponse(null);
-    
+    setIsLoading(true)
+    setResponse(null)
+
     // Simulate API call
     setTimeout(() => {
-      setIsLoading(false);
+      setIsLoading(false)
       if (endpoint.includes('conversations') && method === 'GET') {
         setResponse({
           status: 200,
           data: {
             conversations: [
-              { id: 'conv_123', participants: ['alice@echo.dev', 'bob@echo.dev'], last_message: 'Hello there!', updated_at: '2024-03-10T10:00:00Z' },
-              { id: 'conv_456', participants: ['charlie@echo.dev'], last_message: 'Meeting at 5?', updated_at: '2024-03-09T15:30:00Z' }
+              {
+                id: 'conv_123',
+                participants: ['alice@echo.dev', 'bob@echo.dev'],
+                last_message: 'Hello there!',
+                updated_at: '2024-03-10T10:00:00Z',
+              },
+              {
+                id: 'conv_456',
+                participants: ['charlie@echo.dev'],
+                last_message: 'Meeting at 5?',
+                updated_at: '2024-03-09T15:30:00Z',
+              },
             ],
-            meta: { page: 1, total: 2 }
-          }
-        });
+            meta: { page: 1, total: 2 },
+          },
+        })
       } else if (method === 'POST') {
         setResponse({
           status: 201,
@@ -45,80 +68,91 @@ const ApiPlayground = () => {
             id: 'msg_789',
             conversation_id: 'conv_123',
             status: 'encrypted',
-            timestamp: new Date().toISOString()
-          }
-        });
+            timestamp: new Date().toISOString(),
+          },
+        })
       } else {
         setResponse({
           status: 200,
           data: {
             id: 'usr_999',
             email: 'developer@echo.dev',
-            public_key: 'dh_x25519_...'
-          }
-        });
+            public_key: 'dh_x25519_...',
+          },
+        })
       }
-    }, 800);
-  };
+    }, 800)
+  }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-8"
+      className='space-y-8'
     >
       <div>
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">API Playground</h1>
-        <p className="text-zinc-400 text-lg">Test Echo's endpoints directly from your browser. No API key required for this demo environment.</p>
+        <h1 className='text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight'>
+          API Playground
+        </h1>
+        <p className='text-zinc-400 text-lg'>
+          Test Echo's endpoints directly from your browser. No API key required for this demo
+          environment.
+        </p>
       </div>
 
-      <div className="bg-black/50 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm">
+      <div className='bg-black/50 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm'>
         {/* Request Bar */}
-        <div className="p-4 border-b border-white/10 flex flex-col md:flex-row gap-4">
-          <div className="flex-1 flex gap-0 rounded-lg overflow-hidden border border-white/10">
-            <select 
+        <div className='p-4 border-b border-white/10 flex flex-col md:flex-row gap-4'>
+          <div className='flex-1 flex gap-0 rounded-lg overflow-hidden border border-white/10'>
+            <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
-              className="bg-white/5 text-white px-4 py-2.5 border-r border-white/10 focus:outline-none font-mono text-sm font-bold"
+              className='bg-white/5 text-white px-4 py-2.5 border-r border-white/10 focus:outline-none font-mono text-sm font-bold'
               style={{
-                color: method === 'GET' ? '#60a5fa' : method === 'POST' ? '#4ade80' : '#f472b6'
+                color: method === 'GET' ? '#60a5fa' : method === 'POST' ? '#4ade80' : '#f472b6',
               }}
             >
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PUT">PUT</option>
-              <option value="DELETE">DELETE</option>
+              <option value='GET'>GET</option>
+              <option value='POST'>POST</option>
+              <option value='PUT'>PUT</option>
+              <option value='DELETE'>DELETE</option>
             </select>
-            <input 
-              type="text" 
+            <input
+              type='text'
               value={endpoint}
               onChange={(e) => setEndpoint(e.target.value)}
-              className="flex-1 bg-transparent text-zinc-300 px-4 py-2.5 focus:outline-none font-mono text-sm"
+              className='flex-1 bg-transparent text-zinc-300 px-4 py-2.5 focus:outline-none font-mono text-sm'
             />
           </div>
-          <button 
+          <button
             onClick={handleSend}
             disabled={isLoading}
-            className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className='bg-violet-600 hover:bg-violet-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed'
           >
-            {isLoading ? <RotateCcw className="animate-spin w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+            {isLoading ? (
+              <RotateCcw className='animate-spin w-4 h-4' />
+            ) : (
+              <Play className='w-4 h-4 fill-current' />
+            )}
             <span>Send Request</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 min-h-[500px]">
+        <div className='grid grid-cols-1 lg:grid-cols-3 min-h-[500px]'>
           {/* Sidebar / Presets */}
-          <div className="border-r border-white/10 bg-white/5 p-4 hidden lg:block">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Available Endpoints</h3>
-            <div className="space-y-2">
+          <div className='border-r border-white/10 bg-white/5 p-4 hidden lg:block'>
+            <h3 className='text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4'>
+              Available Endpoints
+            </h3>
+            <div className='space-y-2'>
               {endpoints.map((ep) => (
                 <button
                   key={ep.label}
                   onClick={() => {
-                    setMethod(ep.method);
-                    setEndpoint(ep.path);
-                    setResponse(null);
+                    setMethod(ep.method)
+                    setEndpoint(ep.path)
+                    setResponse(null)
                   }}
                   className={`w-full text-left p-3 rounded-lg text-sm transition-all border ${
                     endpoint === ep.path && method === ep.method
@@ -126,24 +160,28 @@ const ApiPlayground = () => {
                       : 'bg-transparent border-transparent text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
                   }`}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      ep.method === 'GET' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
-                    }`}>
+                  <div className='flex items-center gap-2 mb-1'>
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        ep.method === 'GET'
+                          ? 'bg-blue-500/20 text-blue-400'
+                          : 'bg-green-500/20 text-green-400'
+                      }`}
+                    >
                       {ep.method}
                     </span>
-                    <span className="font-mono text-xs opacity-70">{ep.path}</span>
+                    <span className='font-mono text-xs opacity-70'>{ep.path}</span>
                   </div>
-                  <div className="font-medium">{ep.label}</div>
+                  <div className='font-medium'>{ep.label}</div>
                 </button>
               ))}
             </div>
           </div>
 
           {/* Main Area */}
-          <div className="lg:col-span-2 flex flex-col">
+          <div className='lg:col-span-2 flex flex-col'>
             {/* Tabs */}
-            <div className="flex border-b border-white/10">
+            <div className='flex border-b border-white/10'>
               {['params', 'headers', 'body'].map((tab) => (
                 <button
                   key={tab}
@@ -160,44 +198,52 @@ const ApiPlayground = () => {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 flex-1 bg-black/20">
+            <div className='p-4 flex-1 bg-black/20'>
               {activeTab === 'body' ? (
-                <textarea 
-                  className="w-full h-full bg-transparent text-zinc-300 font-mono text-sm focus:outline-none resize-none"
+                <textarea
+                  className='w-full h-full bg-transparent text-zinc-300 font-mono text-sm focus:outline-none resize-none'
                   placeholder="{ 'key': 'value' }"
-                  defaultValue={method === 'POST' ? '{\n  "text": "Hello World",\n  "recipient": "bob@echo.dev"\n}' : ''}
+                  defaultValue={
+                    method === 'POST'
+                      ? '{\n  "text": "Hello World",\n  "recipient": "bob@echo.dev"\n}'
+                      : ''
+                  }
                 />
               ) : (
-                <div className="text-zinc-500 text-sm italic p-4 text-center">
+                <div className='text-zinc-500 text-sm italic p-4 text-center'>
                   No {activeTab} required for this request.
                 </div>
               )}
             </div>
 
             {/* Response Area */}
-            <div className="border-t border-white/10 bg-black/40 flex flex-col h-1/2">
-              <div className="px-4 py-2 border-b border-white/10 flex justify-between items-center bg-white/5">
-                <span className="text-xs font-bold text-zinc-400 uppercase">Response</span>
+            <div className='border-t border-white/10 bg-black/40 flex flex-col h-1/2'>
+              <div className='px-4 py-2 border-b border-white/10 flex justify-between items-center bg-white/5'>
+                <span className='text-xs font-bold text-zinc-400 uppercase'>Response</span>
                 {response && (
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                    response.status < 300 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                  }`}>
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 rounded ${
+                      response.status < 300
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-red-500/20 text-red-400'
+                    }`}
+                  >
                     Status: {response.status}
                   </span>
                 )}
               </div>
-              <div className="p-4 overflow-auto flex-1">
+              <div className='p-4 overflow-auto flex-1'>
                 {isLoading ? (
-                  <div className="flex items-center justify-center h-full text-zinc-500 gap-2">
-                    <RotateCcw className="animate-spin w-4 h-4" />
-                    <span className="text-sm">Processing request...</span>
+                  <div className='flex items-center justify-center h-full text-zinc-500 gap-2'>
+                    <RotateCcw className='animate-spin w-4 h-4' />
+                    <span className='text-sm'>Processing request...</span>
                   </div>
                 ) : response ? (
-                  <pre className="text-sm font-mono text-green-400">
+                  <pre className='text-sm font-mono text-green-400'>
                     {JSON.stringify(response.data, null, 2)}
                   </pre>
                 ) : (
-                  <div className="text-zinc-600 text-sm font-mono">
+                  <div className='text-zinc-600 text-sm font-mono'>
                     // Click "Send Request" to see the response
                   </div>
                 )}
@@ -207,16 +253,16 @@ const ApiPlayground = () => {
         </div>
       </div>
     </motion.div>
-  );
-};
+  )
+}
 
 const Documentation = () => {
-  const { t } = useTranslation();
-  const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentSection, setCurrentSection] = useState('intro');
-  const [copiedCode, setCopiedCode] = useState(null);
+  const { t } = useTranslation()
+  const location = useLocation()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentSection, setCurrentSection] = useState('intro')
+  const [copiedCode, setCopiedCode] = useState(null)
 
   const sections = [
     {
@@ -231,9 +277,7 @@ const Documentation = () => {
     {
       id: 'playground',
       title: 'API Playground',
-      subsections: [
-        { id: 'interactive', title: 'Interactive Console' },
-      ],
+      subsections: [{ id: 'interactive', title: 'Interactive Console' }],
     },
     {
       id: 'protocols',
@@ -271,7 +315,7 @@ const Documentation = () => {
         { id: 'deployment', title: 'Deployment' },
       ],
     },
-  ];
+  ]
 
   const contentMap = {
     intro: {
@@ -682,212 +726,217 @@ Environment Variables:
 - ECHO_ENVIRONMENT: "production" or "sandbox"
 - ECHO_LOG_LEVEL: "debug", "info", "warn", "error"`,
     },
-  };
+  }
 
-  const currentContent = contentMap[currentSection];
+  const currentContent = contentMap[currentSection]
 
   const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCode(text);
-    setTimeout(() => setCopiedCode(null), 2000);
-  };
+    navigator.clipboard.writeText(text)
+    setCopiedCode(text)
+    setTimeout(() => setCopiedCode(null), 2000)
+  }
 
   // Helper to render content with code blocks
   const renderContent = (content) => {
-    if (!content) return null;
-    
-    const parts = content.split(/(\`\`\`[\s\S]*?\`\`\`)/g);
-    
+    if (!content) return null
+
+    const parts = content.split(/(\`\`\`[\s\S]*?\`\`\`)/g)
+
     return parts.map((part, index) => {
       if (part.startsWith('\`\`\`')) {
-        const match = part.match(/\`\`\`(\w+)?\n([\s\S]*?)\`\`\`/);
-        if (!match) return null;
-        
-        const language = match[1] || 'text';
-        const code = match[2];
-        
+        const match = part.match(/\`\`\`(\w+)?\n([\s\S]*?)\`\`\`/)
+        if (!match) return null
+
+        const language = match[1] || 'text'
+        const code = match[2]
+
         return (
-          <div key={index} className="relative my-6 group">
-            <div className="bg-black/50 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm">
-              <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-white/[0.03]">
-                <span className="text-xs text-violet-300 uppercase tracking-wider font-semibold">{language}</span>
+          <div key={index} className='relative my-6 group'>
+            <div className='bg-black/50 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm'>
+              <div className='flex items-center justify-between px-4 py-2 border-b border-white/10 bg-white/[0.03]'>
+                <span className='text-xs text-violet-300 uppercase tracking-wider font-semibold'>
+                  {language}
+                </span>
                 <button
                   onClick={() => handleCopy(code)}
-                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                  className='p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100'
                 >
                   {copiedCode === code ? <Check size={14} /> : <Copy size={14} />}
                 </button>
               </div>
-              <pre className="text-sm font-mono text-zinc-300 leading-relaxed p-6 overflow-x-auto">
+              <pre className='text-sm font-mono text-zinc-300 leading-relaxed p-6 overflow-x-auto'>
                 {code}
               </pre>
             </div>
           </div>
-        );
+        )
       }
-      
+
       // Handle bold text
-      const textParts = part.split(/(\*\*.*?\*\*)/g);
+      const textParts = part.split(/(\*\*.*?\*\*)/g)
       return (
-        <p key={index} className="text-zinc-400 leading-relaxed mb-4">
+        <p key={index} className='text-zinc-400 leading-relaxed mb-4'>
           {textParts.map((t, i) => {
             if (t.startsWith('**') && t.endsWith('**')) {
-              return <strong key={i} className="text-white font-semibold">{t.slice(2, -2)}</strong>;
+              return (
+                <strong key={i} className='text-white font-semibold'>
+                  {t.slice(2, -2)}
+                </strong>
+              )
             }
-            return t;
+            return t
           })}
         </p>
-      );
-    });
-  };
+      )
+    })
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-black text-white selection:bg-violet-500/30">
+    <div className='min-h-screen flex flex-col bg-black text-white selection:bg-violet-500/30'>
       <Navbar />
 
       {/* Background Effects */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-600/10 rounded-full blur-[100px]" />
+      <div className='fixed inset-0 pointer-events-none'>
+        <div className='absolute top-0 left-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px]' />
+        <div className='absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-600/10 rounded-full blur-[100px]' />
       </div>
 
       {/* Sidebar + Main Content wrapper */}
-      <div className="flex flex-1 pt-20 relative z-10">
-
-      {/* Sidebar — fixed overlay on mobile, sticky in-flow on desktop */}
-      <aside
-        className={`w-72 shrink-0 bg-black/95 backdrop-blur-xl border-r border-white/10 overflow-y-auto transition-transform duration-300 z-40
+      <div className='flex flex-1 pt-20 relative z-10'>
+        {/* Sidebar — fixed overlay on mobile, sticky in-flow on desktop */}
+        <aside
+          className={`w-72 shrink-0 bg-black/95 backdrop-blur-xl border-r border-white/10 overflow-y-auto transition-transform duration-300 z-40
           fixed top-20 left-0 bottom-0
           lg:sticky lg:top-20 lg:bottom-auto lg:h-[calc(100vh-5rem)] lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <div className="p-6">
-          {/* Search */}
-          <div className="relative mb-8">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <input
-              type="text"
-              placeholder="Search docs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-zinc-300 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-sm transition-all"
-            />
-          </div>
+        >
+          <div className='p-6'>
+            {/* Search */}
+            <div className='relative mb-8'>
+              <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500' />
+              <input
+                type='text'
+                placeholder='Search docs...'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className='w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-zinc-300 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-sm transition-all'
+              />
+            </div>
 
-          {/* Sections */}
-          <nav className="space-y-6 pb-10">
-            {sections.map((section) => (
-              <div key={section.id}>
-                <h3 className="px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
-                  {section.title}
-                </h3>
-                <div className="space-y-1">
-                  {section.subsections.map((sub) => (
-                    <button
-                      key={sub.id}
-                      onClick={() => {
-                        setCurrentSection(sub.id);
-                        setSidebarOpen(false);
-                        window.scrollTo({ top: 0, behavior: 'instant' });
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                        currentSection === sub.id
-                          ? 'bg-violet-600/10 text-violet-400 font-medium border border-violet-500/20'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      {sub.title}
-                    </button>
-                  ))}
+            {/* Sections */}
+            <nav className='space-y-6 pb-10'>
+              {sections.map((section) => (
+                <div key={section.id}>
+                  <h3 className='px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2'>
+                    {section.title}
+                  </h3>
+                  <div className='space-y-1'>
+                    {section.subsections.map((sub) => (
+                      <button
+                        key={sub.id}
+                        onClick={() => {
+                          setCurrentSection(sub.id)
+                          setSidebarOpen(false)
+                          window.scrollTo({ top: 0, behavior: 'instant' })
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                          currentSection === sub.id
+                            ? 'bg-violet-600/10 text-violet-400 font-medium border border-violet-500/20'
+                            : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        {sub.title}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </nav>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col relative z-10">
-        <div className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden mb-6 p-2 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-white"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-
-          {/* Breadcrumb */}
-          <div className="flex items-center space-x-2 text-sm text-zinc-500 mb-8">
-            <Link to="/documentation" className="hover:text-violet-400 transition-colors">
-              Docs
-            </Link>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-zinc-300">{currentContent?.title}</span>
+              ))}
+            </nav>
           </div>
+        </aside>
 
-          {/* Content */}
-          <AnimatePresence mode="wait">
-            {currentSection === 'interactive' ? (
-              <ApiPlayground key="playground" />
-            ) : (
-              <motion.div
-                key={currentSection}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="min-h-[60vh]"
+        {/* Main Content */}
+        <main className='flex-1 flex flex-col relative z-10'>
+          <div className='flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full'>
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className='lg:hidden mb-6 p-2 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-white'
+            >
+              {sidebarOpen ? <X className='w-5 h-5' /> : <Menu className='w-5 h-5' />}
+            </button>
+
+            {/* Breadcrumb */}
+            <div className='flex items-center space-x-2 text-sm text-zinc-500 mb-8'>
+              <Link to='/documentation' className='hover:text-violet-400 transition-colors'>
+                Docs
+              </Link>
+              <ChevronRight className='w-4 h-4' />
+              <span className='text-zinc-300'>{currentContent?.title}</span>
+            </div>
+
+            {/* Content */}
+            <AnimatePresence mode='wait'>
+              {currentSection === 'interactive' ? (
+                <ApiPlayground key='playground' />
+              ) : (
+                <motion.div
+                  key={currentSection}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className='min-h-[60vh]'
+                >
+                  <h1 className='text-4xl md:text-5xl font-bold text-white mb-8 tracking-tight'>
+                    {currentContent?.title}
+                  </h1>
+                  <div className='prose prose-invert max-w-none'>
+                    {renderContent(currentContent?.content)}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Navigation */}
+            <div className='flex justify-between items-center mt-16 pt-8 border-t border-white/10'>
+              <button
+                onClick={() => {
+                  const allSections = sections.flatMap((s) => s.subsections)
+                  const currentIndex = allSections.findIndex((s) => s.id === currentSection)
+                  if (currentIndex > 0) {
+                    setCurrentSection(allSections[currentIndex - 1].id)
+                    window.scrollTo({ top: 0, behavior: 'instant' })
+                  }
+                }}
+                className='group flex items-center space-x-2 text-zinc-400 hover:text-violet-400 transition-colors'
+                disabled={currentSection === sections[0].subsections[0].id}
               >
-                <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 tracking-tight">
-                  {currentContent?.title}
-                </h1>
-                <div className="prose prose-invert max-w-none">
-                  {renderContent(currentContent?.content)}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <ChevronRight className='w-4 h-4 rotate-180 group-hover:-translate-x-1 transition-transform' />
+                <span className='text-sm font-medium'>Previous</span>
+              </button>
 
-          {/* Navigation */}
-          <div className="flex justify-between items-center mt-16 pt-8 border-t border-white/10">
-            <button
-              onClick={() => {
-                const allSections = sections.flatMap((s) => s.subsections);
-                const currentIndex = allSections.findIndex((s) => s.id === currentSection);
-                if (currentIndex > 0) {
-                  setCurrentSection(allSections[currentIndex - 1].id);
-                  window.scrollTo({ top: 0, behavior: 'instant' });
-                }
-              }}
-              className="group flex items-center space-x-2 text-zinc-400 hover:text-violet-400 transition-colors"
-              disabled={currentSection === sections[0].subsections[0].id}
-            >
-              <ChevronRight className="w-4 h-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
-              <span className="text-sm font-medium">Previous</span>
-            </button>
-
-            <button
-              onClick={() => {
-                const allSections = sections.flatMap((s) => s.subsections);
-                const currentIndex = allSections.findIndex((s) => s.id === currentSection);
-                if (currentIndex < allSections.length - 1) {
-                  setCurrentSection(allSections[currentIndex + 1].id);
-                  window.scrollTo({ top: 0, behavior: 'instant' });
-                }
-              }}
-              className="group flex items-center space-x-2 text-zinc-400 hover:text-violet-400 transition-colors"
-            >
-              <span className="text-sm font-medium">Next</span>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
+              <button
+                onClick={() => {
+                  const allSections = sections.flatMap((s) => s.subsections)
+                  const currentIndex = allSections.findIndex((s) => s.id === currentSection)
+                  if (currentIndex < allSections.length - 1) {
+                    setCurrentSection(allSections[currentIndex + 1].id)
+                    window.scrollTo({ top: 0, behavior: 'instant' })
+                  }
+                }}
+                className='group flex items-center space-x-2 text-zinc-400 hover:text-violet-400 transition-colors'
+              >
+                <span className='text-sm font-medium'>Next</span>
+                <ChevronRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
+              </button>
+            </div>
           </div>
-        </div>
-        
-      </main>
-      </div>{/* end flex row */}
+        </main>
+      </div>
+      {/* end flex row */}
     </div>
-  );
-};
+  )
+}
 
-export default Documentation;
+export default Documentation

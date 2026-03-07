@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { getSocket } from '../services/socket';
+import { useEffect, useRef, useCallback } from 'react'
+import { getSocket } from '../services/socket'
 
 /**
  * Subscribes to a socket event and cleans up automatically on unmount.
@@ -12,15 +12,15 @@ import { getSocket } from '../services/socket';
  *   useSocketEvent('message', (msg) => setMessages(prev => [...prev, msg]));
  */
 export function useSocketEvent(event, handler) {
-  const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+  const handlerRef = useRef(handler)
+  handlerRef.current = handler
 
   useEffect(() => {
-    const socket = getSocket();
-    const listener = (...args) => handlerRef.current(...args);
-    socket.on(event, listener);
-    return () => socket.off(event, listener);
-  }, [event]);
+    const socket = getSocket()
+    const listener = (...args) => handlerRef.current(...args)
+    socket.on(event, listener)
+    return () => socket.off(event, listener)
+  }, [event])
 }
 
 /**
@@ -35,15 +35,15 @@ export function useSocketEvent(event, handler) {
  */
 export function useSocketEmit() {
   const emit = useCallback((event, data) => {
-    const socket = getSocket();
+    const socket = getSocket()
     if (socket.connected) {
-      socket.emit(event, data);
+      socket.emit(event, data)
     } else {
-      console.warn('[Socket] Attempted to emit while disconnected:', event);
+      console.warn('[Socket] Attempted to emit while disconnected:', event)
     }
-  }, []);
+  }, [])
 
-  return { emit };
+  return { emit }
 }
 
 /**
@@ -52,6 +52,6 @@ export function useSocketEmit() {
  * @returns {{ connected: boolean }}
  */
 export function useSocketStatus() {
-  const socket = getSocket();
-  return { connected: socket.connected };
+  const socket = getSocket()
+  return { connected: socket.connected }
 }
