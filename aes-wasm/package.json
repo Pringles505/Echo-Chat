@@ -2,7 +2,9 @@
   "name": "aes-wasm",
   "version": "1.0.0",
   "main": "pkg/aes-wasm.js",
-  "files": ["pkg"],
+  "files": [
+    "pkg"
+  ],
   "dependencies": {
     "aes-wasm": "file:./aes-wasm"
   }
