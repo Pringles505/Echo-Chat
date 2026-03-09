@@ -1,4 +1,4 @@
-import { hkdf_derive } from 'dh-wasm';
+import { hkdf_derive } from '@mascaro101/echo-protocol';
 
 const INFO_RK = new TextEncoder().encode('EchoProtocol/v1/KDF_RK');
 const INFO_SENDING_CHAIN = new TextEncoder().encode('EchoProtocol/v1/KDF_SENDING_CHAIN');

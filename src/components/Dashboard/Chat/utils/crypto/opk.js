@@ -1,7 +1,7 @@
 import init_dh, {
     generate_private_ephemeral_key,
     generate_public_ephemeral_key,
-} from 'dh-wasm';
+} from '@mascaro101/echo-protocol';
 
 import { arrayBufferToBase64 } from '../helpers';
 

@@ -5,8 +5,12 @@ import Friends from "./Friends/Friends";
 import Chat from "./Chat/Chat";
 import Sidebar from "./DashboardComponents/Sidebar/Sidebar";
 import ChatHeader from "./DashboardComponents/Header/ChatHeader";
+import GroupHeader from "./DashboardComponents/Header/GroupHeader";
 import ConversationList from "./DashboardComponents/Conversations/ConversationList";
+
 import { useConversations } from "./DashboardComponents/hooks/useConversations";
+import { useGroups } from "./DashboardComponents/hooks/useGroups";
+
 import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatProfileImage } from "./DashboardComponents/utils/helpers";
 import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
 import { getSocket } from "../../socket";
@@ -17,6 +21,9 @@ import { base64ToArrayBuffer } from "./Chat/utils/helpers";
 import { generateOneTimePreKeys } from "./Chat/utils/crypto/opk";
 import { createOpkReplenishHandler, requestOpkStatusAndReplenish } from "../../utils/opk/replenish";
 import eld from "../../utils/storage/EncryptedLocalDatabase";
+import GroupList from "./DashboardComponents/Groups/GroupList";
+import CreateGroupModal from "./Groups/CreateGroupModal";
+import GroupChat from "./Chat/GroupChat";
 
 const Dashboard = () => {
   const token = localStorage.getItem("token");
@@ -48,6 +55,18 @@ const Dashboard = () => {
     }
     return unread;
   });
+  const [unreadGroupMessages, setUnreadGroupMessages] = useState(() => {
+    const unread = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(`unreadGroup-${userId}-`)) {
+        const gid = String(key.replace(`unreadGroup-${userId}-`, ""));
+        const count = parseInt(localStorage.getItem(key) || "0", 10);
+        if (count > 0) unread[gid] = count;
+      }
+    }
+    return unread;
+  });
   const [currentWallpaper, setCurrentWallpaper] = useState(() => {
     const saved = localStorage.getItem('chatWallpaper');
     return saved && WALLPAPER_PREVIEWS[saved] ? saved : 'default';
@@ -57,12 +76,50 @@ const Dashboard = () => {
   const [incomingCall, setIncomingCall] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
 
   // Hooks personalizados - must be before useEffects that use them
   const { recentConversations, updateRecentConversations } = useConversations(userId);
+  const { groups, setAllGroups, upsertGroup, removeGroup } = useGroups(userId);
   const messagesEndRef = useRef(null);
   const conversationsListRef = useRef(null);
   const hasRefreshedProfiles = useRef(false);
+  const activeChatRef = useRef(activeChat);
+  const recentConversationsRef = useRef(recentConversations);
+  const userIdRef = useRef(userId);
+
+  const updateRecentConversationsRef = useRef(updateRecentConversations);
+  const setAllGroupsRef = useRef(setAllGroups);
+  const upsertGroupRef = useRef(upsertGroup);
+  const removeGroupRef = useRef(removeGroup);
+
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
+
+  useEffect(() => {
+    recentConversationsRef.current = recentConversations;
+  }, [recentConversations]);
+
+  useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
+
+  useEffect(() => {
+    updateRecentConversationsRef.current = updateRecentConversations;
+  }, [updateRecentConversations]);
+
+  useEffect(() => {
+    setAllGroupsRef.current = setAllGroups;
+  }, [setAllGroups]);
+
+  useEffect(() => {
+    upsertGroupRef.current = upsertGroup;
+  }, [upsertGroup]);
+
+  useEffect(() => {
+    removeGroupRef.current = removeGroup;
+  }, [removeGroup]);
 
   // Initialize socket connection and fetch user profile
   useEffect(() => {
@@ -81,6 +138,13 @@ const Dashboard = () => {
 
     const onConnect = () => {
       console.log('Socket connected for profile fetching');
+
+      // Fetch groups for this user
+      sharedSocket.emit("listMyGroups", {}, (res) => {
+        if (res?.success && Array.isArray(res.groups)) {
+          setAllGroupsRef.current?.(res.groups);
+        }
+      });
 
       // Fetch user profile immediately after connection
       fetchUserProfileFromSocket(sharedSocket, userId)
@@ -216,6 +280,62 @@ const Dashboard = () => {
       }
     });
 
+    const handleGroupAdded = (g) => {
+      if (!g) return;
+      const groupId = String(g.groupId ?? g.id ?? "");
+      if (!groupId) return;
+      upsertGroupRef.current?.({
+        ...g,
+        groupId,
+        name: g.name || g.groupName || "Group",
+        joinedAt: g.joinedAt || g.at,
+      });
+    };
+
+    const handleGroupRemoved = ({ groupId }) => {
+      const gid = String(groupId ?? "");
+      if (!gid) return;
+      removeGroupRef.current?.(gid);
+      setUnreadGroupMessages((prev) => {
+        const next = { ...prev };
+        delete next[gid];
+        localStorage.removeItem(`unreadGroup-${userIdRef.current}-${gid}`);
+        return next;
+      });
+      const currentActive = activeChatRef.current;
+      if (currentActive?.type === "group" && String(currentActive.groupId) === gid) {
+        setActiveChat(null);
+      }
+    };
+
+    const handleNewGroupMessageNotification = (message) => {
+      if (!message?.groupId) return;
+      const gid = String(message.groupId);
+
+      const msgText =
+        typeof message.payload === "string"
+          ? message.payload
+          : typeof message.text === "string"
+            ? message.text
+            : "";
+      const timestamp = message.createdAt || message.timestamp || new Date().toISOString();
+
+      upsertGroupRef.current?.(
+        { groupId: gid, name: message.groupName || "Group" },
+        { timestamp, text: msgText }
+      );
+
+      const currentActive = activeChatRef.current;
+      if (!(currentActive?.type === "group" && String(currentActive.groupId) === gid)) {
+        setUnreadGroupMessages((prev) => {
+          const nextCount = (prev[gid] || 0) + 1;
+          const next = { ...prev, [gid]: nextCount };
+          localStorage.setItem(`unreadGroup-${userIdRef.current}-${gid}`, String(nextCount));
+          return next;
+        });
+      }
+    };
+
     // Listen for new messages to update unread count and decrypt in background
     const handleNewMessageNotification = async (messageData) => {
       console.log('📬 New message received in Dashboard:', messageData);
@@ -234,15 +354,15 @@ const Dashboard = () => {
       // Process each message for notifications
       for (const message of messages) {
         console.log('📬 Processing message:', message);
-        console.log('📬 Current userId:', userId);
+        console.log('📬 Current userId:', userIdRef.current);
         console.log('📬 Message from userId:', message.userId);
-        console.log('📬 Active chat:', activeChat?.id);
+        console.log('📬 Active chat:', activeChatRef.current?.id);
         console.log('📬 Is initial message?:', message.is_initial);
 
         // Ensure type consistency - convert IDs to strings for comparison
-        const currentUserId = String(userId);
+        const currentUserId = String(userIdRef.current);
         const messageSenderId = String(message.userId);
-        const activeChatId = activeChat?.id ? String(activeChat.id) : null;
+        const activeChatId = activeChatRef.current?.id ? String(activeChatRef.current.id) : null;
 
         // Only process if the message is FROM another user (not sent by current user)
         // and is not part of the currently active chat
@@ -251,7 +371,7 @@ const Dashboard = () => {
           console.log('✅ Processing notification for sender:', senderId);
 
           // Skip messages already decrypted and saved in ELD
-          const existingMessages = await getSavedMessages(userId, senderId);
+          const existingMessages = await getSavedMessages(userIdRef.current, senderId);
           if (existingMessages.some(msg => msg._id === message._id)) {
             console.log(`⏭️ Skipping already-decrypted message: ${message._id}`);
             continue;
@@ -261,7 +381,7 @@ const Dashboard = () => {
           try {
             // Call event messages are not end-to-end encrypted in this project; store as-is.
             if (message.messageType === 'call_event') {
-              await updateSavedMessages(userId, senderId, message, null);
+              await updateSavedMessages(userIdRef.current, senderId, message, null);
               console.log('✅ [Dashboard] Call event stored (no decryption)');
               continue;
             }
@@ -282,7 +402,7 @@ const Dashboard = () => {
             await decryptIncomingMessage(
               message,
               nonce,
-              userId,
+              userIdRef.current,
               senderId,
               privateKeyArray,
               sharedSocket,
@@ -295,12 +415,12 @@ const Dashboard = () => {
           }
 
           // Increment unread count (sole source of truth for unread messages)
-          setUnreadMessages(prev => {
+          if (senderId !== activeChatId) setUnreadMessages(prev => {
             const currentUnread = prev[senderId] || 0;
             const newCount = currentUnread + 1;
 
             // Persist to localStorage
-            localStorage.setItem(`unread-${userId}-${senderId}`, newCount);
+            localStorage.setItem(`unread-${userIdRef.current}-${senderId}`, newCount);
             console.log(`📊 Unread count for ${senderId}: ${newCount}`);
 
             return {
@@ -310,7 +430,7 @@ const Dashboard = () => {
           });
 
           // Check if conversation already exists
-          const conversationExists = recentConversations.some(conv => String(conv.id) === senderId);
+          const conversationExists = recentConversationsRef.current.some(conv => String(conv.id) === senderId);
 
           if (!conversationExists) {
             // First message from this user - add placeholder immediately
@@ -323,7 +443,7 @@ const Dashboard = () => {
             };
 
             // Add conversation with timestamp but no message text yet (will be decrypted in Chat)
-            updateRecentConversations(placeholderUser, {
+            updateRecentConversationsRef.current?.(placeholderUser, {
               text: '',
               timestamp: message.timestamp || message.createdAt || new Date().toISOString()
             });
@@ -339,8 +459,8 @@ const Dashboard = () => {
                   profileImage: response.user.profilePicture
                 };
 
-                // Update conversation with proper user data (no message object to avoid re-incrementing)
-                updateRecentConversations(conversationUser, null);
+                // Update conversation with proper user data 
+                updateRecentConversationsRef.current?.(conversationUser, null);
                 console.log('✅ Conversation updated with proper user info');
               } else {
                 console.error('❌ Failed to fetch user info:', response);
@@ -349,9 +469,9 @@ const Dashboard = () => {
           } else {
             // Conversation exists - just update timestamp to move it to top
             console.log('✅ Conversation already exists, updating timestamp');
-            const existingConv = recentConversations.find(conv => String(conv.id) === senderId);
+            const existingConv = recentConversationsRef.current.find(conv => String(conv.id) === senderId);
             if (existingConv) {
-              updateRecentConversations(existingConv, {
+              updateRecentConversationsRef.current?.(existingConv, {
                 text: '',
                 timestamp: message.timestamp || message.createdAt || new Date().toISOString()
               });
@@ -364,25 +484,33 @@ const Dashboard = () => {
     };
 
     sharedSocket.on('newMessage', handleNewMessageNotification);
+    sharedSocket.on("groupAdded", handleGroupAdded);
+    sharedSocket.on("groupRemoved", handleGroupRemoved);
+    sharedSocket.on("newGroupMessage", handleNewGroupMessageNotification);
 
     console.log('Dashboard socket ID:', sharedSocket.id);
 
-      return () => {
-        sharedSocket.off('connect', onConnect);
-        sharedSocket.off('incomingCall');
-        sharedSocket.off('callEnded');
-        sharedSocket.off('replenishOPKs', handleOpkReplenishRequested);
-        // Back-compat cleanup (older event name)
-        sharedSocket.off('opkReplenishRequested', handleOpkReplenishRequested);
-        sharedSocket.off('userProfileUpdated');
-        sharedSocket.off('newMessage', handleNewMessageNotification);
-        // Don't disconnect the shared socket here
-      };
-  }, [token, userId, username, activeChat, updateRecentConversations, recentConversations]);
+    return () => {
+      sharedSocket.off('connect', onConnect);
+      sharedSocket.off('incomingCall');
+      sharedSocket.off('callEnded');
+      sharedSocket.off('replenishOPKs', handleOpkReplenishRequested);
+
+      sharedSocket.off('opkReplenishRequested', handleOpkReplenishRequested);
+      sharedSocket.off('userProfileUpdated');
+      sharedSocket.off('newMessage', handleNewMessageNotification);
+      sharedSocket.off('groupAdded', handleGroupAdded);
+      sharedSocket.off('groupRemoved', handleGroupRemoved);
+      sharedSocket.off('newGroupMessage', handleNewGroupMessageNotification);
+      // Don't disconnect the shared socket here
+    };
+  }, [token, userId]);
 
   // Update document title with notification count
   useEffect(() => {
-    const totalUnread = Object.values(unreadMessages).reduce((sum, count) => sum + count, 0);
+    const totalUnread =
+      Object.values(unreadMessages).reduce((sum, count) => sum + count, 0) +
+      Object.values(unreadGroupMessages).reduce((sum, count) => sum + count, 0);
 
     if (totalUnread > 0) {
       document.title = `(${totalUnread}) Echo`;
@@ -393,7 +521,7 @@ const Dashboard = () => {
     return () => {
       document.title = 'Echo'; // Reset on unmount
     };
-  }, [unreadMessages]);
+  }, [unreadMessages, unreadGroupMessages]);
 
   // Listen for profile updates from localStorage
   useEffect(() => {
@@ -430,7 +558,7 @@ const Dashboard = () => {
 
   // Handlers
   const handleChatSelect = (conversation) => {
-    setActiveChat(conversation);
+    setActiveChat({ ...conversation, type: "direct" });
     setShowMobileChat(true); // Show chat on mobile when selected
     const conversationId = String(conversation.id);
     setUnreadMessages(prev => ({
@@ -438,6 +566,18 @@ const Dashboard = () => {
       [conversationId]: 0
     }));
     localStorage.setItem(`unread-${userId}-${conversationId}`, 0);
+  };
+
+  const handleGroupSelect = (group) => {
+    const gid = String(group?.groupId ?? "");
+    if (!gid) return;
+    setActiveChat({ type: "group", groupId: gid, name: group.name || "Group" });
+    setShowMobileChat(true);
+    setUnreadGroupMessages((prev) => {
+      const next = { ...prev, [gid]: 0 };
+      localStorage.setItem(`unreadGroup-${userId}-${gid}`, "0");
+      return next;
+    });
   };
 
   const handleMobileBack = () => {
@@ -516,6 +656,29 @@ const Dashboard = () => {
 
       // Then sort by last message time
       return new Date(b.lastMessageTime) - new Date(a.lastMessageTime);
+    });
+
+  const filteredGroups = groups
+    .filter((g) => {
+      const term = conversationsSearchTerm.toLowerCase();
+      if (!term) return true;
+      return (
+        (g.name || "").toLowerCase().includes(term) ||
+        (g.lastActivityText || "").toLowerCase().includes(term)
+      );
+    })
+    .map((g) => ({
+      ...g,
+      unreadCount: unreadGroupMessages[String(g.groupId)] || 0,
+    }))
+    .sort((a, b) => {
+      const aHasUnread = (a.unreadCount || 0) > 0;
+      const bHasUnread = (b.unreadCount || 0) > 0;
+      if (aHasUnread && !bHasUnread) return -1;
+      if (!aHasUnread && bHasUnread) return 1;
+      const ta = new Date(a.lastActivityAt || a.createdAt || 0).getTime();
+      const tb = new Date(b.lastActivityAt || b.createdAt || 0).getTime();
+      return tb - ta;
     });
 
   // Componente EmptyState
@@ -619,7 +782,7 @@ const Dashboard = () => {
                 placeholder={
                   activeView === 'friends'
                     ? "Search for friends..."
-                    : "Search conversations..."
+                    : "Search chats & groups..."
                 }
                 className="w-full px-6 py-3 bg-white/10 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8e79f2] focus:border-[#8e79f2] text-white placeholder-gray-400 backdrop-blur-sm transition-all duration-300"
                 value={activeView === 'friends' ? searchTerm : conversationsSearchTerm}
@@ -637,8 +800,17 @@ const Dashboard = () => {
                 <Search className="h-6 w-6" />
               </button>
             </div>
+            {activeView !== "friends" && (
+              <button
+                className="p-2 rounded-full bg-indigo-700 text-white hover:bg-[#8e79f2] transition-colors"
+                title="Create group"
+                onClick={() => setCreateGroupOpen(true)}
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            )}
           </div>
-        </div>
+        </div>º
 
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-black">
           {activeView === 'friends' ? (
@@ -649,6 +821,25 @@ const Dashboard = () => {
             />
           ) : (
             <div>
+              {filteredGroups.length > 0 && (
+                <div className="px-4 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Groups
+                </div>
+              )}
+              {filteredGroups.length > 0 && (
+                <GroupList
+                  groups={filteredGroups}
+                  activeChat={activeChat}
+                  onSelect={handleGroupSelect}
+                  unreadByGroupId={unreadGroupMessages}
+                />
+              )}
+
+              {filteredConversations.length > 0 && (
+                <div className="px-4 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Direct messages
+                </div>
+              )}
               {filteredConversations.length > 0 ? (
                 <ConversationList
                   conversations={filteredConversations}
@@ -686,16 +877,31 @@ const Dashboard = () => {
                 <ArrowLeft className="h-6 w-6" />
               </button>
               <div className="flex-1">
-                <ChatHeader activeChat={activeChat} userId={userId} token={token} />
+                {activeChat?.type === "group" ? (
+                  <GroupHeader groupId={activeChat.groupId} groupName={activeChat.name} userId={userId} />
+                ) : (
+                  <ChatHeader activeChat={activeChat} userId={userId} token={token} />
+                )}
               </div>
             </div>
             <div className="flex-1 overflow-hidden">
-              <Chat
-                token={token}
-                activeChat={activeChat.id}
-                onNewMessage={handleNewMessage}
-                currentWallpaper={currentWallpaper}
-              />
+              {activeChat?.type === "group" ? (
+                <GroupChat
+                  token={token}
+                  activeGroupId={activeChat.groupId}
+                  activeGroupName={activeChat.name}
+                  userId={userId}
+                  username={username}
+                  currentWallpaper={currentWallpaper}
+                />
+              ) : (
+                <Chat
+                  token={token}
+                  activeChat={activeChat.id}
+                  onNewMessage={handleNewMessage}
+                  currentWallpaper={currentWallpaper}
+                />
+              )}
               <div ref={messagesEndRef} />
             </div>
           </div>
@@ -703,6 +909,16 @@ const Dashboard = () => {
           <EmptyState activeView={activeView} />
         )}
       </div>
+
+      <CreateGroupModal
+        open={createGroupOpen}
+        onClose={() => setCreateGroupOpen(false)}
+        userId={userId}
+        onCreated={(group) => {
+          if (!group?.groupId) return;
+          handleGroupSelect(group);
+        }}
+      />
     </div>
   );
 };

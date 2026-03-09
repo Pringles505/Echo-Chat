@@ -15,16 +15,9 @@ export default defineConfig({
     wasm(),
     topLevelAwait(),
   ],
-  resolve: {
-    alias: {
-      'aes-wasm': path.resolve(__dirname, './aes-wasm/pkg/aes_wasm.js'),
-      'xeddsa-wasm': path.resolve(__dirname, './xeddsa-wasm/pkg/xeddsa_wasm.js'),
-      'dh-wasm': path.resolve(__dirname, './dh-wasm/pkg/dh_wasm.js')
-    }
-  },
   optimizeDeps: {
-  exclude: ['aes-wasm', 'xeddsa-wasm', 'dh-wasm']
-},
+    exclude: ['@mascaro101/echo-protocol']
+  },
   test: {
     // Keep unit/crypto tests under src; avoid accidentally running Playwright specs via Vitest.
     include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],

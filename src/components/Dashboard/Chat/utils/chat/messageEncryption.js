@@ -2,7 +2,7 @@ import { arrayBufferToBase64 } from "../helpers";
 import init_dh, {
   generate_private_ephemeral_key,
   generate_public_ephemeral_key,
-} from "dh-wasm";
+} from '@mascaro101/echo-protocol';
 
 import { buildAadBytes, encryptWithAad } from "../crypto/aes";
 import { initializeDoubleRatchet } from "../crypto/dr";

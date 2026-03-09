@@ -15,9 +15,6 @@ import init, {
   generate_public_prekey,
   generate_private_prekey,
   derive_x25519_from_ed25519_private,
-} from "/dh-wasm/pkg";
-import { generateOneTimePreKeys } from './Dashboard/Chat/utils/crypto/opk';
-import init_xeddsa, {
   convert_x25519_to_xeddsa,
   compute_determenistic_nonce,
   compute_nonce_point,
@@ -27,7 +24,8 @@ import init_xeddsa, {
   compute_signature,
   verify_signature,
   test_sign_and_verify,
-} from "/xeddsa-wasm/pkg";
+} from '@mascaro101/echo-protocol';
+import { generateOneTimePreKeys } from './Dashboard/Chat/utils/crypto/opk';
 import { connectWithoutAuth } from '../socket';
 
 const Register = () => {
@@ -83,7 +81,7 @@ const Register = () => {
 
       // Initialize the WASM module
       await init();
-      await init_xeddsa();
+      await init();
 
       console.log("WASM modules initialized");
 

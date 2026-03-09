@@ -2,7 +2,7 @@ import { base64ToArrayBuffer, arrayBufferToBase64, hexToUint8Array } from "../he
 import { setSessionKey, updateSavedMessages, getEphemeralData, setEphemeralData, setOwnEphemeralKeys, deleteOPKPrivateKey, storePeerIdentityKeys } from "./keyManagement";
 import { initializeDoubleRatchetResponse, continueDoubleRatchetChain } from "../crypto/dr";
 import { buildAadBytes, decryptWithAad } from "../crypto/aes";
-import init_dh, { generate_private_ephemeral_key, generate_public_ephemeral_key, diffie_hellman, hkdf_derive } from "dh-wasm";
+import init_dh, { generate_private_ephemeral_key, generate_public_ephemeral_key, diffie_hellman, hkdf_derive } from '@mascaro101/echo-protocol';
 
 import { chain_key_KDF, deriveChainKeys } from "../crypto/hkdf";
 import {

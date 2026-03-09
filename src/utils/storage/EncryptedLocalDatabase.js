@@ -1,6 +1,5 @@
 // Imports - use your existing WASM modules
-import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt } from 'aes-wasm';
-import dhInit, { hkdf_derive } from 'dh-wasm';
+import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt, hkdf_derive } from '@mascaro101/echo-protocol';
 
 // Constants
 const DB_NAME = 'EchoEncryptedDB';
@@ -224,7 +223,7 @@ class EncryptedLocalDatabase {
     async _deriveKey(password, salt) {
         console.log('[ELD] _deriveKey called');
         try {
-            await dhInit();
+            await init();
             console.log('[ELD] dh-wasm initialized');
 
             const encoder = new TextEncoder();

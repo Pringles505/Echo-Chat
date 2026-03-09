@@ -6,7 +6,7 @@ if (!globalThis.crypto) {
 }
 
 // Mock dh-wasm: private key = random seed XOR 0xAA, public key = private XOR 0x55
-vi.mock("dh-wasm", () => ({
+vi.mock('@mascaro101/echo-protocol', () => ({
   default: vi.fn(async () => {}),
   generate_private_ephemeral_key: vi.fn((seed) => {
     const out = new Uint8Array(32);

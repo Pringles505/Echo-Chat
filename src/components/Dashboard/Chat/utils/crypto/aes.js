@@ -1,5 +1,5 @@
-import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt, encrypt_aad, decrypt_aad } from 'aes-wasm';
-
+import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt, encrypt_aad, decrypt_aad, encrypt_aad_bytes, decrypt_aad_bytes } from '@mascaro101/echo-protocol';
+import { base64ToBytes, bytesToBase64 } from '../helpers';
 const normalizeAesKey = (key) => {
   if (key instanceof Uint8Array) return key;
   if (key instanceof ArrayBuffer) return new Uint8Array(key);
@@ -77,8 +77,18 @@ export const encryptWithAad = async (text, in_key, nonce, aadBytes) => {
     if (key.length !== 32) {
       throw new Error(`Invalid key length: ${key.length} (expected 32)`);
     }
+    
+    // Convert the plaintext to bytes
+    const textBytes = new TextEncoder().encode(text);
+
     // Call the WebAssembly encrypt function
-    const encryptedText = await encrypt_aad(text, key, nonce, aadBytes);
+    const encryptedText_bytes = await encrypt_aad_bytes(textBytes, key, nonce, aadBytes);
+    const encryptedText = bytesToBase64(encryptedText_bytes);
+
+    console.log("typeof encryptedText_bytes:", typeof encryptedText_bytes)
+    console.log(" encryptedText_bytes instanceof Uint8Array", encryptedText_bytes instanceof Uint8Array);
+    console.log("encryptedText_bytes?.length", encryptedText_bytes?.length);
+    
     return encryptedText;
   } catch (error) {
     console.error('Encryption error:', error);
@@ -86,7 +96,7 @@ export const encryptWithAad = async (text, in_key, nonce, aadBytes) => {
   }
 };
 
-export const decryptWithAad = async (text, in_key, nonce, aadBytes) => {
+export const decryptWithAad = async (ciphertext, in_key, nonce, aadBytes) => {
   console.log("🎈🎈Decrypting with", in_key)
   await init();
   // Ensure the derived key is computed before decryption
@@ -98,7 +108,11 @@ export const decryptWithAad = async (text, in_key, nonce, aadBytes) => {
     if (key.length !== 32) {
       throw new Error(`Invalid key length: ${key.length} (expected 32)`);
     }
-    return decrypt_aad(text, key, nonce, aadBytes);
+    const ciphertextBytes = base64ToBytes(ciphertext);
+    const decryptedBytes = await decrypt_aad_bytes(ciphertextBytes, key, nonce, aadBytes);
+    const decryptedText = new TextDecoder().decode(decryptedBytes);
+    return decryptedText;
+
   } catch (error) {
     console.error('Decryption error:', error);
     throw error;

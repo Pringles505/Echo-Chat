@@ -33,13 +33,9 @@ const km = vi.hoisted(() => ({
 vi.mock("../../api.js", () => api);
 vi.mock("../../chat/keyManagement.js", () => km);
 
-vi.mock("xeddsa-wasm", () => ({
-  default: (...args) => xeddsa.init(...args),
+vi.mock('@mascaro101/echo-protocol', () => ({
+  default: vi.fn(async () => {}),
   verify_signature: (...args) => xeddsa.verify_signature(...args),
-}));
-
-vi.mock("dh-wasm", () => ({
-  default: (...args) => dh.init(...args),
   diffie_hellman: (...args) => dh.diffie_hellman(...args),
   hkdf_derive: (...args) => dh.hkdf_derive(...args),
 }));

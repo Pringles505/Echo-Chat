@@ -7,46 +7,43 @@ if (!globalThis.crypto) globalThis.crypto = webcrypto;
 if (!globalThis.atob) globalThis.atob = (b64) => Buffer.from(b64, "base64").toString("binary");
 if (!globalThis.btoa) globalThis.btoa = (bin) => Buffer.from(bin, "binary").toString("base64");
 
-const toHex = (bytes) => Buffer.from(bytes).toString("hex");
-const fromHex = (hex) => new Uint8Array(Buffer.from(hex, "hex"));
-
-async function aesGcmEncryptHex({ plaintext, keyBytes, ivBytes, aadBytes }) {
+async function aesGcmEncryptBytes({ plaintextBytes, keyBytes, ivBytes, aadBytes }) {
   const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt"]);
   const ct = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv: ivBytes, additionalData: aadBytes },
     key,
-    new TextEncoder().encode(plaintext)
+    plaintextBytes
   );
-  return toHex(new Uint8Array(ct));
+  return new Uint8Array(ct);
 }
 
-async function aesGcmDecryptHex({ cipherHex, keyBytes, ivBytes, aadBytes }) {
+async function aesGcmDecryptBytes({ ciphertextBytes, keyBytes, ivBytes, aadBytes }) {
   const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
   const pt = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: ivBytes, additionalData: aadBytes },
     key,
-    fromHex(cipherHex)
+    ciphertextBytes
   );
-  return new TextDecoder().decode(pt);
+  return new Uint8Array(pt);
 }
 
 // ---- Mocks: use real AAD builder + wrappers, but implement AEAD via WebCrypto ----
-vi.mock("aes-wasm", () => ({
+vi.mock('@mascaro101/echo-protocol', () => ({
   default: vi.fn(async () => {}),
-  encrypt: vi.fn(async (text, key, nonce) => {
-    const aad = new Uint8Array();
-    return aesGcmEncryptHex({ plaintext: text, keyBytes: key, ivBytes: nonce, aadBytes: aad });
-  }),
-  decrypt: vi.fn(async (cipherHex, key, nonce) => {
-    const aad = new Uint8Array();
-    return aesGcmDecryptHex({ cipherHex, keyBytes: key, ivBytes: nonce, aadBytes: aad });
-  }),
-  encrypt_aad: vi.fn(async (text, key, nonce, aad) =>
-    aesGcmEncryptHex({ plaintext: text, keyBytes: key, ivBytes: nonce, aadBytes: aad })
+  encrypt: vi.fn(async (text) => text),
+  decrypt: vi.fn(async (text) => text),
+  encrypt_aad: vi.fn(async (text) => text),
+  decrypt_aad: vi.fn(async (text) => text),
+  encrypt_aad_bytes: vi.fn(async (plaintextBytes, key, nonce, aad) =>
+    aesGcmEncryptBytes({ plaintextBytes, keyBytes: key, ivBytes: nonce, aadBytes: aad })
   ),
-  decrypt_aad: vi.fn(async (cipherHex, key, nonce, aad) =>
-    aesGcmDecryptHex({ cipherHex, keyBytes: key, ivBytes: nonce, aadBytes: aad })
+  decrypt_aad_bytes: vi.fn(async (ciphertextBytes, key, nonce, aad) =>
+    aesGcmDecryptBytes({ ciphertextBytes, keyBytes: key, ivBytes: nonce, aadBytes: aad })
   ),
+  generate_private_ephemeral_key: vi.fn(async () => new Uint8Array(32).fill(7)),
+  generate_public_ephemeral_key: vi.fn(async () => new Uint8Array(32).fill(8)),
+  diffie_hellman: vi.fn(async () => new Uint8Array(32).fill(9)),
+  hkdf_derive: vi.fn(() => new Uint8Array(64).fill(6)),
 }));
 
 const chainKdfMock = vi.hoisted(() =>
@@ -66,14 +63,6 @@ vi.mock("../hkdf.js", () => ({
   }),
 }));
 
-// dh-wasm not used in these tests (no DH ratchet), but keep it present to avoid accidental WASM init.
-vi.mock("dh-wasm", () => ({
-  default: vi.fn(async () => {}),
-  generate_private_ephemeral_key: vi.fn(async () => new Uint8Array(32).fill(7)),
-  generate_public_ephemeral_key: vi.fn(async () => new Uint8Array(32).fill(8)),
-  diffie_hellman: vi.fn(async () => new Uint8Array(32).fill(9)),
-  hkdf_derive: vi.fn(() => new Uint8Array(64).fill(6)),
-}));
 
 // dr not used here; stub to avoid network/API calls if code path changes.
 vi.mock("../dr.js", () => ({
@@ -177,6 +166,7 @@ import { decryptIncomingMessage } from "../../chat/messageDecryption.js";
 
 function snapshot(userId) {
   const d = device(userId);
+  const toHex = (bytes) => Buffer.from(bytes).toString("hex");
   const snapMap = (m) => Object.fromEntries([...m.entries()].map(([k, v]) => [k, v instanceof Uint8Array ? toHex(v) : v]));
   const snapObjMap = (m) => Object.fromEntries([...m.entries()].map(([k, v]) => [k, JSON.parse(JSON.stringify(v))]));
   return {
@@ -343,4 +333,3 @@ describe("protocol adversarial: fail-closed without state desync", () => {
     expect(afterReplay).toEqual(beforeReplay);
   });
 });
-

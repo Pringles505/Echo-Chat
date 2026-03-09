@@ -43,7 +43,7 @@ const km = vi.hoisted(() => ({
     updateSavedMessages: vi.fn(),
 }));
 
-vi.mock("dh-wasm", () => ({
+vi.mock('@mascaro101/echo-protocol', () => ({
     default: async () => { },
     generate_private_ephemeral_key: vi.fn(),
     generate_public_ephemeral_key: vi.fn(),

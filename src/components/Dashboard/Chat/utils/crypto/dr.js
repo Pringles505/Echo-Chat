@@ -2,9 +2,7 @@ import { base64ToArrayBuffer } from '../helpers'
 
 import { fetchPublicIdentityKeyX25519, fetchPublicIdentityKeyEd25519, fetchPreKeyBundle } from '../api'
 
-import init_xeddsa, { verify_signature } from 'xeddsa-wasm';
-
-import init_dh, { diffie_hellman, hkdf_derive } from 'dh-wasm';
+import init, { verify_signature, diffie_hellman, hkdf_derive } from '@mascaro101/echo-protocol';
 
 import { getIdentityKeys, getOPKPrivateKey, getPeerIdentityKeys } from '../chat/keyManagement';
 
@@ -22,7 +20,7 @@ const peerIdentityChangedError = (peerId, savedPeer, fetchedPeer) => {
 };
 
 const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_private, publicEphemeralKey, privateKeyArray) => {
-    await init_dh();
+    await init();
 
     const bundle = await fetchPreKeyBundle(socket, targetUserId);
 
@@ -61,7 +59,7 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
 
     console.log('🗝️⚠️⚠️Init XEdDSA with', targetSignedPreKey, targetSignature, targetPublicIdentityKeyX25519);
 
-    await init_xeddsa();
+    await init();
     const isValidSignature = await verify_signature(
         targetSignature,
         targetSignedPreKey,
@@ -145,7 +143,7 @@ const continueDoubleRatchetChain = async (socket, targetUserId, previousTargetPu
     }
     console.log("🚧🚧Previous Target Public Ephemeral Key: ", previousTargetPublicEphemeralKey)
 
-    await init_dh();
+    await init();
     const DH4 = await diffie_hellman(privateEphemeralKey, previousTargetPublicEphemeralKey);
 
     const hkdf_expand = hkdf_derive(DH4, root_key, INFO_RK, 64);
@@ -159,7 +157,7 @@ const initializeDoubleRatchetResponse = async (socket, message, targetUserId, pr
     console.log("🚧🚧DR Response🚧🚧")
 
 
-    await init_dh();
+    await init();
     // Retrieve the privatePreKey from ELD
     const identityKeysResponse = await getIdentityKeys();
     const storedPrivatePreKey = identityKeysResponse?.privatePreKey;

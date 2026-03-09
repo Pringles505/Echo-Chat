@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { connectWithoutAuth } from '../socket';
 import { jwtDecode } from "jwt-decode";
 // import { Buffer } from "buffer";
-import init from "/dh-wasm/pkg";
+import init from '@mascaro101/echo-protocol';
 import Navbar from "../components/HomepageComponents/Navbar";
 import ParticlesBackground from "../components/HomepageComponents/ParticlesBackground";
 import WaveBackground from "../components/HomepageComponents/WaveBackground";

@@ -156,7 +156,7 @@ const km = vi.hoisted(() => ({
   updateSavedMessages: vi.fn(),
 }));
 
-vi.mock("dh-wasm", () => ({
+vi.mock('@mascaro101/echo-protocol', () => ({
   default: (...args) => dhWasm.init(...args),
   generate_private_ephemeral_key: (...args) => dhWasm.generate_private_ephemeral_key(...args),
   generate_public_ephemeral_key: (...args) => dhWasm.generate_public_ephemeral_key(...args),
