@@ -37,7 +37,13 @@ Developed by 2ºCEB students **Marcos Cabrero**, **Gonzalo de la Lastra**, and *
 - [Running](#running)  
 - [References](#references)  
 
-# Security Protocol
+<h1 align="center">
+    <img src="EchoProtocolLogo.png" width="400" alt="Echo Protocol Logo">
+</h1>
+
+The cryptographic primitives are built in Rust and compiled into javascrypt using WASM. [Echo-Protocol](https://github.com/Pringles505/Echo-Protocol) can be installed using:
+
+``` npm install @mascaro101/echo-protocol ```
 
 ## **X3DH (Extended Triple Diffie-Hellman)**
 X3DH is a key agreement protocol used to establish a shared secret between two parties (e.g., Alice and Bob) using public-key cryptography. It ensures **forward secrecy** and **deniability**.
@@ -161,24 +167,195 @@ To verify a signature, the verifier must follow these steps:
     The signature is then compared with the given signature. In the case it matches it's authorized
 
 
+## **Double Ratchet Algorithm**
 
+The Double Ratchet Algorithm is a **stateful key evolution protocol**
+used to provide secure messaging after an initial shared secret has been
+established (through **X3DH**). It ensures:
 
-   
----
+-   **Forward Secrecy** -- past messages remain secure if current keys
+    are compromised.\
+-   **Post-Compromise Security** -- security can recover after a
+    compromise once a new Diffie-Hellman exchange occurs.\
+-   **Message Confidentiality and Integrity** through continuously
+    evolving keys.
+
+------------------------------------------------------------------------
+
+### **Ratchet State**
+
+Each participant maintains a ratchet state containing:
+
+  Variable   Description
+  ---------- --------------------------------------------------------
+  `RK`       Root Key -- master key used to derive chain keys
+  `CKs`      Sending Chain Key
+  `CKr`      Receiving Chain Key
+  `DHs`      Local Diffie-Hellman key pair
+  `DHr`      Remote Diffie-Hellman public key
+  `Ns`       Number of messages sent in current sending chain
+  `Nr`       Number of messages received in current receiving chain
+  `PN`       Number of messages in the previous sending chain
+
+------------------------------------------------------------------------
+
+## **Key Derivation**
+
+All key updates rely on a **Key Derivation Function (KDF)**.
+
+Two KDF chains are used:
+
+### **Root Key Derivation**
+
+When a new Diffie-Hellman exchange occurs:
+
+    RK, CK = KDF_RK(RK, DH(DHs, DHr))
+
+Where:
+
+-   `RK` becomes the updated root key
+-   `CK` becomes a new chain key
+
+------------------------------------------------------------------------
+
+### **Message Key Derivation**
+
+For every message sent or received:
+
+    CK, MK = KDF_CK(CK)
+
+Where:
+
+-   `CK` becomes the next chain key
+-   `MK` is the message encryption key
+
+------------------------------------------------------------------------
+
+## **Algorithm Workflow**
+
+### **1. Initial State**
+
+After **X3DH** establishes the initial shared secret:
+
+    RK = SK
+    DHs = generate_DH_keypair()
+    DHr = received_DH_key
+    CKs = CKr = null
+    Ns = 0
+    Nr = 0
+    PN = 0
+
+The first sending chain is derived:
+
+    RK, CKs = KDF_RK(RK, DH(DHs, DHr))
+
+------------------------------------------------------------------------
+
+## **Sending a Message**
+
+When Alice sends a message:
+
+### **1. Derive Message Key**
+
+    CKs, MK = KDF_CK(CKs)
+
+### **2. Encrypt Message**
+
+    ciphertext = AEAD_Encrypt(MK, plaintext)
+
+### **3. Construct Header**
+
+The message header contains:
+
+    header = {
+        dh: DHs_public,
+        pn: PN,
+        n: Ns
+    }
+
+### **4. Update Counter**
+
+    Ns += 1
+
+------------------------------------------------------------------------
+
+## **Receiving a Message**
+
+When Bob receives a message:
+
+### **1. Check for New DH Key**
+
+If the received `dh` differs from `DHr`, perform a **DH Ratchet Step**.
+
+------------------------------------------------------------------------
+
+## **Diffie-Hellman Ratchet Step**
+
+When a new public key appears:
+
+### **1. Update Counters**
+
+    PN = Ns
+    Ns = 0
+    Nr = 0
+
+### **2. Update Receiving Chain**
+
+    DHr = received_dh
+    RK, CKr = KDF_RK(RK, DH(DHs, DHr))
+
+### **3. Generate New DH Key Pair**
+
+    DHs = generate_DH_keypair()
+
+### **4. Update Sending Chain**
+
+    RK, CKs = KDF_RK(RK, DH(DHs, DHr))
+
+This step **re-establishes cryptographic freshness**.
+
+------------------------------------------------------------------------
+
+## **Decrypting Messages**
+
+Once the correct receiving chain key is established:
+
+### **1. Derive Message Key**
+
+    CKr, MK = KDF_CK(CKr)
+
+### **2. Decrypt**
+
+    plaintext = AEAD_Decrypt(MK, ciphertext)
+
+### **3. Update Counter**
+
+    Nr += 1
+
+------------------------------------------------------------------------
+
+## **Handling Out-of-Order Messages**
+
+Messages may arrive out of order due to network conditions.
+
+To handle this, the algorithm stores **skipped message keys**:
+
+    MKSKIPPED[(dh, n)] = MK
+
+If a delayed message arrives later, the stored key can decrypt it
+without breaking the ratchet state.
+
+------------------------------------------------------------------------
 
 # Setup
 
 Install [**Rust**](https://rustup.rs/) with Rustup
 
-Install `wasm-pack`
+Install `Echo-Protocol` if needed
 ```bash
-cargo install wasm-pack
+npm install @mascaro101/echo-protocol
 ```
 
-Clone the project
-```bash
-git clone https://github.com/Mascaro101/Echo-Chat-App
-```
 Install Dependencies
 ```
 npm install
