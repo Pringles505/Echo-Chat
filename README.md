@@ -29,10 +29,12 @@ Developed by 2ºCEB students **Marcos Cabrero**, **Gonzalo de la Lastra**, and *
 
 ## Table of Contents  
 - [Security Protocol](#security-protocol)  
+  - [AEAD AES-256 (Authenticated Encryption with Associated Data)](#aead-aes-256-authenticated-encryption-with-associated-data) 
   - [X3DH (Extended Triple Diffie-Hellman)](#x3dh-extended-triple-diffie-hellman)  
   - [XEdDSA (EdDSA for X25519)](#xeddsa-eddsa-for-x25519)
   - [XEdDSA Signing](#xeddsa-signing)
   - [XEdDSA Verification](#xeddsa-verification)  
+  - [Double Ratchet Algorithm ](#double-ratchet-algorithm) 
 - [Setup](#setup)
 - [Running](#running)  
 - [References](#references)  
@@ -44,6 +46,70 @@ Developed by 2ºCEB students **Marcos Cabrero**, **Gonzalo de la Lastra**, and *
 The cryptographic primitives are built in Rust and compiled into javascrypt using WASM. [Echo-Protocol](https://github.com/Pringles505/Echo-Protocol) can be installed using:
 
 ``` npm install @mascaro101/echo-protocol ```
+
+## **AEAD AES-256 (Authenticated Encryption with Associated Data)**
+
+AEAD AES‑256 provides **confidentiality, integrity, and authenticity**
+for encrypted messages.
+
+Later we will use AEAD AES-256 alongside the Double Ratchet algorithm to
+encrypt each message using a **unique message key (`MK`)** derived from
+the ratchet chain.
+
+## **Core Components**
+  `AES‑256`                      Symmetric block cipher using a 256‑bit key
+  `Nonce`                        Unique value used once per encryption operation
+  `Ciphertext`                   Encrypted output of the plaintext
+  `Authentication Tag`           Integrity check generated during encryption
+  `AAD`                          Associated data authenticated but not encrypted (e.g., message headers)
+
+## **Encryption Process**
+
+-   `MK`  message key (256‑bit)
+-   `Nonce`   unique 96‑bit value
+-   `Plaintext`   message content
+-   `AAD`   optional associated data
+
+Encryption is performed as:
+
+    ciphertext, tag = AES256_GCM_Encrypt(MK, Nonce, plaintext, AAD)
+
+The result consists of:
+
+    message = {
+        nonce,
+        ciphertext,
+        tag
+    }
+
+The `AAD` is not encrypted but is included in the authentication
+calculation.
+
+## **Decryption Process**
+
+Upon receiving a message:
+
+    plaintext = AES256_GCM_Decrypt(MK, Nonce, ciphertext, tag, AAD)
+
+If authentication fails:
+
+-   the message is **rejected**
+-   no plaintext is returned
+
+This ensures that any tampering with the ciphertext or associated data
+is detected.
+
+## **Nonce Requirements**
+
+A nonce **must never be reused with the same key**.
+
+Typical construction:
+
+    Nonce = message_counter || random_bytes
+
+In ratcheted messaging systems, the nonce can be derived from the
+**message number (`n`)** to guarantee uniqueness.
+
 
 ## **X3DH (Extended Triple Diffie-Hellman)**
 X3DH is a key agreement protocol used to establish a shared secret between two parties (e.g., Alice and Bob) using public-key cryptography. It ensures **forward secrecy** and **deniability**.
