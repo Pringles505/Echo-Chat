@@ -412,7 +412,7 @@ export const decryptIncomingMessage = async (
     // Save the DECRYPTED message to local storage
     // If setMessages is provided (foreground mode), update state
     // If not provided (background mode), just save to localStorage
-    updateSavedMessages(
+    await updateSavedMessages(
       userId,
       targetUserId,
       decryptedMessage,

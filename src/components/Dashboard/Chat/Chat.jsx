@@ -26,6 +26,7 @@ import {
 } from "./utils/chat/keyManagement";
 
 import { encryptOutgoingMessage } from "./utils/chat/messageEncryption";
+import { decryptIncomingMessage } from "./utils/chat/messageDecryption";
 
 // Main chat component
 function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
@@ -116,6 +117,17 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
 
     // Handle incoming chat messages in real-time
     const handleChatMessage = async (payload) => {
+      const ensurePrivateKey = async () => {
+        if (privateKeyArray instanceof Uint8Array) return privateKeyArray;
+        const keys = await getIdentityKeys();
+        if (keys?.privateKeyX25519) {
+          const loaded = base64ToArrayBuffer(keys.privateKeyX25519);
+          setPrivateKeyArray(loaded);
+          return loaded;
+        }
+        throw new Error("No private key available in ELD");
+      };
+
       // Check if the payload is an array or a single message
       const messages = Array.isArray(payload) ? payload : [payload];
 
@@ -162,7 +174,18 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
               continue;
             }
 
-            // Dashboard handles decryption — Chat reloads via localStorageUpdated event
+            if (activeChat === sender) {
+              const resolvedPrivateKey = await ensurePrivateKey();
+              await decryptIncomingMessage(
+                message,
+                nonce,
+                userId,
+                sender,
+                resolvedPrivateKey,
+                socket,
+                setMessages
+              );
+            }
           } catch (err) {
             console.error("❌ Error handling message:", err, message);
             continue;
@@ -298,6 +321,10 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
         outgoing.messageNumber = last + 1;
         ack = await sendOnce(outgoing);
       }
+    }
+
+    if (!ack?.success) {
+      throw new Error(ack?.error || "Failed to send message");
     }
 
     if (ack?.success && outgoing?.peerIdentityToPin) {

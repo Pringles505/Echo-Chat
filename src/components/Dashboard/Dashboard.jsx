@@ -370,6 +370,13 @@ const Dashboard = () => {
           const senderId = messageSenderId;
           console.log('✅ Processing notification for sender:', senderId);
 
+          // The active Chat component decrypts and stores messages for the currently open
+          // conversation. Skipping them here avoids double-processing ratchet state.
+          if (senderId === activeChatId) {
+            console.log('⏭️ Active chat message will be handled by Chat:', senderId);
+            continue;
+          }
+
           // Skip messages already decrypted and saved in ELD
           const existingMessages = await getSavedMessages(userIdRef.current, senderId);
           if (existingMessages.some(msg => msg._id === message._id)) {

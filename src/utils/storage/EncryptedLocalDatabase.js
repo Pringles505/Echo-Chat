@@ -20,6 +20,7 @@ const STORES = {
     PREVIOUS_SENDING_NUMBER: 'previous_sending_number',
     SKIPPED_MESSAGE_KEYS: 'skipped_message_keys',
     OPK_PRIVATE_KEYS: 'opk_private_keys',
+    MLS_GROUP_STATES: 'mls_group_states',
 };
 
 class EncryptedLocalDatabase {
@@ -131,6 +132,12 @@ class EncryptedLocalDatabase {
                 if (!db.objectStoreNames.contains(STORES.OPK_PRIVATE_KEYS)) {
                     const store = db.createObjectStore(STORES.OPK_PRIVATE_KEYS, { keyPath: 'id' });
                     store.createIndex('userId', 'userId', { unique: false });
+                }
+
+                // MLS_GROUP_STATES - index by groupId
+                if (!db.objectStoreNames.contains(STORES.MLS_GROUP_STATES)) {
+                    const store = db.createObjectStore(STORES.MLS_GROUP_STATES, { keyPath: 'id' });
+                    store.createIndex('groupId', 'groupId', { unique: true });
                 }
             };
         });
@@ -817,6 +824,31 @@ class EncryptedLocalDatabase {
         this._ensureUnlocked();
         const records = await this._getAllByIndex(STORES.OPK_PRIVATE_KEYS, 'userId', this.currentUserId);
         return records.length;
+    }
+
+    async storeMlsGroupState(groupId, state) {
+        this._ensureUnlocked();
+        const encrypted = await this._encrypt(state);
+        await this._put(STORES.MLS_GROUP_STATES, {
+            id: `mlsGroupState-${groupId}`,
+            groupId,
+            userId: this.currentUserId,
+            updatedAt: Date.now(),
+            ...encrypted
+        });
+    }
+
+    async getMlsGroupState(groupId) {
+        this._ensureUnlocked();
+        const record = await this._get(STORES.MLS_GROUP_STATES, `mlsGroupState-${groupId}`);
+        if (!record) return null;
+        const decrypted = await this._decrypt(record.ciphertext, record.nonce);
+        return JSON.parse(decrypted);
+    }
+
+    async deleteMlsGroupState(groupId) {
+        this._ensureUnlocked();
+        await this._delete(STORES.MLS_GROUP_STATES, `mlsGroupState-${groupId}`);
     }
 }
 // Create singleton instance

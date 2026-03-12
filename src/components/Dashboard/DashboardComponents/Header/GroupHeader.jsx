@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { MoreHorizontal, Plus, Search, X } from "lucide-react";
 import { getSocket } from "../../../../socket";
 import { formatProfileImage } from "../utils/helpers";
+
+import {
+  loadGroupState,
+  saveGroupState,
+  buildAddCommit,
+  buildRemoveCommit
+} from "../../Chat/utils/crypto/groupCryptoProvider";
 
 const GroupHeader = ({ groupId, groupName, userId }) => {
   const socket = useMemo(() => getSocket(), []);
@@ -15,21 +22,69 @@ const GroupHeader = ({ groupId, groupName, userId }) => {
   const [searchResult, setSearchResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const refresh = () => {
+  const [groupMeta, setGroupMeta] = useState({
+    mlsEnabled: false,
+    epoch: 0,
+    cipherSuite: null,
+  });
+
+  const refresh = useCallback(() => {
     if (!groupId) return;
     socket.emit("openGroup", { groupId }, (res) => {
       if (!res?.success) return;
       setMembers(Array.isArray(res.members) ? res.members : []);
       setRole(res?.membership?.role ?? null);
+
+      setGroupMeta({
+        mlsEnabled: Boolean(res?.group?.mlsEnabled),
+        epoch: Number.isInteger(res?.group?.epoch) ? res.group.epoch : 0,
+        cipherSuite: res?.group?.cipherSuite ?? null,
+      });
     });
-  };
+  }, [groupId, socket]);
+
+  const openGroupDetails = () =>
+    new Promise((resolve, reject) => {
+      if (!groupId) {
+        reject(new Error("Missing groupId"));
+        return;
+      }
+
+      socket.emit("openGroup", { groupId }, (res) => {
+        if (!res?.success) {
+          reject(new Error(res?.error || "Failed to open group"));
+          return;
+        }
+
+        resolve(res);
+      });
+    });
+
+  const emitWithAck = (eventName, payload, fallbackError) =>
+    new Promise((resolve, reject) => {
+      socket.emit(eventName, payload, (ack) => {
+        if (!ack?.success) {
+          reject(new Error(ack?.error || fallbackError));
+          return;
+        }
+        resolve(ack);
+      });
+    });
+
+  const toRoster = (groupMembers) => (Array.isArray(groupMembers) ? groupMembers : [])
+    .map((m) => ({
+      userId: String(m.userId),
+      username: m.username ?? "",
+      leafIndex: m.leafIndex,
+    }))
+    .filter((m) => m.userId && Number.isInteger(m.leafIndex))
+    .sort((a, b) => a.leafIndex - b.leafIndex);
 
   useEffect(() => {
     refresh();
     setMenuOpen(false);
     setMembersOpen(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId]);
+  }, [groupId, refresh]);
 
   useEffect(() => {
     const handleChanged = (evt) => {
@@ -42,7 +97,7 @@ const GroupHeader = ({ groupId, groupName, userId }) => {
       socket.off("groupMemberAdded", handleChanged);
       socket.off("groupMemberRemoved", handleChanged);
     };
-  }, [groupId, socket]);
+  }, [groupId, refresh, socket]);
 
   const memberCount = members.length;
   const subtitle = role === "admin" ? `Admin · ${memberCount} members` : `${memberCount} members`;
@@ -70,27 +125,107 @@ const GroupHeader = ({ groupId, groupName, userId }) => {
     });
   };
 
-  const handleAdd = (memberId) => {
+  const handleAdd = async (memberId) => {
     if (!canAdd) return;
     if (!memberId) return;
     setLoading(true);
-    socket.emit("addGroupMember", { groupId, memberId }, (ack) => {
-      setLoading(false);
-      if (!ack?.success) return;
+
+    try {
+      await emitWithAck("addGroupMember", { groupId, memberId }, "Failed to add group member");
       setSearchTerm("");
       setSearchResult(null);
+
+      if (!groupMeta.mlsEnabled) {
+        refresh();
+        return;
+      }
+
+      const groupRes = await openGroupDetails();
+      const roster = toRoster(groupRes.members);
+      const addedMember = roster.find((m) => String(m.userId) === String(memberId));
+
+      if (!addedMember) {
+        throw new Error("Added member missing from refreshed group roster");
+      }
+
+      const localState = await loadGroupState(groupId);
+      if (!localState) {
+        throw new Error("Missing local MLS state for commit generation");
+      }
+
+      const { commit, welcome, nextState } = await buildAddCommit({
+        state: localState,
+        newMember: addedMember,
+      });
+
+      await emitWithAck("sendGroupCommit", { groupId, commit }, "Failed to send group commit");
+      await emitWithAck(
+        "sendGroupWelcome",
+        {
+          groupId,
+          recipientUserId: addedMember.userId,
+          welcome,
+        },
+        "Failed to send group welcome"
+      );
+
+      await saveGroupState(groupId, nextState);
       refresh();
-    });
+    } catch (err) {
+      console.error("[GroupHeader] Failed to add member:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRemove = (memberId) => {
+  const handleRemove = async (memberId) => {
     if (!memberId) return;
     setLoading(true);
-    socket.emit("removeGroupMember", { groupId, memberId }, (ack) => {
-      setLoading(false);
-      if (!ack?.success) return;
+
+    try {
+      if (!groupMeta.mlsEnabled) {
+        await emitWithAck(
+          "removeGroupMember",
+          { groupId, memberId },
+          "Failed to remove group member"
+        );
+        refresh();
+        return;
+      }
+
+      const localState = await loadGroupState(groupId);
+      if (!localState) {
+        throw new Error("Missing local MLS state for remove commit generation");
+      }
+
+      const { commit, nextState } = await buildRemoveCommit({
+        state: localState,
+        targetUserId: memberId,
+      });
+
+      const isSelfRemoval = String(memberId) === String(userId);
+
+      if (isSelfRemoval) {
+        await emitWithAck("sendGroupCommit", { groupId, commit }, "Failed to send group commit");
+      }
+
+      await emitWithAck(
+        "removeGroupMember",
+        { groupId, memberId },
+        "Failed to remove group member"
+      );
+
+      if (!isSelfRemoval) {
+        await emitWithAck("sendGroupCommit", { groupId, commit }, "Failed to send group commit");
+      }
+
+      await saveGroupState(groupId, nextState);
       refresh();
-    });
+    } catch (err) {
+      console.error("[GroupHeader] Failed to remove member:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

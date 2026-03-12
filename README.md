@@ -426,23 +426,6 @@ Install Dependencies
 ```
 npm install
 ```
-## Building Rust Modules
-Navigate and build the Rust AES-256 module
-```
-cd aes-wasm
-wasm-pack build --target web
-```
-Navigate and build the Rust Elliptic Curve Diffie-Hellman module
-```
-cd dh-wasm
-wasm-pack build --target web
-```
-
-Navigate and build the Rust XEdDSA Module
-```
-cd xeddsa-wasm
-wasm-pack build --target web
-```
 
 # Running
 
