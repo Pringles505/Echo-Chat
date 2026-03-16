@@ -3,7 +3,7 @@ import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt, hkdf_derive } fro
 
 // Constants
 const DB_NAME = 'EchoEncryptedDB';
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 
 const STORES = {
     META: 'meta',              //SALTS
@@ -143,11 +143,30 @@ class EncryptedLocalDatabase {
         });
     }
 
+    async _openStore(storeName, mode) {
+        await this.initializeDB();
+
+        if (!this.db.objectStoreNames.contains(storeName)) {
+            // If code expects a newer schema than the current open handle, reopen once.
+            if (this.db.version < DB_VERSION) {
+                this.db.close();
+                this.db = null;
+                await this.initializeDB();
+            }
+
+            if (!this.db.objectStoreNames.contains(storeName)) {
+                throw new Error(`IndexedDB store "${storeName}" is missing. Reload the app to apply the latest local database migration.`);
+            }
+        }
+
+        const tx = this.db.transaction(storeName, mode);
+        return { tx, store: tx.objectStore(storeName) };
+    }
+
     // PUT - insert or update a record
     async _put(storeName, record) {
+        const { store } = await this._openStore(storeName, 'readwrite');
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction(storeName, 'readwrite');
-            const store = tx.objectStore(storeName);
             const request = store.put(record);
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
@@ -156,9 +175,8 @@ class EncryptedLocalDatabase {
 
     // GET - retrieve by primary key
     async _get(storeName, key) {
+        const { store } = await this._openStore(storeName, 'readonly');
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction(storeName, 'readonly');
-            const store = tx.objectStore(storeName);
             const request = store.get(key);
             request.onsuccess = () => resolve(request.result || null);
             request.onerror = () => reject(request.error);
@@ -167,9 +185,8 @@ class EncryptedLocalDatabase {
 
     // DELETE - remove by primary key
     async _delete(storeName, key) {
+        const { store } = await this._openStore(storeName, 'readwrite');
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction(storeName, 'readwrite');
-            const store = tx.objectStore(storeName);
             const request = store.delete(key);
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
@@ -178,9 +195,8 @@ class EncryptedLocalDatabase {
 
     // GET ALL BY INDEX - retrieve all records matching an index value
     async _getAllByIndex(storeName, indexName, value) {
+        const { store } = await this._openStore(storeName, 'readonly');
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction(storeName, 'readonly');
-            const store = tx.objectStore(storeName);
             const index = store.index(indexName);
             const request = index.getAll(value);
             request.onsuccess = () => resolve(request.result || []);

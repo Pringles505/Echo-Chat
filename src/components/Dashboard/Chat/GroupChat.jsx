@@ -14,6 +14,8 @@ import {
   processWelcome,
 } from "./utils/crypto/groupCryptoProvider";
 
+import { getIdentityKeys } from "./utils/chat/keyManagement";
+
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 const MLS_UNAVAILABLE_TEXT = "[Unable to decrypt message]";
@@ -49,10 +51,10 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
   const buildRoster = (serverMembers) =>
     Array.isArray(serverMembers)
       ? serverMembers.map((member, index) => ({
-          userId: String(member?.userId ?? member?.id ?? ""),
-          username: member?.username ?? "Member",
-          leafIndex: Number.isInteger(member?.leafIndex) ? member.leafIndex : index,
-        }))
+        userId: String(member?.userId ?? member?.id ?? ""),
+        username: member?.username ?? "Member",
+        leafIndex: Number.isInteger(member?.leafIndex) ? member.leafIndex : index,
+      }))
       : [];
 
   const parseArtifactPayload = (message) => {
@@ -76,7 +78,8 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       if (responseGroup?.mlsEnabled && String(responseGroup?.createdBy ?? "") !== String(userId)) {
         return saveGroupState(activeGroupId, {
           groupId: activeGroupId,
-          epoch: Number.isInteger(responseGroup?.epoch) ? responseGroup.epoch : 0,
+          // New members bootstrap from the welcome/commit artifacts in message history.
+          epoch: 0,
           cipherSuite: responseGroup?.cipherSuite ?? DEFAULT_MLS_CIPHER_SUITE,
           selfUserId: userId,
           selfLeafIndex: serverLeafIndex,
@@ -122,14 +125,18 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       message?.username || (String(message?.userId) === String(userId) ? username : "Member");
 
     let text = "";
+    let nextState = cryptoState;
 
     if (meta?.mlsEnabled && message?.contentType === "application" && message?.headerB64 && message?.ciphertextB64) {
       try {
-        const plaintextBytes = await decryptApplicationMessage({
+        const decrypted = await decryptApplicationMessage({
           state: cryptoState,
           header: message.headerB64,
           ciphertext: message.ciphertextB64,
+          includeNewState: true,
         });
+        const plaintextBytes = decrypted?.plaintextBytes ?? decrypted;
+        nextState = decrypted?.newState ?? cryptoState;
         text = TEXT_DECODER.decode(plaintextBytes);
       } catch (err) {
         console.error("[GroupChat] Failed to decrypt MLS message:", err);
@@ -142,12 +149,15 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
     }
 
     return {
-      _id: id,
-      userId: String(message?.userId ?? ""),
-      username: fromUsername,
-      text,
-      createdAt,
-      seenStatus: true,
+      formattedMessage: {
+        _id: id,
+        userId: String(message?.userId ?? ""),
+        username: fromUsername,
+        text,
+        createdAt,
+        seenStatus: true,
+      },
+      nextState,
     };
   };
 
@@ -155,44 +165,60 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
     let replayState = initialState;
     let replayMeta = initialMeta;
     const formattedMessages = [];
+    const sortedMessages = [...(Array.isArray(fetchedMessages) ? fetchedMessages : [])].sort((a, b) => {
+      const seqA = Number.isInteger(a?.seq) ? a.seq : Number.MAX_SAFE_INTEGER;
+      const seqB = Number.isInteger(b?.seq) ? b.seq : Number.MAX_SAFE_INTEGER;
+      return seqA - seqB;
+    });
 
-    for (const message of Array.isArray(fetchedMessages) ? fetchedMessages : []) {
-      if (initialMeta?.mlsEnabled && message?.contentType === "commit") {
+    // Load once for all commits/welcomes in this replay
+    const identityKeys = await getIdentityKeys();   // add this import at the top
+    const myInitPrivKeyB64 = identityKeys?.privateKeyX25519 ?? null;
+
+    for (const message of sortedMessages) {
+      if (initialMeta?.mlsEnabled && message?.contentType === 'commit') {
         const commit = parseArtifactPayload(message);
         if (!commit) continue;
+        if (Number.isInteger(replayState?.epoch) && commit.epoch <= replayState.epoch) {
+          continue;
+        }
 
-        replayState = await applyCommit({
-          state: replayState,
-          commit,
-        });
-        replayState = await saveGroupState(activeGroupId, replayState);
-        replayMeta = {
-          ...replayMeta,
-          epoch: Number.isInteger(commit?.epoch) ? commit.epoch : replayMeta.epoch,
-        };
+        try {
+          replayState = await applyCommit({ state: replayState, commit, myInitPrivKeyB64 });
+          replayState = await saveGroupState(activeGroupId, replayState);
+          replayMeta = {
+            ...replayMeta,
+            epoch: Number.isInteger(commit?.epoch) ? commit.epoch : replayMeta.epoch,
+          };
+        } catch (err) {
+          console.warn("[GroupChat] Skipping stored MLS commit during replay:", err);
+        }
         continue;
       }
 
-      if (initialMeta?.mlsEnabled && message?.contentType === "welcome") {
+      if (initialMeta?.mlsEnabled && message?.contentType === 'welcome') {
         const welcome = parseArtifactPayload(message);
-        if (!welcome || String(welcome.recipientUserId ?? "") !== String(userId)) continue;
+        if (!welcome || String(welcome.recipientUserId ?? '') !== String(userId)) continue;
+        const hasKeyMaterial = Boolean(replayState?.applicationSecretB64 || replayState?.groupKeyB64);
+        if (hasKeyMaterial && Number.isInteger(replayState?.epoch) && welcome.epoch <= replayState.epoch) {
+          continue;
+        }
 
-        replayState = await processWelcome({
-          welcome,
-          selfUserId: userId,
-        });
-        replayState = await saveGroupState(activeGroupId, replayState);
+        try {
+          replayState = await processWelcome({ welcome, selfUserId: userId, myInitPrivKeyB64 });
+          replayState = await saveGroupState(activeGroupId, replayState);
+        } catch (err) {
+          console.warn("[GroupChat] Skipping stored MLS welcome during replay:", err);
+        }
         continue;
       }
 
-      formattedMessages.push(await formatMessage(message, replayState, replayMeta));
+      const formatted = await formatMessage(message, replayState, replayMeta);
+      replayState = formatted.nextState ?? replayState;
+      formattedMessages.push(formatted.formattedMessage);
     }
 
-    return {
-      formattedMessages,
-      replayState,
-      replayMeta,
-    };
+    return { formattedMessages, replayState, replayMeta };
   };
 
   useEffect(() => {
@@ -272,8 +298,16 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
         groupMetaRef.current
       );
 
+      if (formatted.nextState && formatted.nextState !== groupCryptoStateRef.current) {
+        const persistedState = await saveGroupState(activeGroupId, formatted.nextState);
+        groupCryptoStateRef.current = persistedState;
+        if (!cancelled) {
+          setGroupCryptoState(persistedState);
+        }
+      }
+
       if (!cancelled) {
-        setMessages((prev) => [...prev, formatted]);
+        setMessages((prev) => [...prev, formatted.formattedMessage]);
       }
     };
 
@@ -312,14 +346,18 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       if (String(groupId ?? "") !== String(activeGroupId)) return;
 
       try {
+        const identityKeys = await getIdentityKeys();
+        const myInitPrivKeyB64 = identityKeys?.privateKeyX25519 ?? null;
+
         const nextState = await processWelcome({
-          welcome, 
+          welcome,
           selfUserId: userId,
+          myInitPrivKeyB64,
         });
 
         const persistedState = await saveGroupState(activeGroupId, nextState);
 
-        if (cancelled) return;  
+        if (cancelled) return;
         setGroupCryptoState(persistedState);
         groupCryptoStateRef.current = persistedState;
       } catch (err) {
@@ -331,9 +369,13 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       if (String(groupId ?? "") !== String(activeGroupId)) return;
 
       try {
+        const identityKeys = await getIdentityKeys();
+        const myInitPrivKeyB64 = identityKeys?.privateKeyX25519 ?? null;
+
         const nextState = await applyCommit({
           state: groupCryptoStateRef.current,
           commit,
+          myInitPrivKeyB64,
         });
         const persistedState = await saveGroupState(activeGroupId, nextState);
 

@@ -130,6 +130,14 @@ describe("GroupHeader MLS membership updates", () => {
 
         if (event === "sendGroupCommit" || event === "sendGroupWelcome") {
           callback?.({ success: true });
+          return;
+        }
+
+        if (event === "fetchKeyPackage") {
+          callback?.({
+            success: true,
+            initKeyB64: payload.userId === "bob" ? "bob-init-key-b64" : "key-init-b64",
+          });
         }
       }),
       on: vi.fn(),
@@ -222,6 +230,10 @@ describe("GroupHeader MLS membership updates", () => {
     expect(buildAddCommitMock).toHaveBeenCalledWith({
       state: expect.objectContaining({ groupId: "group-1", selfLeafIndex: 0 }),
       newMember: { userId: "bob", username: "Bob", leafIndex: 1 },
+      memberInitKeys: [
+        { userId: "alice", leafIndex: 0, initKeyB64: "key-init-b64" },
+        { userId: "bob", leafIndex: 1, initKeyB64: "bob-init-key-b64" },
+      ],
     });
     expect(socket.emit).toHaveBeenCalledWith(
       "sendGroupCommit",
@@ -284,6 +296,7 @@ describe("GroupHeader MLS membership updates", () => {
     expect(buildRemoveCommitMock).toHaveBeenCalledWith({
       state: expect.objectContaining({ groupId: "group-1", selfLeafIndex: 0 }),
       targetUserId: "bob",
+      memberInitKeys: [{ userId: "alice", leafIndex: 0, initKeyB64: "key-init-b64" }],
     });
     expect(socket.emit).toHaveBeenCalledWith(
       "sendGroupCommit",

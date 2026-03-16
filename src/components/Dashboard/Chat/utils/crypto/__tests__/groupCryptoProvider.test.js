@@ -1,12 +1,77 @@
-import { webcrypto } from 'node:crypto';
+import { webcrypto, createCipheriv, createDecipheriv } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-if (!globalThis.crypto) {
-  globalThis.crypto = webcrypto;
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
+if (!globalThis.atob) globalThis.atob = (b64) => Buffer.from(b64, 'base64').toString('binary');
+if (!globalThis.btoa) globalThis.btoa = (bin) => Buffer.from(bin, 'binary').toString('base64');
+
+function encodeText(value) {
+  return new TextEncoder().encode(value);
 }
 
-const encryptWithAadMock = vi.fn();
-const decryptWithAadMock = vi.fn();
+function deriveBytes(length, ...parts) {
+  const out = new Uint8Array(length);
+  const sources = parts.map((part) => (part instanceof Uint8Array ? part : new Uint8Array(part)));
+  for (let i = 0; i < out.length; i++) {
+    let value = i;
+    for (const source of sources) {
+      value = (value + (source[i % source.length] || 0)) & 0xff;
+    }
+    out[i] = value;
+  }
+  return out;
+}
+
+vi.mock('@mascaro101/echo-protocol', () => {
+  const aesgcmEncryptSync = (plaintext, key, nonce, aad) => {
+    const cipher = createCipheriv('aes-256-gcm', Buffer.from(key), Buffer.from(nonce));
+    cipher.setAAD(Buffer.from(aad));
+    const enc = Buffer.concat([cipher.update(Buffer.from(plaintext)), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return new Uint8Array(Buffer.concat([enc, tag]));
+  };
+
+  const aesgcmDecryptSync = (ciphertext, key, nonce, aad) => {
+    const buf = Buffer.from(ciphertext);
+    const decipher = createDecipheriv('aes-256-gcm', Buffer.from(key), Buffer.from(nonce));
+    decipher.setAAD(Buffer.from(aad));
+    decipher.setAuthTag(buf.subarray(buf.length - 16));
+    return new Uint8Array(
+      Buffer.concat([decipher.update(buf.subarray(0, buf.length - 16)), decipher.final()]),
+    );
+  };
+
+  return {
+    default: vi.fn(async () => {}),
+    encrypt_aad_bytes: vi.fn((pt, key, nonce, aad) => aesgcmEncryptSync(pt, key, nonce, aad)),
+    decrypt_aad_bytes: vi.fn((ct, key, nonce, aad) => aesgcmDecryptSync(ct, key, nonce, aad)),
+    diffie_hellman: vi.fn((a, b) => new Uint8Array(32).map((_, index) => a[index] ^ b[index])),
+    generate_private_ephemeral_key: vi.fn((rand) => new Uint8Array(rand).slice(0, 32)),
+    generate_public_ephemeral_key: vi.fn((priv) => new Uint8Array(priv).slice(0, 32)),
+    hkdf_derive: vi.fn((ikm, _salt, info, len) => deriveBytes(len, new Uint8Array(ikm), new Uint8Array(info))),
+  };
+});
+
+vi.mock('../keySchedule.js', () => ({
+  advanceEpoch: vi.fn(async ({ initSecret, commitSecret, groupId, epoch }) => {
+    const epochSecret = deriveBytes(32, initSecret, commitSecret, encodeText(`${groupId}|${epoch}|epoch`));
+    return {
+      epochSecret,
+      applicationSecret: deriveBytes(32, epochSecret, encodeText('encryption')),
+      senderDataSecret: deriveBytes(32, epochSecret, encodeText('sender_data')),
+      nextInitSecret: deriveBytes(32, epochSecret, encodeText('init')),
+    };
+  }),
+  deriveSecret: vi.fn(async (secret, label) => deriveBytes(32, secret, encodeText(label))),
+  expandWithLabel: vi.fn(async (secret, label, context, length) => deriveBytes(length, secret, encodeText(label), context)),
+  deriveAppKeyAndNonce: vi.fn(async (applicationSecret, senderLeafIndex, generation) => ({
+    key: deriveBytes(32, applicationSecret, encodeText(`key|${senderLeafIndex}|${generation}`)),
+    nonce: deriveBytes(12, applicationSecret, encodeText(`nonce|${senderLeafIndex}|${generation}`)),
+  })),
+  ratchetAppSecret: vi.fn(async (applicationSecret, senderLeafIndex, generation) => (
+    deriveBytes(32, applicationSecret, encodeText(`secret|${senderLeafIndex}|${generation}`))
+  )),
+}));
 
 vi.mock('../../../../../../utils/storage/EncryptedLocalDatabase', () => ({
   default: {
@@ -16,519 +81,293 @@ vi.mock('../../../../../../utils/storage/EncryptedLocalDatabase', () => ({
   },
 }));
 
-vi.mock('../aes', () => ({
-  encryptWithAad: (...args) => encryptWithAadMock(...args),
-  decryptWithAad: (...args) => decryptWithAadMock(...args),
-}));
-
 const { bytesToBase64 } = await import('../../helpers');
 const {
   applyCommit,
   buildAddCommit,
+  buildInitialWelcomes,
   buildRemoveCommit,
   createNewGroupState,
   decryptApplicationMessage,
   encryptApplicationMessage,
   processWelcome,
-} = await import('../groupCryptoProvider');
+} = await import('../groupCryptoProvider.js');
 
-describe('groupCryptoProvider encryptApplicationMessage', () => {
-  beforeEach(() => {
-    encryptWithAadMock.mockReset();
-    decryptWithAadMock.mockReset();
-    encryptWithAadMock.mockResolvedValue('ciphertext-b64');
-    decryptWithAadMock.mockResolvedValue('hello group');
+const ALICE_KEY = bytesToBase64(new Uint8Array(32).fill(0x01));
+const BOB_KEY = bytesToBase64(new Uint8Array(32).fill(0x02));
+const CAROL_KEY = bytesToBase64(new Uint8Array(32).fill(0x03));
+
+const ALICE_BOB_ROSTER = [
+  { userId: 'alice', username: 'Alice', leafIndex: 0 },
+  { userId: 'bob', username: 'Bob', leafIndex: 1 },
+];
+
+const THREE_PERSON_ROSTER = [
+  { userId: 'alice', username: 'Alice', leafIndex: 0 },
+  { userId: 'bob', username: 'Bob', leafIndex: 1 },
+  { userId: 'carol', username: 'Carol', leafIndex: 2 },
+];
+
+const ALICE_BOB_INIT_KEYS = [
+  { userId: 'alice', leafIndex: 0, initKeyB64: ALICE_KEY },
+  { userId: 'bob', leafIndex: 1, initKeyB64: BOB_KEY },
+];
+
+const ALL_INIT_KEYS = [
+  { userId: 'alice', leafIndex: 0, initKeyB64: ALICE_KEY },
+  { userId: 'bob', leafIndex: 1, initKeyB64: BOB_KEY },
+  { userId: 'carol', leafIndex: 2, initKeyB64: CAROL_KEY },
+];
+
+async function buildCreatorAndWelcomes(groupId, roster, memberInitKeys) {
+  const creatorState = await createNewGroupState({
+    groupId,
+    creatorUserId: 'alice',
+    roster,
+    memberInitKeys,
   });
+  const welcomes = await buildInitialWelcomes({ creatorState, roster, memberInitKeys });
+  return { creatorState, welcomes };
+}
 
-  it('builds an MLS header, encrypts with the stored group key, and advances the counter', async () => {
-    const groupKeyBytes = new Uint8Array(32).fill(7);
-    const state = {
-      stateVersion: 1,
-      groupId: 'group-1',
-      epoch: 3,
-      cipherSuite: 'MLS-MVP/X25519_AES256GCM_SHA256',
-      selfUserId: 'alice',
-      selfLeafIndex: 2,
-      applicationMessageCounter: 4,
-      groupKeyB64: bytesToBase64(groupKeyBytes),
-      roster: [],
-      tree: { nodes: [], root: null },
-      secrets: { epochSecretsB64: null, initSecretB64: null },
-      pendingCommits: [],
-    };
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
-    const plaintextBytes = new TextEncoder().encode('hello group');
-    const aadBytes = new TextEncoder().encode('aad');
-
-    const result = await encryptApplicationMessage({ state, plaintextBytes, aadBytes });
-
-    expect(encryptWithAadMock).toHaveBeenCalledTimes(1);
-    expect(encryptWithAadMock).toHaveBeenCalledWith(
-      'hello group',
-      expect.any(Uint8Array),
-      expect.any(Uint8Array),
-      aadBytes
-    );
-
-    const [_, keyBytes, nonceBytes] = encryptWithAadMock.mock.calls[0];
-    expect(keyBytes).toEqual(groupKeyBytes);
-    expect(nonceBytes).toBeInstanceOf(Uint8Array);
-    expect(nonceBytes).toHaveLength(12);
-
-    expect(result.ciphertextB64).toBe('ciphertext-b64');
-    expect(result.header.groupId).toBe('group-1');
-    expect(result.header.epoch).toBe(3);
-    expect(result.header.senderLeafIndex).toBe(2);
-    expect(result.header.counter).toBe(4);
-    expect(result.header.cipherSuite).toBe('MLS-MVP/X25519_AES256GCM_SHA256');
-    expect(typeof result.header.nonceB64).toBe('string');
-    expect(result.nonceB64).toBe(result.header.nonceB64);
-
-    const decodedHeader = JSON.parse(Buffer.from(result.headerB64, 'base64').toString('utf8'));
-    expect(decodedHeader).toEqual(result.header);
-
-    expect(result.newState.applicationMessageCounter).toBe(5);
-    expect(result.newState.groupKeyB64).toBe(state.groupKeyB64);
-  });
-
-  it('creates a usable initial state with a leaf assignment and stored group key', async () => {
+describe('groupCryptoProvider state creation', () => {
+  it('creates epoch-0 state with applicationSecretB64, initSecretB64, tree nodes, and compatibility aliases', async () => {
     const state = await createNewGroupState({
-      groupId: 'group-2',
+      groupId: 'group-state-1',
       creatorUserId: 'alice',
-      roster: [
-        { userId: 'alice', username: 'Alice', leafIndex: 0 },
-        { userId: 'bob', username: 'Bob', leafIndex: 1 },
-      ],
+      roster: ALICE_BOB_ROSTER,
+      memberInitKeys: ALICE_BOB_INIT_KEYS,
     });
 
+    expect(state.epoch).toBe(0);
     expect(state.selfLeafIndex).toBe(0);
+    expect(typeof state.applicationSecretB64).toBe('string');
+    expect(typeof state.initSecretB64).toBe('string');
+    expect(state.senderGenerations).toEqual({});
+    expect(state.groupKeyB64).toBe(state.applicationSecretB64);
     expect(state.applicationMessageCounter).toBe(0);
-    expect(typeof state.groupKeyB64).toBe('string');
-    expect(state.groupKeyB64.length).toBeGreaterThan(0);
+    expect(state.tree.nodes).toHaveLength(3);
+    expect(state.secrets.epochInitSecretB64).toEqual(expect.any(String));
+    expect(state.secrets.epochCommitSecretB64).toEqual(expect.any(String));
   });
+});
 
-  it('fails closed when the state has no leaf assignment', async () => {
-    await expect(
-      encryptApplicationMessage({
-        state: {
-          stateVersion: 1,
-          groupId: 'group-3',
-          epoch: 0,
-          selfUserId: 'alice',
-          selfLeafIndex: null,
-          roster: [],
-          tree: { nodes: [], root: null },
-          secrets: { epochSecretsB64: null, initSecretB64: null },
-          pendingCommits: [],
-        },
-        plaintextBytes: new TextEncoder().encode('hello'),
-      })
-    ).rejects.toThrow('selfLeafIndex');
-  });
+describe('groupCryptoProvider welcomes', () => {
+  it('buildInitialWelcomes and processWelcome put members on the same application secret', async () => {
+    const { creatorState, welcomes } = await buildCreatorAndWelcomes(
+      'group-welcome-1',
+      THREE_PERSON_ROSTER,
+      ALL_INIT_KEYS,
+    );
 
-  it('fails closed when the group key is missing', async () => {
-    await expect(
-      encryptApplicationMessage({
-        state: {
-          stateVersion: 1,
-          groupId: 'group-4',
-          epoch: 0,
-          selfUserId: 'alice',
-          selfLeafIndex: 0,
-          groupKeyB64: null,
-          roster: [],
-          tree: { nodes: [], root: null },
-          secrets: { epochSecretsB64: null, initSecretB64: null },
-          pendingCommits: [],
-        },
-        plaintextBytes: new TextEncoder().encode('hello'),
-      })
-    ).rejects.toThrow('application key material');
-  });
+    const bobWelcome = welcomes.find((welcome) => welcome.recipientUserId === 'bob');
+    const carolWelcome = welcomes.find((welcome) => welcome.recipientUserId === 'carol');
 
-  it('decrypts ciphertext using the header nonce and validates the header', async () => {
-    const groupKeyBytes = new Uint8Array(32).fill(9);
-    const header = {
-      version: 1,
-      groupId: 'group-5',
-      epoch: 7,
-      senderLeafIndex: 1,
-      counter: 3,
-      nonceB64: Buffer.from(new Uint8Array(12).fill(5)).toString('base64'),
-      cipherSuite: 'MLS-MVP/X25519_AES256GCM_SHA256',
-    };
-
-    const plaintextBytes = await decryptApplicationMessage({
-      state: {
-        stateVersion: 1,
-        groupId: 'group-5',
-        epoch: 7,
-        cipherSuite: 'MLS-MVP/X25519_AES256GCM_SHA256',
-        selfUserId: 'alice',
-        selfLeafIndex: 0,
-        groupKeyB64: bytesToBase64(groupKeyBytes),
-        roster: [],
-        tree: { nodes: [], root: null },
-        secrets: { epochSecretsB64: null, initSecretB64: null },
-        pendingCommits: [],
-      },
-      header: Buffer.from(JSON.stringify(header), 'utf8').toString('base64'),
-      ciphertext: 'ciphertext-b64',
+    const bobState = await processWelcome({
+      welcome: bobWelcome,
+      selfUserId: 'bob',
+      myInitPrivKeyB64: BOB_KEY,
+    });
+    const carolState = await processWelcome({
+      welcome: carolWelcome,
+      selfUserId: 'carol',
+      myInitPrivKeyB64: CAROL_KEY,
     });
 
-    expect(decryptWithAadMock).toHaveBeenCalledWith(
-      'ciphertext-b64',
-      expect.any(Uint8Array),
-      expect.any(Uint8Array),
-      expect.any(Uint8Array)
+    expect(bobState.applicationSecretB64).toBe(creatorState.applicationSecretB64);
+    expect(carolState.applicationSecretB64).toBe(creatorState.applicationSecretB64);
+    expect(bobState.initSecretB64).toBe(creatorState.initSecretB64);
+    expect(carolState.initSecretB64).toBe(creatorState.initSecretB64);
+    expect(bobState.tree.nodes).toHaveLength(5);
+    expect(carolState.selfLeafIndex).toBe(2);
+  });
+});
+
+describe('groupCryptoProvider application messages', () => {
+  it('derives header generation and decrypts with a matching receiver state', async () => {
+    const { creatorState, welcomes } = await buildCreatorAndWelcomes(
+      'group-msg-1',
+      ALICE_BOB_ROSTER,
+      ALICE_BOB_INIT_KEYS,
     );
+    const bobState = await processWelcome({
+      welcome: welcomes.find((welcome) => welcome.recipientUserId === 'bob'),
+      selfUserId: 'bob',
+      myInitPrivKeyB64: BOB_KEY,
+    });
+
+    const encrypted = await encryptApplicationMessage({
+      state: creatorState,
+      plaintextBytes: encodeText('hello group'),
+    });
+    const plaintextBytes = await decryptApplicationMessage({
+      state: bobState,
+      header: encrypted.headerB64,
+      ciphertext: encrypted.ciphertextB64,
+    });
+
+    expect(encrypted.header.generation).toBe(0);
+    expect(encrypted.header).not.toHaveProperty('nonceB64');
+    expect(encrypted.newState.senderGenerations['0']).toBe(1);
+    expect(encrypted.newState.applicationSecretB64).not.toBe(creatorState.applicationSecretB64);
     expect(new TextDecoder().decode(plaintextBytes)).toBe('hello group');
   });
 
-  it('processWelcome builds usable local state from a valid welcome payload', async () => {
-    const state = await processWelcome({
-      welcome: {
-        groupId: 'group-6',
-        epoch: 2,
-        cipherSuite: 'MLS-MVP/X25519_AES256GCM_SHA256',
-        roster: [
-          { userId: 'alice', username: 'Alice', leafIndex: 0 },
-          { userId: 'bob', username: 'Bob', leafIndex: 1 },
-        ],
-        recipientUserId: 'bob',
-        recipientLeafIndex: 1,
-        groupKeyB64: 'group-key-b64',
-      },
+  it('advances the receiver state after each decrypted application message', async () => {
+    const { creatorState, welcomes } = await buildCreatorAndWelcomes(
+      'group-msg-2',
+      ALICE_BOB_ROSTER,
+      ALICE_BOB_INIT_KEYS,
+    );
+    const bobState = await processWelcome({
+      welcome: welcomes.find((welcome) => welcome.recipientUserId === 'bob'),
       selfUserId: 'bob',
+      myInitPrivKeyB64: BOB_KEY,
     });
 
-    expect(state).toEqual(expect.objectContaining({
-      groupId: 'group-6',
-      epoch: 2,
-      cipherSuite: 'MLS-MVP/X25519_AES256GCM_SHA256',
+    const firstEncrypted = await encryptApplicationMessage({
+      state: creatorState,
+      plaintextBytes: encodeText('first'),
+    });
+    const firstDecrypted = await decryptApplicationMessage({
+      state: bobState,
+      header: firstEncrypted.headerB64,
+      ciphertext: firstEncrypted.ciphertextB64,
+      includeNewState: true,
+    });
+
+    const secondEncrypted = await encryptApplicationMessage({
+      state: firstEncrypted.newState,
+      plaintextBytes: encodeText('second'),
+    });
+    const secondDecrypted = await decryptApplicationMessage({
+      state: firstDecrypted.newState,
+      header: secondEncrypted.headerB64,
+      ciphertext: secondEncrypted.ciphertextB64,
+      includeNewState: true,
+    });
+
+    expect(new TextDecoder().decode(firstDecrypted.plaintextBytes)).toBe('first');
+    expect(new TextDecoder().decode(secondDecrypted.plaintextBytes)).toBe('second');
+    expect(firstDecrypted.newState.senderGenerations['0']).toBe(1);
+    expect(secondDecrypted.newState.senderGenerations['0']).toBe(2);
+    expect(secondDecrypted.newState.applicationSecretB64).toBe(secondEncrypted.newState.applicationSecretB64);
+  });
+});
+
+describe('groupCryptoProvider commits', () => {
+  it('buildAddCommit lets the receiver and the added member derive the same next epoch secret', async () => {
+    const { creatorState, welcomes } = await buildCreatorAndWelcomes(
+      'group-add-1',
+      ALICE_BOB_ROSTER,
+      ALICE_BOB_INIT_KEYS,
+    );
+    const bobState = await processWelcome({
+      welcome: welcomes.find((welcome) => welcome.recipientUserId === 'bob'),
       selfUserId: 'bob',
-      selfLeafIndex: 1,
-      groupKeyB64: 'group-key-b64',
-      applicationMessageCounter: 0,
-      roster: [
-        { userId: 'alice', username: 'Alice', leafIndex: 0 },
-        { userId: 'bob', username: 'Bob', leafIndex: 1 },
+      myInitPrivKeyB64: BOB_KEY,
+    });
+
+    const { commit, welcome, nextState: aliceNext } = await buildAddCommit({
+      state: creatorState,
+      newMember: { userId: 'carol', username: 'Carol', leafIndex: 2 },
+      memberInitKeys: ALL_INIT_KEYS,
+    });
+    const bobNext = await applyCommit({
+      state: bobState,
+      commit,
+      myInitPrivKeyB64: BOB_KEY,
+    });
+    const carolState = await processWelcome({
+      welcome,
+      selfUserId: 'carol',
+      myInitPrivKeyB64: CAROL_KEY,
+    });
+
+    expect(commit).toHaveProperty('updatePath');
+    expect(commit).not.toHaveProperty('encryptedKeys');
+    expect(commit.treePublicNodes).toHaveLength(5);
+    expect(aliceNext.epoch).toBe(1);
+    expect(bobNext.applicationSecretB64).toBe(aliceNext.applicationSecretB64);
+    expect(carolState.applicationSecretB64).toBe(aliceNext.applicationSecretB64);
+  });
+
+  it('buildAddCommit hydrates missing member leaf keys from memberInitKeys before encrypting the update path', async () => {
+    const creatorState = await createNewGroupState({
+      groupId: 'group-add-repair-1',
+      creatorUserId: 'alice',
+      roster: ALICE_BOB_ROSTER,
+    });
+    const welcomes = await buildInitialWelcomes({
+      creatorState,
+      roster: ALICE_BOB_ROSTER,
+      memberInitKeys: [{ userId: 'bob', leafIndex: 1, initKeyB64: BOB_KEY }],
+    });
+    const bobState = await processWelcome({
+      welcome: welcomes.find((entry) => entry.recipientUserId === 'bob'),
+      selfUserId: 'bob',
+      myInitPrivKeyB64: BOB_KEY,
+    });
+
+    const { commit, nextState: aliceNext } = await buildAddCommit({
+      state: creatorState,
+      newMember: { userId: 'carol', username: 'Carol', leafIndex: 2 },
+      memberInitKeys: ALL_INIT_KEYS,
+    });
+    const bobNext = await applyCommit({
+      state: bobState,
+      commit,
+      myInitPrivKeyB64: BOB_KEY,
+    });
+
+    expect(bobNext.applicationSecretB64).toBe(aliceNext.applicationSecretB64);
+    expect(bobNext.applicationSecretB64).not.toBeNull();
+  });
+
+  it('buildRemoveCommit blanks the removed member while remaining members keep the new epoch secret', async () => {
+    const { creatorState, welcomes } = await buildCreatorAndWelcomes(
+      'group-remove-1',
+      THREE_PERSON_ROSTER,
+      ALL_INIT_KEYS,
+    );
+    const carolState = await processWelcome({
+      welcome: welcomes.find((welcome) => welcome.recipientUserId === 'carol'),
+      selfUserId: 'carol',
+      myInitPrivKeyB64: CAROL_KEY,
+    });
+    const bobState = await processWelcome({
+      welcome: welcomes.find((welcome) => welcome.recipientUserId === 'bob'),
+      selfUserId: 'bob',
+      myInitPrivKeyB64: BOB_KEY,
+    });
+
+    const { commit, nextState: aliceNext } = await buildRemoveCommit({
+      state: creatorState,
+      targetUserId: 'bob',
+      memberInitKeys: [
+        { userId: 'alice', leafIndex: 0, initKeyB64: ALICE_KEY },
+        { userId: 'carol', leafIndex: 2, initKeyB64: CAROL_KEY },
       ],
-    }));
-  });
-
-  it('processWelcome rejects a welcome without key material', async () => {
-    await expect(
-      processWelcome({
-        welcome: {
-          groupId: 'group-7',
-          epoch: 0,
-          roster: [],
-          recipientUserId: 'bob',
-          recipientLeafIndex: 1,
-        },
-        selfUserId: 'bob',
-      })
-    ).rejects.toThrow('groupKeyB64');
-  });
-
-  it('processWelcome rejects a welcome without a recipient leaf index', async () => {
-    await expect(
-      processWelcome({
-        welcome: {
-          groupId: 'group-8',
-          epoch: 0,
-          roster: [],
-          recipientUserId: 'bob',
-          groupKeyB64: 'group-key-b64',
-        },
-        selfUserId: 'bob',
-      })
-    ).rejects.toThrow('recipientLeafIndex');
-  });
-
-  it('applyCommit advances epoch, replaces the group key, and resets the counter', async () => {
-    const nextState = await applyCommit({
-      state: {
-        stateVersion: 1,
-        groupId: 'group-9',
-        epoch: 2,
-        cipherSuite: 'MLS-MVP/X25519_AES256GCM_SHA256',
-        selfUserId: 'alice',
-        selfLeafIndex: 0,
-        applicationMessageCounter: 9,
-        groupKeyB64: 'old-group-key',
-        roster: [
-          { userId: 'alice', username: 'Alice', leafIndex: 0 },
-          { userId: 'bob', username: 'Bob', leafIndex: 1 },
-        ],
-        tree: { nodes: [], root: null },
-        secrets: { epochSecretsB64: null, initSecretB64: null },
-        pendingCommits: [],
-      },
-      commit: {
-        groupId: 'group-9',
-        epoch: 3,
-        type: 'update',
-        senderLeafIndex: 0,
-        roster: [
-          { userId: 'alice', username: 'Alice', leafIndex: 0 },
-          { userId: 'bob', username: 'Bob', leafIndex: 1 },
-          { userId: 'carol', username: 'Carol', leafIndex: 2 },
-        ],
-        nextGroupKeyB64: 'new-group-key',
-      },
+    });
+    const carolNext = await applyCommit({
+      state: carolState,
+      commit,
+      myInitPrivKeyB64: CAROL_KEY,
+    });
+    const bobNext = await applyCommit({
+      state: bobState,
+      commit,
+      myInitPrivKeyB64: BOB_KEY,
     });
 
-    expect(nextState).toEqual(expect.objectContaining({
-      groupId: 'group-9',
-      epoch: 3,
-      selfUserId: 'alice',
-      selfLeafIndex: 0,
-      groupKeyB64: 'new-group-key',
-      applicationMessageCounter: 0,
-    }));
-    expect(nextState.roster).toHaveLength(3);
-  });
-
-  it('applyCommit rejects a commit for the wrong group', async () => {
-    await expect(
-      applyCommit({
-        state: {
-          stateVersion: 1,
-          groupId: 'group-10',
-          epoch: 2,
-          selfUserId: 'alice',
-          selfLeafIndex: 0,
-          applicationMessageCounter: 1,
-          groupKeyB64: 'group-key',
-          roster: [],
-          tree: { nodes: [], root: null },
-          secrets: { epochSecretsB64: null, initSecretB64: null },
-          pendingCommits: [],
-        },
-        commit: {
-          groupId: 'other-group',
-          epoch: 3,
-          roster: [],
-          nextGroupKeyB64: 'new-group-key',
-        },
-      })
-    ).rejects.toThrow('groupId mismatch');
-  });
-
-  it('applyCommit rejects a stale epoch', async () => {
-    await expect(
-      applyCommit({
-        state: {
-          stateVersion: 1,
-          groupId: 'group-11',
-          epoch: 4,
-          selfUserId: 'alice',
-          selfLeafIndex: 0,
-          applicationMessageCounter: 1,
-          groupKeyB64: 'group-key',
-          roster: [],
-          tree: { nodes: [], root: null },
-          secrets: { epochSecretsB64: null, initSecretB64: null },
-          pendingCommits: [],
-        },
-        commit: {
-          groupId: 'group-11',
-          epoch: 4,
-          roster: [],
-          nextGroupKeyB64: 'new-group-key',
-        },
-      })
-    ).rejects.toThrow('Invalid commit epoch');
-  });
-
-  it('applyCommit clears local sending state when the current user is removed', async () => {
-    const nextState = await applyCommit({
-      state: {
-        stateVersion: 1,
-        groupId: 'group-12',
-        epoch: 1,
-        selfUserId: 'bob',
-        selfLeafIndex: 1,
-        applicationMessageCounter: 2,
-        groupKeyB64: 'group-key',
-        roster: [
-          { userId: 'alice', username: 'Alice', leafIndex: 0 },
-          { userId: 'bob', username: 'Bob', leafIndex: 1 },
-        ],
-        tree: { nodes: [], root: null },
-        secrets: { epochSecretsB64: null, initSecretB64: null },
-        pendingCommits: [],
-      },
-      commit: {
-        groupId: 'group-12',
-        epoch: 2,
-        type: 'remove',
-        senderLeafIndex: 0,
-        roster: [
-          { userId: 'alice', username: 'Alice', leafIndex: 0 },
-        ],
-        nextGroupKeyB64: 'new-group-key',
-        targetUserId: 'bob',
-        targetLeafIndex: 1,
-      },
-    });
-
-    expect(nextState).toEqual(expect.objectContaining({
-      epoch: 2,
-      selfLeafIndex: null,
-      groupKeyB64: null,
-      applicationMessageCounter: 0,
-    }));
-  });
-
-  it('buildAddCommit advances epoch, rotates the group key, and returns a matching welcome', async () => {
-    const result = await buildAddCommit({
-      state: {
-        stateVersion: 1,
-        groupId: 'group-13',
-        epoch: 4,
-        cipherSuite: 'MLS-MVP/X25519_AES256GCM_SHA256',
-        selfUserId: 'alice',
-        selfLeafIndex: 0,
-        applicationMessageCounter: 6,
-        groupKeyB64: 'old-group-key',
-        roster: [
-          { userId: 'alice', username: 'Alice', leafIndex: 0 },
-          { userId: 'bob', username: 'Bob', leafIndex: 1 },
-        ],
-        tree: { nodes: [], root: null },
-        secrets: { epochSecretsB64: null, initSecretB64: null },
-        pendingCommits: [],
-      },
-      newMember: {
-        userId: 'carol',
-        username: 'Carol',
-        leafIndex: 2,
-      },
-    });
-
-    expect(result.commit).toEqual(expect.objectContaining({
-      groupId: 'group-13',
-      epoch: 5,
-      type: 'add',
-      senderLeafIndex: 0,
-      targetUserId: 'carol',
-      targetLeafIndex: 2,
-    }));
-    expect(result.commit.roster).toEqual([
-      { userId: 'alice', username: 'Alice', leafIndex: 0 },
-      { userId: 'bob', username: 'Bob', leafIndex: 1 },
-      { userId: 'carol', username: 'Carol', leafIndex: 2 },
-    ]);
-    expect(result.welcome).toEqual(expect.objectContaining({
-      groupId: 'group-13',
-      epoch: 5,
-      cipherSuite: 'MLS-MVP/X25519_AES256GCM_SHA256',
-      recipientUserId: 'carol',
-      recipientLeafIndex: 2,
-      roster: result.commit.roster,
-      groupKeyB64: result.commit.nextGroupKeyB64,
-    }));
-    expect(result.nextState).toEqual(expect.objectContaining({
-      epoch: 5,
-      selfLeafIndex: 0,
-      groupKeyB64: result.commit.nextGroupKeyB64,
-      applicationMessageCounter: 0,
-    }));
-  });
-
-  it('buildAddCommit rejects duplicate members', async () => {
-    await expect(
-      buildAddCommit({
-        state: {
-          stateVersion: 1,
-          groupId: 'group-14',
-          epoch: 1,
-          selfUserId: 'alice',
-          selfLeafIndex: 0,
-          applicationMessageCounter: 0,
-          groupKeyB64: 'group-key',
-          roster: [
-            { userId: 'alice', username: 'Alice', leafIndex: 0 },
-            { userId: 'bob', username: 'Bob', leafIndex: 1 },
-          ],
-          tree: { nodes: [], root: null },
-          secrets: { epochSecretsB64: null, initSecretB64: null },
-          pendingCommits: [],
-        },
-        newMember: {
-          userId: 'bob',
-          username: 'Bob',
-          leafIndex: 1,
-        },
-      })
-    ).rejects.toThrow('already exists');
-  });
-
-  it('buildRemoveCommit advances epoch, rotates the group key, and removes the target member', async () => {
-    const result = await buildRemoveCommit({
-      state: {
-        stateVersion: 1,
-        groupId: 'group-15',
-        epoch: 2,
-        selfUserId: 'alice',
-        selfLeafIndex: 0,
-        applicationMessageCounter: 3,
-        groupKeyB64: 'group-key',
-        roster: [
-          { userId: 'alice', username: 'Alice', leafIndex: 0 },
-          { userId: 'bob', username: 'Bob', leafIndex: 1 },
-          { userId: 'carol', username: 'Carol', leafIndex: 2 },
-        ],
-        tree: { nodes: [], root: null },
-        secrets: { epochSecretsB64: null, initSecretB64: null },
-        pendingCommits: [],
-      },
-      targetUserId: 'bob',
-    });
-
-    expect(result.commit).toEqual(expect.objectContaining({
-      groupId: 'group-15',
-      epoch: 3,
-      type: 'remove',
-      senderLeafIndex: 0,
-      targetUserId: 'bob',
-      targetLeafIndex: 1,
-    }));
-    expect(result.commit.roster).toEqual([
-      { userId: 'alice', username: 'Alice', leafIndex: 0 },
-      { userId: 'carol', username: 'Carol', leafIndex: 2 },
-    ]);
-    expect(result.nextState).toEqual(expect.objectContaining({
-      epoch: 3,
-      selfLeafIndex: 0,
-      groupKeyB64: result.commit.nextGroupKeyB64,
-      applicationMessageCounter: 0,
-    }));
-  });
-
-  it('buildRemoveCommit rejects missing targets', async () => {
-    await expect(
-      buildRemoveCommit({
-        state: {
-          stateVersion: 1,
-          groupId: 'group-16',
-          epoch: 2,
-          selfUserId: 'alice',
-          selfLeafIndex: 0,
-          applicationMessageCounter: 0,
-          groupKeyB64: 'group-key',
-          roster: [
-            { userId: 'alice', username: 'Alice', leafIndex: 0 },
-          ],
-          tree: { nodes: [], root: null },
-          secrets: { epochSecretsB64: null, initSecretB64: null },
-          pendingCommits: [],
-        },
-        targetUserId: 'bob',
-      })
-    ).rejects.toThrow('not found');
+    expect(commit.type).toBe('remove');
+    expect(commit.targetUserId).toBe('bob');
+    expect(carolNext.applicationSecretB64).toBe(aliceNext.applicationSecretB64);
+    expect(bobNext.applicationSecretB64).toBeNull();
+    expect(bobNext.selfLeafIndex).toBeNull();
   });
 });

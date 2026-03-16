@@ -87,6 +87,8 @@ const Dashboard = () => {
   const activeChatRef = useRef(activeChat);
   const recentConversationsRef = useRef(recentConversations);
   const userIdRef = useRef(userId);
+  const mlsKeyPackagePublishedRef = useRef(false);
+  const mlsKeyPackageRetryTimeoutRef = useRef(null);
 
   const updateRecentConversationsRef = useRef(updateRecentConversations);
   const setAllGroupsRef = useRef(setAllGroups);
@@ -121,6 +123,15 @@ const Dashboard = () => {
     removeGroupRef.current = removeGroup;
   }, [removeGroup]);
 
+  useEffect(() => {
+    return () => {
+      if (mlsKeyPackageRetryTimeoutRef.current) {
+        clearTimeout(mlsKeyPackageRetryTimeoutRef.current);
+        mlsKeyPackageRetryTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   // Initialize socket connection and fetch user profile
   useEffect(() => {
     if (!token || !userId) return;
@@ -136,8 +147,60 @@ const Dashboard = () => {
       maxBatch: 200,
     });
 
+    const clearMlsKeyPackageRetry = () => {
+      if (mlsKeyPackageRetryTimeoutRef.current) {
+        clearTimeout(mlsKeyPackageRetryTimeoutRef.current);
+        mlsKeyPackageRetryTimeoutRef.current = null;
+      }
+    };
+
+    const scheduleMlsKeyPackageRetry = () => {
+      if (mlsKeyPackagePublishedRef.current || mlsKeyPackageRetryTimeoutRef.current) return;
+
+      mlsKeyPackageRetryTimeoutRef.current = setTimeout(() => {
+        mlsKeyPackageRetryTimeoutRef.current = null;
+        void publishMlsKeyPackage();
+      }, 3000);
+    };
+
+    const publishMlsKeyPackage = async () => {
+      if (!sharedSocket.connected) {
+        scheduleMlsKeyPackageRetry();
+        return false;
+      }
+
+      try {
+        const identityKeys = await getIdentityKeys();
+        if (!identityKeys?.publicKeyX25519) {
+          scheduleMlsKeyPackageRetry();
+          return false;
+        }
+
+        return await new Promise((resolve) => {
+          sharedSocket.emit('publishKeyPackage', { initKeyB64: identityKeys.publicKeyX25519 }, (res) => {
+            if (res?.success) {
+              mlsKeyPackagePublishedRef.current = true;
+              clearMlsKeyPackageRetry();
+              resolve(true);
+              return;
+            }
+
+            console.warn('[MLS] Failed to publish KeyPackage:', res?.error);
+            scheduleMlsKeyPackageRetry();
+            resolve(false);
+          });
+        });
+      } catch (err) {
+        console.warn('[MLS] Could not load identity keys for KeyPackage publish:', err);
+        scheduleMlsKeyPackageRetry();
+        return false;
+      }
+    };
+
     const onConnect = () => {
       console.log('Socket connected for profile fetching');
+      mlsKeyPackagePublishedRef.current = false;
+      clearMlsKeyPackageRetry();
 
       // Fetch groups for this user
       sharedSocket.emit("listMyGroups", {}, (res) => {
@@ -196,6 +259,10 @@ const Dashboard = () => {
 
       // Ensure OPKs are topped up if the server-side public OPK count is low.
       requestOpkStatusAndReplenish({ socket: sharedSocket, handler: handleOpkReplenishRequested });
+
+      // Publish our X25519 public key as our MLS KeyPackage init key so other
+      // users can encrypt group keys to us during add/remove commits.
+      void publishMlsKeyPackage();
     };
 
     if (sharedSocket.connected) {
@@ -204,9 +271,13 @@ const Dashboard = () => {
       sharedSocket.on('connect', onConnect);
     }
 
-    sharedSocket.on('disconnect', () => {
+    const handleDisconnect = () => {
       console.log('Socket disconnected');
-    });
+      mlsKeyPackagePublishedRef.current = false;
+      clearMlsKeyPackageRetry();
+    };
+
+    sharedSocket.on('disconnect', handleDisconnect);
 
     // Listen for incoming calls
     sharedSocket.on('incomingCall', (callData) => {
@@ -349,6 +420,7 @@ const Dashboard = () => {
         console.error('[Dashboard] No private key available in ELD');
         return;
       }
+
       const privateKeyArray = base64ToArrayBuffer(identityKeys.privateKeyX25519);
 
       // Process each message for notifications
@@ -499,6 +571,7 @@ const Dashboard = () => {
 
     return () => {
       sharedSocket.off('connect', onConnect);
+      sharedSocket.off('disconnect', handleDisconnect);
       sharedSocket.off('incomingCall');
       sharedSocket.off('callEnded');
       sharedSocket.off('replenishOPKs', handleOpkReplenishRequested);
@@ -509,6 +582,7 @@ const Dashboard = () => {
       sharedSocket.off('groupAdded', handleGroupAdded);
       sharedSocket.off('groupRemoved', handleGroupRemoved);
       sharedSocket.off('newGroupMessage', handleNewGroupMessageNotification);
+      clearMlsKeyPackageRetry();
       // Don't disconnect the shared socket here
     };
   }, [token, userId]);
@@ -817,7 +891,7 @@ const Dashboard = () => {
               </button>
             )}
           </div>
-        </div>º
+        </div>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-black">
           {activeView === 'friends' ? (

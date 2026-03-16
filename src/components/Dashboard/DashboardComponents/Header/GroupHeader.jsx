@@ -11,6 +11,8 @@ import {
   buildRemoveCommit
 } from "../../Chat/utils/crypto/groupCryptoProvider";
 
+import { getIdentityKeys } from '../../Chat/utils/chat/keyManagement';
+
 const GroupHeader = ({ groupId, groupName, userId }) => {
   const socket = useMemo(() => getSocket(), []);
   const [members, setMembers] = useState([]);
@@ -126,13 +128,12 @@ const GroupHeader = ({ groupId, groupName, userId }) => {
   };
 
   const handleAdd = async (memberId) => {
-    if (!canAdd) return;
-    if (!memberId) return;
+    if (!canAdd || !memberId) return;
     setLoading(true);
 
     try {
-      await emitWithAck("addGroupMember", { groupId, memberId }, "Failed to add group member");
-      setSearchTerm("");
+      await emitWithAck('addGroupMember', { groupId, memberId }, 'Failed to add group member');
+      setSearchTerm('');
       setSearchResult(null);
 
       if (!groupMeta.mlsEnabled) {
@@ -140,39 +141,45 @@ const GroupHeader = ({ groupId, groupName, userId }) => {
         return;
       }
 
+      // Load fresh roster and local state
       const groupRes = await openGroupDetails();
       const roster = toRoster(groupRes.members);
       const addedMember = roster.find((m) => String(m.userId) === String(memberId));
-
-      if (!addedMember) {
-        throw new Error("Added member missing from refreshed group roster");
-      }
+      if (!addedMember) throw new Error('Added member missing from refreshed group roster');
 
       const localState = await loadGroupState(groupId);
-      if (!localState) {
-        throw new Error("Missing local MLS state for commit generation");
-      }
+      if (!localState) throw new Error('Missing local MLS state for commit generation');
+
+      // Fetch KeyPackages for ALL members in the new roster (including the new member)
+      const memberInitKeys = await Promise.all(
+        roster.map((m) =>
+          new Promise((resolve) => {
+            socket.emit('fetchKeyPackage', { userId: m.userId }, (res) => {
+              if (res?.success && res.initKeyB64) {
+                resolve({ userId: m.userId, leafIndex: m.leafIndex, initKeyB64: res.initKeyB64 });
+              } else {
+                // If a member has no KeyPackage, they can't receive the new key.
+                // Log and skip — applyCommit will set their key to null.
+                console.warn(`[GroupHeader] No KeyPackage for member ${m.userId}`);
+                resolve(null);
+              }
+            });
+          })
+        )
+      ).then((results) => results.filter(Boolean));
 
       const { commit, welcome, nextState } = await buildAddCommit({
         state: localState,
         newMember: addedMember,
+        memberInitKeys,       // <-- pass the fetched init keys
       });
 
-      await emitWithAck("sendGroupCommit", { groupId, commit }, "Failed to send group commit");
-      await emitWithAck(
-        "sendGroupWelcome",
-        {
-          groupId,
-          recipientUserId: addedMember.userId,
-          welcome,
-        },
-        "Failed to send group welcome"
-      );
-
-      await saveGroupState(groupId, nextState);
+      await emitWithAck('sendGroupCommit', { groupId, commit }, 'Failed to send group commit');
+      await emitWithAck('sendGroupWelcome', { groupId, recipientUserId: addedMember.userId, welcome }, 'Failed to send group welcome');
+          await saveGroupState(groupId, nextState);
       refresh();
     } catch (err) {
-      console.error("[GroupHeader] Failed to add member:", err);
+      console.error('[GroupHeader] Failed to add member:', err);
     } finally {
       setLoading(false);
     }
@@ -198,9 +205,27 @@ const GroupHeader = ({ groupId, groupName, userId }) => {
         throw new Error("Missing local MLS state for remove commit generation");
       }
 
+      // Remaining members (excluding the one being removed) need the new epoch key
+      const remainingMembers = members.filter((m) => String(m.userId) !== String(memberId));
+      const memberInitKeys = await Promise.all(
+        remainingMembers.map((m) =>
+          new Promise((resolve) => {
+            socket.emit('fetchKeyPackage', { userId: m.userId }, (res) => {
+              if (res?.success && res.initKeyB64) {
+                resolve({ userId: m.userId, leafIndex: m.leafIndex, initKeyB64: res.initKeyB64 });
+              } else {
+                console.warn(`[GroupHeader] No KeyPackage for member ${m.userId}`);
+                resolve(null);
+              }
+            });
+          })
+        )
+      ).then((results) => results.filter(Boolean));
+
       const { commit, nextState } = await buildRemoveCommit({
         state: localState,
         targetUserId: memberId,
+        memberInitKeys,
       });
 
       const isSelfRemoval = String(memberId) === String(userId);

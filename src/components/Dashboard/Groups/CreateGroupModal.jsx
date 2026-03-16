@@ -3,9 +3,11 @@ import PropTypes from "prop-types";
 import { X, Plus, Search } from "lucide-react";
 import { getSocket } from "../../../socket";
 import { formatProfileImage } from "../DashboardComponents/utils/helpers";
+import { getIdentityKeys } from "../Chat/utils/chat/keyManagement";
 
 import {
   createNewGroupState,
+  buildInitialWelcomes,
 } from "../Chat/utils/crypto/groupCryptoProvider";
 
 const CreateGroupModal = ({ open, onClose, onCreated, userId }) => {
@@ -69,45 +71,109 @@ const CreateGroupModal = ({ open, onClose, onCreated, userId }) => {
     const cipherSuite = mlsEnabled ? "MLS-MVP/X25519_AES256GCM_SHA256" : null;
 
     setLoading(true);
+
+    // Fetch KeyPackages for all invited members BEFORE creating the group.
+    // We need their X25519 public keys to encrypt the group key to them.
+    let memberInitKeys = [];
+    if (mlsEnabled) {
+      const results = await Promise.all(
+        selected.map((u) =>
+          new Promise((resolve) => {
+            socket.emit('fetchKeyPackage', { userId: u.id }, (res) => {
+              if (res?.success && res.initKeyB64) {
+                resolve({ userId: String(u.id), initKeyB64: res.initKeyB64 });
+              } else {
+                console.warn(`[CreateGroupModal] No KeyPackage for user ${u.id} (${u.username})`);
+                resolve(null);
+              }
+            });
+          })
+        )
+      );
+      memberInitKeys = results.filter(Boolean);
+
+      // Block creation if any invited member has no KeyPackage — they'd be locked out silently.
+      const missing = selected.filter(
+        (u) => !memberInitKeys.some((mk) => String(mk.userId) === String(u.id))
+      );
+      if (missing.length > 0) {
+        console.error(
+          `[CreateGroupModal] Cannot create MLS group: missing KeyPackage for: ${missing.map((u) => u.username).join(', ')}`
+        );
+        setLoading(false);
+        return;
+      }
+    }
+
     socket.emit("createGroup", { name: groupName, memberIds, mlsEnabled, cipherSuite }, async (ack) => {
       setLoading(false);
       if (!ack?.success) return;
 
-      const roster = [
-        { userId: String(userId), username: "me", leafIndex: 0 },
-        ...selected.map((u, index) => ({
-          userId: String(u.id),
-          username: u.username,
-          leafIndex: index + 1,
-        })),
-      ];
+      // Use server-assigned leafIndex values from ack.members.
+      const serverMembers = Array.isArray(ack.members) ? ack.members : [];
+      const roster = serverMembers.length > 0
+        ? serverMembers.map((m) => ({
+            userId:    String(m.userId),
+            username:  selected.find((u) => String(u.id) === String(m.userId))?.username ?? 'Member',
+            leafIndex: Number.isInteger(m.leafIndex) ? m.leafIndex : 0,
+          }))
+        : [
+            { userId: String(userId), username: "me", leafIndex: 0 },
+            ...selected.map((u, index) => ({
+              userId: String(u.id), username: u.username, leafIndex: index + 1,
+            })),
+          ];
 
       try {
+        const identityKeys = mlsEnabled ? await getIdentityKeys() : null;
+        const creatorInitPubKeyB64 = identityKeys?.publicKeyX25519 ?? null;
+        const creatorInitPrivKeyB64 = identityKeys?.privateKeyX25519 ?? null;
+
+        if (mlsEnabled && (!creatorInitPubKeyB64 || !creatorInitPrivKeyB64)) {
+          throw new Error("Missing local MLS identity keys for group creator");
+        }
+
+        const memberInitKeysWithLeaf = mlsEnabled
+          ? roster
+              .map((member) => {
+                if (String(member.userId) === String(userId)) {
+                  return {
+                    userId: String(userId),
+                    leafIndex: member.leafIndex,
+                    initKeyB64: creatorInitPubKeyB64,
+                  };
+                }
+
+                const existing = memberInitKeys.find((entry) => String(entry.userId) === String(member.userId));
+                if (!existing?.initKeyB64) return null;
+                return {
+                  ...existing,
+                  leafIndex: member.leafIndex,
+                };
+              })
+              .filter(Boolean)
+          : [];
+
         const creatorState = await createNewGroupState({
-          groupId: ack.group.groupId,
+          groupId:       ack.group.groupId,
           creatorUserId: userId,
           roster,
-          cipherSuite: ack.group?.cipherSuite ?? cipherSuite ?? undefined,
+          cipherSuite:   ack.group?.cipherSuite ?? cipherSuite ?? undefined,
+          memberInitKeys: memberInitKeysWithLeaf,
+          selfInitPrivKeyB64: creatorInitPrivKeyB64,
         });
 
         if (mlsEnabled && creatorState?.groupKeyB64) {
-          const invitedMembers = roster.filter(
-            (member) => String(member.userId) !== String(userId)
-          );
+          const welcomes = await buildInitialWelcomes({
+            creatorState,
+            roster,
+            memberInitKeys: memberInitKeysWithLeaf.filter((entry) => String(entry.userId) !== String(userId)),
+          });
 
-          for (const member of invitedMembers) {
-            const welcome = {
-              groupId: ack.group.groupId,
-              epoch: ack.group?.epoch ?? 0,
-              cipherSuite: ack.group?.cipherSuite ?? cipherSuite ?? "MLS-MVP/X25519_AES256GCM_SHA256",
-              roster,
-              recipientUserId: member.userId,
-              recipientLeafIndex: member.leafIndex,
-              groupKeyB64: creatorState.groupKeyB64,
-            };
+          for (const welcome of welcomes) {
             socket.emit("sendGroupWelcome", {
-              groupId: ack.group.groupId,
-              recipientUserId: member.userId,
+              groupId:         ack.group.groupId,
+              recipientUserId: welcome.recipientUserId,
               welcome,
             });
           }

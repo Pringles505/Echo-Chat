@@ -12,6 +12,7 @@ const encryptApplicationMessageMock = vi.fn();
 const decryptApplicationMessageMock = vi.fn();
 const applyCommitMock = vi.fn();
 const processWelcomeMock = vi.fn();
+const getIdentityKeysMock = vi.fn();
 const getSocketMock = vi.fn();
 
 vi.mock("../../../socket", () => ({
@@ -46,6 +47,10 @@ vi.mock("./utils/crypto/groupCryptoProvider", () => ({
   decryptApplicationMessage: (...args) => decryptApplicationMessageMock(...args),
   applyCommit: (...args) => applyCommitMock(...args),
   processWelcome: (...args) => processWelcomeMock(...args),
+}));
+
+vi.mock("./utils/chat/keyManagement", () => ({
+  getIdentityKeys: (...args) => getIdentityKeysMock(...args),
 }));
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -96,6 +101,8 @@ describe("GroupChat MLS state lifecycle", () => {
     decryptApplicationMessageMock.mockReset();
     applyCommitMock.mockReset();
     processWelcomeMock.mockReset();
+    getIdentityKeysMock.mockReset();
+    getIdentityKeysMock.mockResolvedValue(null);
 
     socket = {
       emit: vi.fn((event, payload, callback) => {
@@ -182,6 +189,7 @@ describe("GroupChat MLS state lifecycle", () => {
       state: expect.objectContaining({ groupId: "group-1", selfLeafIndex: 0 }),
       header: "header-b64",
       ciphertext: "ciphertext-b64",
+      includeNewState: true,
     });
     expect(container.querySelector('[data-testid="display-text"]').textContent).toContain("decrypted hello");
   });
@@ -406,7 +414,7 @@ describe("GroupChat MLS state lifecycle", () => {
       await flush();
     });
 
-    expect(processWelcomeMock).toHaveBeenCalledWith({
+    expect(processWelcomeMock).toHaveBeenCalledWith(expect.objectContaining({
       welcome: {
         groupId: "group-1",
         epoch: 2,
@@ -420,7 +428,7 @@ describe("GroupChat MLS state lifecycle", () => {
         groupKeyB64: "welcome-group-key",
       },
       selfUserId: "bob",
-    });
+    }));
 
     expect(saveGroupStateMock).toHaveBeenLastCalledWith(
       "group-1",
@@ -537,10 +545,10 @@ describe("GroupChat MLS state lifecycle", () => {
       await flush();
     });
 
-    expect(applyCommitMock).toHaveBeenCalledWith({
+    expect(applyCommitMock).toHaveBeenCalledWith(expect.objectContaining({
       state: expect.objectContaining({ groupId: "group-1", epoch: 2 }),
       commit,
-    });
+    }));
     expect(saveGroupStateMock).toHaveBeenCalledWith(
       "group-1",
       expect.objectContaining({
@@ -761,22 +769,22 @@ describe("GroupChat MLS state lifecycle", () => {
       await flush();
     });
 
-    expect(processWelcomeMock).toHaveBeenCalledWith({
+    expect(processWelcomeMock).toHaveBeenCalledWith(expect.objectContaining({
       welcome: expect.objectContaining({
         groupId: "group-1",
         recipientUserId: "bob",
         groupKeyB64: "welcome-key",
       }),
       selfUserId: "bob",
-    });
-    expect(applyCommitMock).toHaveBeenCalledWith({
+    }));
+    expect(applyCommitMock).toHaveBeenCalledWith(expect.objectContaining({
       state: expect.objectContaining({ groupKeyB64: "welcome-key", epoch: 2 }),
       commit: expect.objectContaining({
         groupId: "group-1",
         epoch: 3,
         nextGroupKeyB64: "committed-key",
       }),
-    });
+    }));
     expect(saveGroupStateMock).toHaveBeenCalledWith(
       "group-1",
       expect.objectContaining({ groupKeyB64: "welcome-key", epoch: 2 })
@@ -789,6 +797,7 @@ describe("GroupChat MLS state lifecycle", () => {
       state: expect.objectContaining({ groupKeyB64: "committed-key", epoch: 3 }),
       header: "header-after-replay",
       ciphertext: "ciphertext-after-replay",
+      includeNewState: true,
     });
     expect(container.querySelector('[data-testid="display-text"]').textContent).toContain("replayed history");
   });

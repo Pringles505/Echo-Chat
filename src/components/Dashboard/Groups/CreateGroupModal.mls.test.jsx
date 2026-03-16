@@ -6,6 +6,8 @@ import { createRoot } from "react-dom/client";
 import CreateGroupModal from "./CreateGroupModal";
 
 const createNewGroupStateMock = vi.fn();
+const buildInitialWelcomesMock = vi.fn();
+const getIdentityKeysMock = vi.fn();
 const formatProfileImageMock = vi.fn(() => "profile.png");
 const getSocketMock = vi.fn();
 
@@ -17,8 +19,13 @@ vi.mock("../DashboardComponents/utils/helpers", () => ({
   formatProfileImage: (...args) => formatProfileImageMock(...args),
 }));
 
+vi.mock("../Chat/utils/chat/keyManagement", () => ({
+  getIdentityKeys: (...args) => getIdentityKeysMock(...args),
+}));
+
 vi.mock("../Chat/utils/crypto/groupCryptoProvider", () => ({
   createNewGroupState: (...args) => createNewGroupStateMock(...args),
+  buildInitialWelcomes: (...args) => buildInitialWelcomesMock(...args),
 }));
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -42,7 +49,13 @@ describe("CreateGroupModal MLS initialization", () => {
     root = createRoot(container);
 
     createNewGroupStateMock.mockReset();
+    buildInitialWelcomesMock.mockReset();
+    getIdentityKeysMock.mockReset();
     formatProfileImageMock.mockClear();
+    getIdentityKeysMock.mockResolvedValue({
+      publicKeyX25519: "alice-init-pub-b64",
+      privateKeyX25519: "alice-init-priv-b64",
+    });
 
     socket = {
       emit: vi.fn((event, payload, callback) => {
@@ -66,7 +79,16 @@ describe("CreateGroupModal MLS initialization", () => {
               epoch: 0,
               cipherSuite: payload.cipherSuite ?? null,
             },
+            members: [
+              { userId: "alice", leafIndex: 0 },
+              { userId: "bob", leafIndex: 1 },
+            ],
           });
+          return;
+        }
+
+        if (event === "fetchKeyPackage") {
+          callback?.({ success: true, initKeyB64: "bob-init-key-b64" });
         }
       }),
       on: vi.fn(),
@@ -78,6 +100,22 @@ describe("CreateGroupModal MLS initialization", () => {
       groupId: "group-1",
       groupKeyB64: "creator-group-key-b64",
     });
+    buildInitialWelcomesMock.mockResolvedValue([
+      {
+        groupId: "group-1",
+        epoch: 0,
+        cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
+        roster: [
+          { userId: "alice", username: "Member", leafIndex: 0 },
+          { userId: "bob", username: "Bob", leafIndex: 1 },
+        ],
+        recipientUserId: "bob",
+        recipientLeafIndex: 1,
+        wrappedInitSecret: { encryptedB64: "init-ct", ephPubB64: "init-pub", nonceB64: "init-nonce" },
+        wrappedCommitSecret: { encryptedB64: "commit-ct", ephPubB64: "commit-pub", nonceB64: "commit-nonce" },
+        treePublicNodes: ["alice-pub", "root-pub", "bob-pub"],
+      },
+    ]);
   });
 
   afterEach(async () => {
@@ -156,10 +194,25 @@ describe("CreateGroupModal MLS initialization", () => {
       groupId: "group-1",
       creatorUserId: "alice",
       roster: [
-        { userId: "alice", username: "me", leafIndex: 0 },
+        { userId: "alice", username: "Member", leafIndex: 0 },
         { userId: "bob", username: "Bob", leafIndex: 1 },
       ],
       cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
+      memberInitKeys: [
+        { userId: "alice", leafIndex: 0, initKeyB64: "alice-init-pub-b64" },
+        { userId: "bob", leafIndex: 1, initKeyB64: "bob-init-key-b64" },
+      ],
+      selfInitPrivKeyB64: "alice-init-priv-b64",
+    });
+    expect(buildInitialWelcomesMock).toHaveBeenCalledWith({
+      creatorState: { groupId: "group-1", groupKeyB64: "creator-group-key-b64" },
+      roster: [
+        { userId: "alice", username: "Member", leafIndex: 0 },
+        { userId: "bob", username: "Bob", leafIndex: 1 },
+      ],
+      memberInitKeys: [
+        { userId: "bob", initKeyB64: "bob-init-key-b64", leafIndex: 1 },
+      ],
     });
     const welcomeEmitCall = socket.emit.mock.calls.find(
       ([eventName]) => eventName === "sendGroupWelcome"
@@ -173,12 +226,14 @@ describe("CreateGroupModal MLS initialization", () => {
         epoch: 0,
         cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
         roster: [
-          { userId: "alice", username: "me", leafIndex: 0 },
+          { userId: "alice", username: "Member", leafIndex: 0 },
           { userId: "bob", username: "Bob", leafIndex: 1 },
         ],
         recipientUserId: "bob",
         recipientLeafIndex: 1,
-        groupKeyB64: "creator-group-key-b64",
+        wrappedInitSecret: { encryptedB64: "init-ct", ephPubB64: "init-pub", nonceB64: "init-nonce" },
+        wrappedCommitSecret: { encryptedB64: "commit-ct", ephPubB64: "commit-pub", nonceB64: "commit-nonce" },
+        treePublicNodes: ["alice-pub", "root-pub", "bob-pub"],
       },
     });
     expect(onCreated).toHaveBeenCalledWith({
