@@ -43,6 +43,13 @@ function setInputValue(input, value) {
   input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+function setTextareaValue(textarea, value) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
+  setter.call(textarea, value);
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  textarea.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 function makeMember({ userId, username, leafIndex, role = "member" }) {
   return {
     userId,
@@ -60,6 +67,8 @@ describe("GroupHeader MLS membership updates", () => {
   let socket;
   let currentMembers;
   let mlsEnabled;
+  let groupDescription;
+  let groupProfilePicture;
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -77,6 +86,8 @@ describe("GroupHeader MLS membership updates", () => {
       makeMember({ userId: "alice", username: "Alice", leafIndex: 0, role: "admin" }),
     ];
     mlsEnabled = true;
+    groupDescription = "Initial description";
+    groupProfilePicture = "/uploads/group-1.png";
 
     socket = {
       emit: vi.fn((event, payload, callback) => {
@@ -86,6 +97,8 @@ describe("GroupHeader MLS membership updates", () => {
             group: {
               groupId: payload.groupId,
               name: "Project Team",
+              description: groupDescription,
+              profilePicture: groupProfilePicture,
               createdBy: "alice",
               mlsEnabled,
               epoch: 2,
@@ -133,6 +146,21 @@ describe("GroupHeader MLS membership updates", () => {
           return;
         }
 
+        if (event === "updateGroupProfile") {
+          groupDescription = payload.description;
+          groupProfilePicture = payload.profilePicture;
+          callback?.({
+            success: true,
+            group: {
+              groupId: payload.groupId,
+              name: "Project Team",
+              description: groupDescription,
+              profilePicture: groupProfilePicture,
+            },
+          });
+          return;
+        }
+
         if (event === "fetchKeyPackage") {
           callback?.({
             success: true,
@@ -159,7 +187,15 @@ describe("GroupHeader MLS membership updates", () => {
 
   async function renderHeader() {
     await act(async () => {
-      root.render(<GroupHeader groupId="group-1" groupName="Project Team" userId="alice" />);
+      root.render(
+        <GroupHeader
+          groupId="group-1"
+          groupName="Project Team"
+          groupDescription={groupDescription}
+          groupProfilePicture={groupProfilePicture}
+          userId="alice"
+        />
+      );
       await flush();
       await flush();
     });
@@ -178,6 +214,23 @@ describe("GroupHeader MLS membership updates", () => {
 
     await act(async () => {
       membersButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await flush();
+    });
+  }
+
+  async function openProfileModal() {
+    const optionsButton = container.querySelector('button[aria-label="Group options"]');
+    await act(async () => {
+      optionsButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await flush();
+    });
+
+    const profileButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Group profile")
+    );
+
+    await act(async () => {
+      profileButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await flush();
     });
   }
@@ -349,5 +402,79 @@ describe("GroupHeader MLS membership updates", () => {
     expect(
       socket.emit.mock.calls.some(([eventName]) => eventName === "sendGroupWelcome")
     ).toBe(false);
+  });
+
+  it("updates the group description through the profile modal", async () => {
+    await renderHeader();
+    expect(container.textContent).toContain("Initial description");
+
+    await openProfileModal();
+
+    const descriptionField = container.querySelector('textarea[placeholder="Add a description for this group"]');
+    await act(async () => {
+      setTextareaValue(descriptionField, "Updated project status");
+      await flush();
+    });
+
+    const saveButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.trim() === "Save"
+    );
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await flush();
+      await flush();
+    });
+
+    expect(socket.emit).toHaveBeenCalledWith(
+      "updateGroupProfile",
+      {
+        groupId: "group-1",
+        description: "Updated project status",
+        profilePicture: "/uploads/group-1.png",
+      },
+      expect.any(Function)
+    );
+    expect(container.textContent).toContain("Updated project status");
+  });
+
+  it("lets the last MLS member leave without building a remove commit", async () => {
+    currentMembers = [
+      makeMember({ userId: "alice", username: "Alice", leafIndex: 0, role: "admin" }),
+    ];
+
+    loadGroupStateMock.mockResolvedValue({
+      groupId: "group-1",
+      epoch: 2,
+      selfUserId: "alice",
+      selfLeafIndex: 0,
+      groupKeyB64: "old-key",
+      roster: [{ userId: "alice", username: "Alice", leafIndex: 0 }],
+    });
+
+    await renderHeader();
+
+    const optionsButton = container.querySelector('button[aria-label="Group options"]');
+    await act(async () => {
+      optionsButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await flush();
+    });
+
+    const leaveButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Leave group")
+    );
+
+    await act(async () => {
+      leaveButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await flush();
+      await flush();
+    });
+
+    expect(buildRemoveCommitMock).not.toHaveBeenCalled();
+    expect(socket.emit).toHaveBeenCalledWith(
+      "removeGroupMember",
+      { groupId: "group-1", memberId: "alice" },
+      expect.any(Function)
+    );
   });
 });

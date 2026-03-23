@@ -15,7 +15,13 @@ import { getUserData, fetchUserProfileFromSocket, getCachedUserProfile, formatPr
 import { WALLPAPER_PREVIEWS } from "./DashboardComponents/utils/wallpaper";
 import { getSocket } from "../../socket";
 import IncomingCallNotification from "../VideoCall/IncomingCallNotification";
-import { getIdentityKeys, getSavedMessages, updateSavedMessages } from "./Chat/utils/chat/keyManagement";
+import {
+  getIdentityKeys,
+  getSavedMessages,
+  updateSavedMessages,
+} from "./Chat/utils/chat/keyManagement";
+
+import { decryptIncomingGroupMessage } from "./Chat/utils/chat/groupMessageDecryption";
 import { decryptIncomingMessage } from "./Chat/utils/chat/messageDecryption";
 import { base64ToArrayBuffer } from "./Chat/utils/helpers";
 import { generateOneTimePreKeys } from "./Chat/utils/crypto/opk";
@@ -77,6 +83,7 @@ const Dashboard = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const GROUP_CACHE_PREFIX = "group:";
 
   // Hooks personalizados - must be before useEffects that use them
   const { recentConversations, updateRecentConversations } = useConversations(userId);
@@ -89,11 +96,31 @@ const Dashboard = () => {
   const userIdRef = useRef(userId);
   const mlsKeyPackagePublishedRef = useRef(false);
   const mlsKeyPackageRetryTimeoutRef = useRef(null);
+  const pendingGroupMessageTasksRef = useRef(new Map());
 
   const updateRecentConversationsRef = useRef(updateRecentConversations);
   const setAllGroupsRef = useRef(setAllGroups);
   const upsertGroupRef = useRef(upsertGroup);
   const removeGroupRef = useRef(removeGroup);
+
+  const getGroupCacheId = (groupId) => `${GROUP_CACHE_PREFIX}${groupId}`;
+
+  const enqueueGroupMessageTask = (groupId, task) => {
+    const queue = pendingGroupMessageTasksRef.current;
+    const previousTask = queue.get(groupId) ?? Promise.resolve();
+    const currentTask = previousTask
+      .catch(() => {})
+      .then(task);
+
+    queue.set(groupId, currentTask);
+    currentTask.finally(() => {
+      if (queue.get(groupId) === currentTask) {
+        queue.delete(groupId);
+      }
+    });
+
+    return currentTask;
+  };
 
   useEffect(() => {
     activeChatRef.current = activeChat;
@@ -363,6 +390,34 @@ const Dashboard = () => {
       });
     };
 
+    const handleGroupUpdated = (payload) => {
+      const group = payload?.group ?? payload;
+      if (!group) return;
+
+      const groupId = String(group.groupId ?? group.id ?? "");
+      if (!groupId) return;
+
+      upsertGroupRef.current?.({
+        ...group,
+        groupId,
+        name: group.name || "Group",
+      });
+
+      setActiveChat((prevActiveChat) => {
+        if (prevActiveChat?.type !== "group" || String(prevActiveChat.groupId) !== groupId) {
+          return prevActiveChat;
+        }
+
+        return {
+          ...prevActiveChat,
+          ...group,
+          type: "group",
+          groupId,
+          name: group.name || prevActiveChat.name || "Group",
+        };
+      });
+    };
+
     const handleGroupRemoved = ({ groupId }) => {
       const gid = String(groupId ?? "");
       if (!gid) return;
@@ -379,32 +434,73 @@ const Dashboard = () => {
       }
     };
 
-    const handleNewGroupMessageNotification = (message) => {
+    const handleNewGroupMessageNotification = async (message) => {
       if (!message?.groupId) return;
       const gid = String(message.groupId);
+      return enqueueGroupMessageTask(gid, async () => {
+        const currentActive = activeChatRef.current;
+        const isActiveGroup = currentActive?.type === "group" && String(currentActive.groupId) === gid;
+        const isOwnMessage = String(message?.userId ?? "") === String(userIdRef.current ?? "");
+        const timestamp = message.createdAt || message.timestamp || new Date().toISOString();
 
-      const msgText =
-        typeof message.payload === "string"
-          ? message.payload
-          : typeof message.text === "string"
-            ? message.text
-            : "";
-      const timestamp = message.createdAt || message.timestamp || new Date().toISOString();
+        // The active GroupChat view owns live MLS decryption for the currently
+        // open group so it can use its in-memory state instead of stale ELD state.
+        if (isActiveGroup) {
+          return;
+        }
 
-      upsertGroupRef.current?.(
-        { groupId: gid, name: message.groupName || "Group" },
-        { timestamp, text: msgText }
-      );
+        let msgText =
+          typeof message.payload === "string"
+            ? message.payload
+            : typeof message.text === "string"
+              ? message.text
+              : "";
 
-      const currentActive = activeChatRef.current;
-      if (!(currentActive?.type === "group" && String(currentActive.groupId) === gid)) {
-        setUnreadGroupMessages((prev) => {
-          const nextCount = (prev[gid] || 0) + 1;
-          const next = { ...prev, [gid]: nextCount };
-          localStorage.setItem(`unreadGroup-${userIdRef.current}-${gid}`, String(nextCount));
-          return next;
-        });
-      }
+        try {
+          const result = await decryptIncomingGroupMessage({
+            message,
+            userId: userIdRef.current,
+            username,
+          });
+          msgText = result?.formattedMessage?.text ?? msgText;
+        } catch (err) {
+          console.warn("[Dashboard] Failed to decrypt incoming group message:", {
+            groupId: gid,
+            messageId: message?._id ?? null,
+            seq: Number.isInteger(message?.seq) ? message.seq : null,
+            epoch: Number.isInteger(message?.epoch) ? message.epoch : null,
+            senderLeafIndex: Number.isInteger(message?.senderLeafIndex) ? message.senderLeafIndex : null,
+            error: err?.message ?? String(err),
+          });
+          msgText = "[Unable to decrypt message]";
+          await updateSavedMessages(
+            userIdRef.current,
+            getGroupCacheId(gid),
+            {
+              _id: message._id || `${gid}:${String(message?.seq ?? timestamp)}`,
+              userId: String(message?.userId ?? ""),
+              username: message?.username || "Member",
+              text: msgText,
+              createdAt: timestamp,
+              seenStatus: true,
+            },
+          );
+        }
+
+        upsertGroupRef.current?.(
+          { groupId: gid, name: message.groupName || "Group" },
+          { timestamp, text: msgText }
+        );
+
+        if (!isActiveGroup && !isOwnMessage) {
+          setUnreadGroupMessages((prev) => {
+            const nextCount = (prev[gid] || 0) + 1;
+            const next = { ...prev, [gid]: nextCount };
+            localStorage.setItem(`unreadGroup-${userIdRef.current}-${gid}`, String(nextCount));
+            return next;
+          });
+        }
+      });
     };
 
     // Listen for new messages to update unread count and decrypt in background
@@ -564,6 +660,7 @@ const Dashboard = () => {
 
     sharedSocket.on('newMessage', handleNewMessageNotification);
     sharedSocket.on("groupAdded", handleGroupAdded);
+    sharedSocket.on("groupUpdated", handleGroupUpdated);
     sharedSocket.on("groupRemoved", handleGroupRemoved);
     sharedSocket.on("newGroupMessage", handleNewGroupMessageNotification);
 
@@ -580,12 +677,34 @@ const Dashboard = () => {
       sharedSocket.off('userProfileUpdated');
       sharedSocket.off('newMessage', handleNewMessageNotification);
       sharedSocket.off('groupAdded', handleGroupAdded);
+      sharedSocket.off('groupUpdated', handleGroupUpdated);
       sharedSocket.off('groupRemoved', handleGroupRemoved);
       sharedSocket.off('newGroupMessage', handleNewGroupMessageNotification);
       clearMlsKeyPackageRetry();
       // Don't disconnect the shared socket here
     };
   }, [token, userId]);
+
+  useEffect(() => {
+    const handleStorageUpdate = (event) => {
+      const targetId = String(event?.detail?.targetUserId ?? "");
+      if (!targetId.startsWith(GROUP_CACHE_PREFIX)) return;
+
+      const gid = targetId.slice(GROUP_CACHE_PREFIX.length);
+      if (!gid) return;
+
+      upsertGroupRef.current?.(
+        { groupId: gid },
+        {
+          text: event?.detail?.latestMessage ?? "",
+          timestamp: event?.detail?.timestamp || new Date().toISOString(),
+        },
+      );
+    };
+
+    window.addEventListener("localStorageUpdated", handleStorageUpdate);
+    return () => window.removeEventListener("localStorageUpdated", handleStorageUpdate);
+  }, []);
 
   // Update document title with notification count
   useEffect(() => {
@@ -652,7 +771,14 @@ const Dashboard = () => {
   const handleGroupSelect = (group) => {
     const gid = String(group?.groupId ?? "");
     if (!gid) return;
-    setActiveChat({ type: "group", groupId: gid, name: group.name || "Group" });
+    setActiveChat({
+      ...group,
+      type: "group",
+      groupId: gid,
+      name: group.name || "Group",
+      description: group.description || "",
+      profilePicture: group.profilePicture || "",
+    });
     setShowMobileChat(true);
     setUnreadGroupMessages((prev) => {
       const next = { ...prev, [gid]: 0 };
@@ -959,7 +1085,13 @@ const Dashboard = () => {
               </button>
               <div className="flex-1">
                 {activeChat?.type === "group" ? (
-                  <GroupHeader groupId={activeChat.groupId} groupName={activeChat.name} userId={userId} />
+                  <GroupHeader
+                    groupId={activeChat.groupId}
+                    groupName={activeChat.name}
+                    groupDescription={activeChat.description}
+                    groupProfilePicture={activeChat.profilePicture}
+                    userId={userId}
+                  />
                 ) : (
                   <ChatHeader activeChat={activeChat} userId={userId} token={token} />
                 )}

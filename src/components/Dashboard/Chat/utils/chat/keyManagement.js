@@ -7,6 +7,56 @@ const sendingChainKeyCache = new Map();
 const receivingChainKeyCache = new Map();
 const rootKeyCache = new Map();
 const sessionKeyCache = new Map();
+const pendingGroupPlaintextCache = new Map();
+const PENDING_GROUP_PLAINTEXT_TTL_MS = 5 * 60 * 1000;
+
+const prunePendingGroupPlaintexts = () => {
+  const now = Date.now();
+  for (const [cacheKey, entry] of pendingGroupPlaintextCache.entries()) {
+    if (!entry || (now - entry.createdAt) > PENDING_GROUP_PLAINTEXT_TTL_MS) {
+      pendingGroupPlaintextCache.delete(cacheKey);
+    }
+  }
+};
+
+const getPendingGroupPlaintextKey = ({ groupId, headerB64, ciphertextB64 }) => {
+  if (
+    typeof groupId !== 'string' || groupId.length === 0 ||
+    typeof headerB64 !== 'string' || headerB64.length === 0 ||
+    typeof ciphertextB64 !== 'string' || ciphertextB64.length === 0
+  ) {
+    return null;
+  }
+
+  return `${groupId}:${headerB64}:${ciphertextB64}`;
+};
+
+export const setPendingOutgoingGroupMessage = ({ groupId, headerB64, ciphertextB64, text }) => {
+  prunePendingGroupPlaintexts();
+  const cacheKey = getPendingGroupPlaintextKey({ groupId, headerB64, ciphertextB64 });
+  if (!cacheKey || typeof text !== 'string') return;
+
+  pendingGroupPlaintextCache.set(cacheKey, {
+    text,
+    createdAt: Date.now(),
+  });
+};
+
+export const consumePendingOutgoingGroupMessage = ({ groupId, headerB64, ciphertextB64 }) => {
+  prunePendingGroupPlaintexts();
+  const cacheKey = getPendingGroupPlaintextKey({ groupId, headerB64, ciphertextB64 });
+  if (!cacheKey) return null;
+
+  const entry = pendingGroupPlaintextCache.get(cacheKey);
+  pendingGroupPlaintextCache.delete(cacheKey);
+  return typeof entry?.text === 'string' ? entry.text : null;
+};
+
+export const deletePendingOutgoingGroupMessage = ({ groupId, headerB64, ciphertextB64 }) => {
+  const cacheKey = getPendingGroupPlaintextKey({ groupId, headerB64, ciphertextB64 });
+  if (!cacheKey) return;
+  pendingGroupPlaintextCache.delete(cacheKey);
+};
 
 export const setOwnEphemeralKeys = async (userId, targetUserId, publicKey, privateKey) => {
   if (!publicKey || !privateKey) {
@@ -383,6 +433,7 @@ export const updateSavedMessages = async (userId, targetUserId, message, setMess
     detail: {
       userId,
       targetUserId,
+      message,
       latestMessage: message.text,
       timestamp: message.timestamp || message.createdAt
     }

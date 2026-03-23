@@ -9,62 +9,18 @@ const TEXT_ENCODER = new TextEncoder();
 const HKDF_EXTRACT_EXPORT = 'hkdf_extract';
 const HKDF_EXPAND_EXPORT = 'hkdf_expand';
 
-function ensureSubtleCrypto() {
-    const subtle = globalThis.crypto?.subtle;
-    if (!subtle) {
-        throw new Error('Web Crypto subtle API is unavailable for HKDF operations');
-    }
-    return subtle;
-}
-
-async function hmacSha256(keyBytes, dataBytes) {
-    const subtle = ensureSubtleCrypto();
-    const key = await subtle.importKey(
-        'raw',
-        keyBytes,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign'],
-    );
-    const mac = await subtle.sign('HMAC', key, dataBytes);
-    return new Uint8Array(mac);
-}
-
-async function hkdfExtractFallback(salt, ikm) {
-    const normalizedSalt = salt.length > 0 ? salt : new Uint8Array(NH);
-    return hmacSha256(normalizedSalt, ikm);
-}
-
-async function hkdfExpandFallback(prk, info, length) {
-    if (prk.length < NH) {
-        throw new Error('HKDF-Expand requires a pseudorandom key of at least 32 bytes');
-    }
-
-    const blocks = Math.ceil(length / NH);
-    const output = new Uint8Array(length);
-    let previous = new Uint8Array(0);
-    let offset = 0;
-
-    for (let blockIndex = 1; blockIndex <= blocks; blockIndex += 1) {
-        const input = new Uint8Array(previous.length + info.length + 1);
-        input.set(previous, 0);
-        input.set(info, previous.length);
-        input[input.length - 1] = blockIndex;
-
-        previous = await hmacSha256(prk, input);
-        output.set(previous.slice(0, Math.min(previous.length, length - offset)), offset);
-        offset += previous.length;
-    }
-
-    return output;
-}
-
 async function hkdfExtract(salt, ikm) {
     const extract = protocol[HKDF_EXTRACT_EXPORT];
     if (typeof extract === 'function') {
         return extract(salt, ikm);
     }
-    return hkdfExtractFallback(salt, ikm);
+    console.warn('[HKDF] extract fallback', {
+        expected: HKDF_EXTRACT_EXPORT,
+        actualType: typeof extract,
+        isUndefined: extract === undefined,
+        protocolKeys: Object.keys(protocol).slice(0, 20),
+    });
+    return;
 }
 
 async function hkdfExpand(prk, info, length) {
@@ -72,13 +28,19 @@ async function hkdfExpand(prk, info, length) {
     if (typeof expand === 'function') {
         return expand(prk, info, length);
     }
-    return hkdfExpandFallback(prk, info, length);
+    console.warn('[HKDF] expand fallback', {
+        expected: HKDF_EXPAND_EXPORT,
+        actualType: typeof expand,
+        isUndefined: expand === undefined,
+        protocolKeys: Object.keys(protocol).slice(0, 20),
+    });
+    return;
 }
 
 // This function constructs an HKDF label that is fed later to the HKDF-Expand
 // Raw bytes are not fed into the HKDF Expand, a structured label is used instead,
 // this is to keep keys domain-seperated and deterministic (mirar HKDF.js)
-function encodeHKDFLabel(length, label, context){
+function encodeHKDFLabel(length, label, context) {
     const labelBytes = TEXT_ENCODER.encode('MLS 1.0 ' + label);
     const buf = new Uint8Array(2 + 1 + labelBytes.length + 4 + context.length);
     let o = 0;
@@ -95,17 +57,19 @@ function encodeHKDFLabel(length, label, context){
     return buf;
 }
 
-export async function expandWithLabel(secret, label, context, length){
+// Exported functions that expand and extract using the label constructed above
+export async function expandWithLabel(secret, label, context, length) {
     await init();
     const info = encodeHKDFLabel(length, label, context);
     return hkdfExpand(secret, info, length);
 }
 
-export async function deriveSecret(secret, label){
+export async function deriveSecret(secret, label) {
     return expandWithLabel(secret, label, new Uint8Array(0), NH);
 }
 
-function encodeGroupContext(groupId, epoch){
+// Encodes the groupId and epoch into context to be fed into HKDF
+function encodeGroupContext(groupId, epoch) {
     const gid = TEXT_ENCODER.encode(groupId);
     const buf = new Uint8Array(4 + 2 + gid.length);
     buf[0] = (epoch >>> 24) & 0xff;
@@ -118,16 +82,20 @@ function encodeGroupContext(groupId, epoch){
     return buf;
 }
 
-export async function advanceEpoch({ initSecret, commitSecret, groupId, epoch }){
+export async function advanceEpoch({ initSecret, commitSecret, groupId, epoch }) {
     await init();
 
+    // The secret the added user derives when joining a group
     const joinerSecret = await hkdfExtract(initSecret, commitSecret);
 
+    // computing the master secret for the new epoch, the epoch advanced with the joiner secret
     const epochSecret = await expandWithLabel(
         joinerSecret, 'epoch', encodeGroupContext(groupId, epoch), NH
     );
 
-    // application messages, sender data keys and next epoch init
+    // applicationSecret is used to derive encryption keys
+    // senderDataSecret for sender data 
+    // nextInitSecret is the init secret for the next epoch
     const [applicationSecret, senderDataSecret, nextInitSecret] = await Promise.all([
         deriveSecret(epochSecret, 'encryption'),
         deriveSecret(epochSecret, 'sender_data'),
@@ -137,7 +105,9 @@ export async function advanceEpoch({ initSecret, commitSecret, groupId, epoch })
     return { epochSecret, nextInitSecret, applicationSecret, senderDataSecret };
 }
 
-function encodeAppSecretContext(leafIndex, generation){
+// this encodes the leaf index and generation into a context then fed into the HDKF-expand
+// this means that the derived key is unique per sender and per message generation
+function encodeAppSecretContext(leafIndex, generation) {
     const buf = new Uint8Array(8);
     buf[0] = (leafIndex >>> 24) & 0xff;
     buf[1] = (leafIndex >>> 16) & 0xff;
@@ -149,8 +119,8 @@ function encodeAppSecretContext(leafIndex, generation){
     buf[7] = generation & 0xff;
     return buf;
 }
-
-export async function deriveAppKeyAndNonce(applicationSecret, senderLeafIndex, generation){
+// derives the nonce and key used to encrypt the message payload
+export async function deriveAppKeyAndNonce(applicationSecret, senderLeafIndex, generation) {
     const ctx = encodeAppSecretContext(senderLeafIndex, generation);
     const [key, nonce] = await Promise.all([
         // 32 bytes for the key and 12 for the nonce
@@ -160,7 +130,8 @@ export async function deriveAppKeyAndNonce(applicationSecret, senderLeafIndex, g
     return { key, nonce };
 }
 
-export async function ratchetAppSecret(applicationSecret, senderLeafIndex, generation){
+// ratchets the application secret to derive the next generation appSecret
+export async function ratchetAppSecret(applicationSecret, senderLeafIndex, generation) {
     const ctx = encodeAppSecretContext(senderLeafIndex, generation);
     return expandWithLabel(applicationSecret, 'secret', ctx, NH);
 }

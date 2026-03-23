@@ -14,13 +14,21 @@ import {
   processWelcome,
 } from "./utils/crypto/groupCryptoProvider";
 
-import { getIdentityKeys } from "./utils/chat/keyManagement";
+import {
+  deletePendingOutgoingGroupMessage,
+  getIdentityKeys,
+  getSavedMessages,
+  setPendingOutgoingGroupMessage,
+  updateSavedMessages,
+} from "./utils/chat/keyManagement";
+import { decryptIncomingGroupMessage } from "./utils/chat/groupMessageDecryption";
 
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 const MLS_UNAVAILABLE_TEXT = "[Unable to decrypt message]";
 const MLS_KEY_MISSING_REASON = "MLS state is not ready on this device yet";
 const DEFAULT_MLS_CIPHER_SUITE = "MLS-MVP/X25519_AES256GCM_SHA256";
+const GROUP_CACHE_PREFIX = "group:";
 
 const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWallpaper }) => {
   const socket = useMemo(() => getSocket(), []);
@@ -39,6 +47,7 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
   const messagesEndRef = useRef(null);
   const groupCryptoStateRef = useRef(null);
   const groupMetaRef = useRef(groupMeta);
+  const liveMessageQueueRef = useRef(Promise.resolve());
 
   useEffect(() => {
     groupCryptoStateRef.current = groupCryptoState;
@@ -57,6 +66,8 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       }))
       : [];
 
+  const getGroupCacheId = (groupId) => `${GROUP_CACHE_PREFIX}${groupId}`;
+
   const parseArtifactPayload = (message) => {
     if (typeof message?.payload !== "string" || message.payload.length === 0) return null;
 
@@ -66,6 +77,74 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       console.error("[GroupChat] Failed to parse stored MLS artifact payload:", err);
       return null;
     }
+  };
+
+  const findMemberByUserId = (roster, memberUserId) =>
+    Array.isArray(roster)
+      ? roster.find((member) => String(member?.userId ?? "") === String(memberUserId ?? ""))
+      : null;
+
+  const findMemberByLeafIndex = (roster, leafIndex) =>
+    Array.isArray(roster)
+      ? roster.find((member) => Number.isInteger(member?.leafIndex) && member.leafIndex === leafIndex)
+      : null;
+
+  const buildCommitSystemMessage = ({ commit, priorState, message, actorUsername }) => {
+    if (!commit || typeof commit !== "object") return null;
+
+    const createdAt = message?.createdAt || message?.timestamp || new Date().toISOString();
+    const actorName =
+      actorUsername ||
+      findMemberByLeafIndex(priorState?.roster, commit?.senderLeafIndex)?.username ||
+      findMemberByLeafIndex(commit?.roster, commit?.senderLeafIndex)?.username ||
+      "A member";
+    const targetName =
+      findMemberByUserId(priorState?.roster, commit?.targetUserId)?.username ||
+      findMemberByUserId(commit?.roster, commit?.targetUserId)?.username ||
+      "a member";
+
+    let text = `${actorName} updated the group`;
+    if (commit?.type === "add") {
+      text = `${actorName} added ${targetName} to the group`;
+    } else if (commit?.type === "remove") {
+      const actorWasTarget = String(commit?.targetUserId ?? "") === String(
+        findMemberByLeafIndex(priorState?.roster, commit?.senderLeafIndex)?.userId ?? ""
+      );
+      text = actorWasTarget
+        ? `${actorName} left the group`
+        : `${actorName} removed ${targetName} from the group`;
+    }
+
+    return {
+      _id: message?._id || `commit:${String(commit?.groupId ?? activeGroupId)}:${String(commit?.epoch ?? createdAt)}`,
+      userId: "",
+      username: "",
+      text,
+      createdAt,
+      seenStatus: true,
+      messageType: "system",
+    };
+  };
+
+  const mergeCachedMessages = (cachedMessages, incomingMessages) => {
+    const byId = new Map();
+
+    for (const message of Array.isArray(cachedMessages) ? cachedMessages : []) {
+      if (!message?._id) continue;
+      byId.set(message._id, message);
+    }
+
+    for (const message of Array.isArray(incomingMessages) ? incomingMessages : []) {
+      if (!message?._id) continue;
+      const cached = byId.get(message._id);
+      if (cached && message.text === MLS_UNAVAILABLE_TEXT && cached.text && cached.text !== MLS_UNAVAILABLE_TEXT) {
+        byId.set(message._id, { ...message, text: cached.text });
+        continue;
+      }
+      byId.set(message._id, message);
+    }
+
+    return [...byId.values()].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
   };
 
   const syncLocalStateFromServer = async ({ roster, responseGroup, responseMembership }) => {
@@ -100,10 +179,11 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       });
     }
 
+    // For existing MLS state, only sync membership metadata here.
+    // Epoch/key schedule changes must come from applyCommit/processWelcome so
+    // we do not persist a mixed state with new roster/epoch but old secrets.
     const nextState = {
       ...currentState,
-      epoch: Number.isInteger(responseGroup?.epoch) ? responseGroup.epoch : currentState.epoch,
-      cipherSuite: responseGroup?.cipherSuite ?? currentState.cipherSuite,
       selfLeafIndex: serverLeafIndex,
       roster,
     };
@@ -111,8 +191,6 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
     const rosterChanged = JSON.stringify(currentState.roster ?? []) !== JSON.stringify(roster);
     const needsSave =
       rosterChanged ||
-      currentState.epoch !== nextState.epoch ||
-      currentState.cipherSuite !== nextState.cipherSuite ||
       currentState.selfLeafIndex !== nextState.selfLeafIndex;
 
     return needsSave ? saveGroupState(activeGroupId, nextState) : nextState;
@@ -179,7 +257,14 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       if (initialMeta?.mlsEnabled && message?.contentType === 'commit') {
         const commit = parseArtifactPayload(message);
         if (!commit) continue;
+        const systemMessage = buildCommitSystemMessage({
+          commit,
+          priorState: replayState,
+          message,
+          actorUsername: message?.username,
+        });
         if (Number.isInteger(replayState?.epoch) && commit.epoch <= replayState.epoch) {
+          if (systemMessage) formattedMessages.push(systemMessage);
           continue;
         }
 
@@ -190,6 +275,7 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
             ...replayMeta,
             epoch: Number.isInteger(commit?.epoch) ? commit.epoch : replayMeta.epoch,
           };
+          if (systemMessage) formattedMessages.push(systemMessage);
         } catch (err) {
           console.warn("[GroupChat] Skipping stored MLS commit during replay:", err);
         }
@@ -264,11 +350,13 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
         responseGroup: res?.group,
         responseMembership: res?.membership,
       });
+      const cachedMessages = await getSavedMessages(userId, getGroupCacheId(activeGroupId));
 
       if (cancelled) return;
 
       setGroupCryptoState(localState);
       groupCryptoStateRef.current = localState;
+      setMessages(Array.isArray(cachedMessages) ? cachedMessages : []);
 
       socket.emit("fetchGroupMessages", { groupId: activeGroupId, limit: 50 }, async (msgRes) => {
         if (cancelled || !msgRes?.success || !Array.isArray(msgRes.messages)) return;
@@ -278,38 +366,24 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
           initialState: localState,
           initialMeta: nextMeta,
         });
+        const persistedReplayState = replayed.replayState
+          ? await saveGroupState(activeGroupId, replayed.replayState)
+          : replayed.replayState;
+        const mergedMessages = mergeCachedMessages(cachedMessages, replayed.formattedMessages);
+
+        for (const message of replayed.formattedMessages) {
+          await updateSavedMessages(userId, getGroupCacheId(activeGroupId), message);
+        }
 
         if (!cancelled) {
-          setMessages(replayed.formattedMessages);
-          setGroupCryptoState(replayed.replayState);
-          groupCryptoStateRef.current = replayed.replayState;
+          setMessages(mergedMessages);
+          setGroupCryptoState(persistedReplayState);
+          groupCryptoStateRef.current = persistedReplayState;
           setGroupMeta(replayed.replayMeta);
           groupMetaRef.current = replayed.replayMeta;
         }
       });
     });
-
-    const handleNewGroupMessage = async (message) => {
-      if (String(message?.groupId ?? "") !== String(activeGroupId)) return;
-
-      const formatted = await formatMessage(
-        message,
-        groupCryptoStateRef.current,
-        groupMetaRef.current
-      );
-
-      if (formatted.nextState && formatted.nextState !== groupCryptoStateRef.current) {
-        const persistedState = await saveGroupState(activeGroupId, formatted.nextState);
-        groupCryptoStateRef.current = persistedState;
-        if (!cancelled) {
-          setGroupCryptoState(persistedState);
-        }
-      }
-
-      if (!cancelled) {
-        setMessages((prev) => [...prev, formatted.formattedMessage]);
-      }
-    };
 
     const handleMembershipChanged = (evt) => {
       if (String(evt?.groupId ?? "") !== String(activeGroupId)) return;
@@ -336,6 +410,69 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
         });
 
         if (!cancelled) {
+          setGroupCryptoState(nextState);
+          groupCryptoStateRef.current = nextState;
+        }
+      });
+    };
+
+    const handleStoredGroupMessage = (event) => {
+      const targetId = String(event?.detail?.targetUserId ?? "");
+      if (targetId !== getGroupCacheId(activeGroupId) || cancelled) return;
+
+      const storedMessage = event?.detail?.message;
+      if (!storedMessage?._id) return;
+
+      setMessages((prev) => {
+        if (prev.some((message) => message._id === storedMessage._id)) return prev;
+        return [...prev, storedMessage].sort(
+          (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+        );
+      });
+    };
+
+    const enqueueLiveGroupMessageTask = (task) => {
+      const queuedTask = liveMessageQueueRef.current
+        .catch(() => {})
+        .then(task);
+      liveMessageQueueRef.current = queuedTask;
+      return queuedTask;
+    };
+
+    const handleNewGroupMessage = ({ groupId, ...message }) => {
+      if (String(groupId ?? "") !== String(activeGroupId)) return;
+
+      return enqueueLiveGroupMessageTask(async () => {
+        const currentMeta = groupMetaRef.current;
+        const currentState = groupCryptoStateRef.current;
+        let nextState = currentState;
+        let formattedMessage = null;
+
+        if (currentMeta?.mlsEnabled) {
+          const decrypted = await decryptIncomingGroupMessage({
+            message: { groupId, ...message },
+            userId,
+            username,
+            currentState,
+            setMessages,
+          });
+          formattedMessage = decrypted.formattedMessage;
+          nextState = decrypted.nextState ?? currentState;
+        } else {
+          const formatted = await formatMessage(message, currentState, currentMeta);
+          formattedMessage = formatted.formattedMessage;
+          nextState = formatted.nextState ?? currentState;
+          await updateSavedMessages(
+            userId,
+            getGroupCacheId(activeGroupId),
+            formattedMessage,
+            setMessages,
+          );
+        }
+
+        if (cancelled) return;
+
+        if (nextState) {
           setGroupCryptoState(nextState);
           groupCryptoStateRef.current = nextState;
         }
@@ -371,9 +508,11 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       try {
         const identityKeys = await getIdentityKeys();
         const myInitPrivKeyB64 = identityKeys?.privateKeyX25519 ?? null;
+        const priorState = groupCryptoStateRef.current;
+        const systemMessage = buildCommitSystemMessage({ commit, priorState });
 
         const nextState = await applyCommit({
-          state: groupCryptoStateRef.current,
+          state: priorState,
           commit,
           myInitPrivKeyB64,
         });
@@ -390,6 +529,14 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
           groupMetaRef.current = nextMeta;
           return nextMeta;
         });
+        if (systemMessage) {
+          await updateSavedMessages(
+            userId,
+            getGroupCacheId(activeGroupId),
+            systemMessage,
+            setMessages,
+          );
+        }
       } catch (err) {
         console.error("[GroupChat] Failed to apply group commit:", err);
       }
@@ -400,6 +547,7 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
     socket.on("newGroupMessage", handleNewGroupMessage);
     socket.on("groupMemberAdded", handleMembershipChanged);
     socket.on("groupMemberRemoved", handleMembershipChanged);
+    window.addEventListener("localStorageUpdated", handleStoredGroupMessage);
 
     return () => {
       cancelled = true;
@@ -408,6 +556,7 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       socket.off("newGroupMessage", handleNewGroupMessage);
       socket.off("groupMemberAdded", handleMembershipChanged);
       socket.off("groupMemberRemoved", handleMembershipChanged);
+      window.removeEventListener("localStorageUpdated", handleStoredGroupMessage);
     };
   }, [activeGroupId, socket, userId, username]);
 
@@ -430,6 +579,15 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
       const encrypted = await encryptApplicationMessage({
         state: currentState,
         plaintextBytes: TEXT_ENCODER.encode(text),
+      });
+      const pendingOutgoingMessage = {
+        groupId: activeGroupId,
+        headerB64: encrypted.headerB64,
+        ciphertextB64: encrypted.ciphertextB64,
+      };
+      setPendingOutgoingGroupMessage({
+        ...pendingOutgoingMessage,
+        text,
       });
 
       return new Promise((resolve, reject) => {
@@ -457,6 +615,7 @@ const GroupChat = ({ activeGroupId, activeGroupName, userId, username, currentWa
             const msg = ack?.details
               ? `${ack?.error || "Failed to send group message"}: ${ack.details}`
               : (ack?.error || "Failed to send group message");
+            deletePendingOutgoingGroupMessage(pendingOutgoingMessage);
             reject(new Error(msg));
           }
         );

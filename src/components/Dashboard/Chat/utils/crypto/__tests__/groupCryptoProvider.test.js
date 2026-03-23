@@ -213,7 +213,7 @@ describe('groupCryptoProvider application messages', () => {
     expect(encrypted.header.generation).toBe(0);
     expect(encrypted.header).not.toHaveProperty('nonceB64');
     expect(encrypted.newState.senderGenerations['0']).toBe(1);
-    expect(encrypted.newState.applicationSecretB64).not.toBe(creatorState.applicationSecretB64);
+    expect(encrypted.newState.applicationSecretB64).toBe(creatorState.applicationSecretB64);
     expect(new TextDecoder().decode(plaintextBytes)).toBe('hello group');
   });
 
@@ -256,6 +256,52 @@ describe('groupCryptoProvider application messages', () => {
     expect(firstDecrypted.newState.senderGenerations['0']).toBe(1);
     expect(secondDecrypted.newState.senderGenerations['0']).toBe(2);
     expect(secondDecrypted.newState.applicationSecretB64).toBe(secondEncrypted.newState.applicationSecretB64);
+  });
+
+  it('allows different senders to send within the same epoch without mutating the shared application secret', async () => {
+    const { creatorState, welcomes } = await buildCreatorAndWelcomes(
+      'group-msg-3',
+      THREE_PERSON_ROSTER,
+      ALL_INIT_KEYS,
+    );
+    const bobState = await processWelcome({
+      welcome: welcomes.find((welcome) => welcome.recipientUserId === 'bob'),
+      selfUserId: 'bob',
+      myInitPrivKeyB64: BOB_KEY,
+    });
+    const carolState = await processWelcome({
+      welcome: welcomes.find((welcome) => welcome.recipientUserId === 'carol'),
+      selfUserId: 'carol',
+      myInitPrivKeyB64: CAROL_KEY,
+    });
+
+    const aliceEncrypted = await encryptApplicationMessage({
+      state: creatorState,
+      plaintextBytes: encodeText('from alice'),
+    });
+    const bobAfterAlice = await decryptApplicationMessage({
+      state: bobState,
+      header: aliceEncrypted.headerB64,
+      ciphertext: aliceEncrypted.ciphertextB64,
+      includeNewState: true,
+    });
+
+    const carolEncrypted = await encryptApplicationMessage({
+      state: carolState,
+      plaintextBytes: encodeText('from carol'),
+    });
+    const bobAfterCarol = await decryptApplicationMessage({
+      state: bobAfterAlice.newState,
+      header: carolEncrypted.headerB64,
+      ciphertext: carolEncrypted.ciphertextB64,
+      includeNewState: true,
+    });
+
+    expect(new TextDecoder().decode(bobAfterAlice.plaintextBytes)).toBe('from alice');
+    expect(new TextDecoder().decode(bobAfterCarol.plaintextBytes)).toBe('from carol');
+    expect(bobAfterCarol.newState.applicationSecretB64).toBe(creatorState.applicationSecretB64);
+    expect(bobAfterCarol.newState.senderGenerations['0']).toBe(1);
+    expect(bobAfterCarol.newState.senderGenerations['2']).toBe(1);
   });
 });
 
@@ -369,5 +415,46 @@ describe('groupCryptoProvider commits', () => {
     expect(carolNext.applicationSecretB64).toBe(aliceNext.applicationSecretB64);
     expect(bobNext.applicationSecretB64).toBeNull();
     expect(bobNext.selfLeafIndex).toBeNull();
+  });
+
+  it('resets sender generation to 0 after a remove commit even when the sender had already sent messages', async () => {
+    const { creatorState, welcomes } = await buildCreatorAndWelcomes(
+      'group-remove-2',
+      THREE_PERSON_ROSTER,
+      ALL_INIT_KEYS,
+    );
+    const creatorAfterMessage = (await encryptApplicationMessage({
+      state: creatorState,
+      plaintextBytes: encodeText('before remove'),
+    })).newState;
+    const carolState = await processWelcome({
+      welcome: welcomes.find((welcome) => welcome.recipientUserId === 'carol'),
+      selfUserId: 'carol',
+      myInitPrivKeyB64: CAROL_KEY,
+    });
+
+    const { commit, nextState: aliceNext } = await buildRemoveCommit({
+      state: creatorAfterMessage,
+      targetUserId: 'bob',
+      memberInitKeys: [
+        { userId: 'alice', leafIndex: 0, initKeyB64: ALICE_KEY },
+        { userId: 'carol', leafIndex: 2, initKeyB64: CAROL_KEY },
+      ],
+    });
+    const carolNext = await applyCommit({
+      state: carolState,
+      commit,
+      myInitPrivKeyB64: CAROL_KEY,
+    });
+    const encrypted = await encryptApplicationMessage({
+      state: aliceNext,
+      plaintextBytes: encodeText('after remove'),
+    });
+
+    expect(aliceNext.senderGenerations['0'] ?? 0).toBe(0);
+    expect(aliceNext.applicationMessageCounter).toBe(0);
+    expect(carolNext.senderGenerations['2'] ?? 0).toBe(0);
+    expect(carolNext.applicationMessageCounter).toBe(0);
+    expect(encrypted.header.generation).toBe(0);
   });
 });

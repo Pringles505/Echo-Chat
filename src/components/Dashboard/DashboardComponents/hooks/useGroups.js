@@ -29,17 +29,30 @@ export const useGroups = (userId) => {
 
   const setAllGroups = (serverGroups) => {
     if (!Array.isArray(serverGroups)) return;
-    const normalized = [];
-    const seen = new Set();
+    setGroups((prev) => {
+      const previousById = new Map(
+        prev.map((group) => [String(group?.groupId ?? group?.id ?? ""), group]),
+      );
+      const normalized = [];
+      const seen = new Set();
 
-    for (const g of serverGroups) {
-      const groupId = String(g?.groupId ?? g?.id ?? '');
-      if (!groupId || seen.has(groupId)) continue;
-      seen.add(groupId);
-      normalized.push({ ...g, groupId });
-    }
+      for (const g of serverGroups) {
+        const groupId = String(g?.groupId ?? g?.id ?? '');
+        if (!groupId || seen.has(groupId)) continue;
+        seen.add(groupId);
 
-    setGroups(normalized);
+        const existing = previousById.get(groupId);
+        normalized.push({
+          ...existing,
+          ...g,
+          groupId,
+          lastActivityText: g?.lastActivityText ?? existing?.lastActivityText ?? "",
+          lastActivityAt: g?.lastActivityAt ?? existing?.lastActivityAt ?? g?.createdAt ?? existing?.createdAt,
+        });
+      }
+
+      return normalized;
+    });
   };
 
   // Upsert group by groupId; optionally move to top when activity is provided.

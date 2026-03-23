@@ -82,6 +82,12 @@ const DisplayText = ({ messages = [], currentUserId }) => {
           {/* Render call event messages */}
           {message.messageType === 'call_event' ? (
             <CallEventMessage callData={message.callData} currentUserId={currentUserId} />
+          ) : message.messageType === 'system' ? (
+            <div className="flex justify-center">
+              <div className="rounded-full bg-gray-800 px-4 py-2 text-sm text-gray-300">
+                {message.text}
+              </div>
+            </div>
           ) : (
             /* Render regular messages */
             <div

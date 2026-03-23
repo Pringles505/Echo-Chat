@@ -1,16 +1,11 @@
 import PropTypes from "prop-types";
+import { formatProfileImage } from "../utils/helpers";
 
 const GroupListItem = ({ group, isActive, onSelect, unreadCount = 0 }) => {
   const name = group?.name || "Unnamed group";
   const subtitle = group?.lastActivityText || "";
   const time = group?.lastActivityAt || group?.createdAt || group?.joinedAt || null;
-
-  const initials = name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
+  const avatarSrc = formatProfileImage(group?.profilePicture, name);
 
   return (
     <li
@@ -21,9 +16,14 @@ const GroupListItem = ({ group, isActive, onSelect, unreadCount = 0 }) => {
     >
       <div className="flex items-center space-x-3">
         <div className="relative">
-          <div className="w-10 h-10 rounded-full bg-gray-700 border-2 border-black flex items-center justify-center text-white font-semibold">
-            {initials || "G"}
-          </div>
+          <img
+            src={avatarSrc}
+            alt={name}
+            className="w-10 h-10 rounded-full border-2 border-black object-cover bg-gray-700"
+            onError={(e) => {
+              e.target.src = formatProfileImage("", name);
+            }}
+          />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold animate-pulse">
               {unreadCount > 9 ? "9+" : unreadCount}

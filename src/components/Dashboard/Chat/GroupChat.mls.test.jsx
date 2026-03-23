@@ -13,6 +13,11 @@ const decryptApplicationMessageMock = vi.fn();
 const applyCommitMock = vi.fn();
 const processWelcomeMock = vi.fn();
 const getIdentityKeysMock = vi.fn();
+const getSavedMessagesMock = vi.fn();
+const updateSavedMessagesMock = vi.fn();
+const consumePendingOutgoingGroupMessageMock = vi.fn();
+const setPendingOutgoingGroupMessageMock = vi.fn();
+const deletePendingOutgoingGroupMessageMock = vi.fn();
 const getSocketMock = vi.fn();
 
 vi.mock("../../../socket", () => ({
@@ -50,7 +55,12 @@ vi.mock("./utils/crypto/groupCryptoProvider", () => ({
 }));
 
 vi.mock("./utils/chat/keyManagement", () => ({
+  consumePendingOutgoingGroupMessage: (...args) => consumePendingOutgoingGroupMessageMock(...args),
+  deletePendingOutgoingGroupMessage: (...args) => deletePendingOutgoingGroupMessageMock(...args),
   getIdentityKeys: (...args) => getIdentityKeysMock(...args),
+  getSavedMessages: (...args) => getSavedMessagesMock(...args),
+  setPendingOutgoingGroupMessage: (...args) => setPendingOutgoingGroupMessageMock(...args),
+  updateSavedMessages: (...args) => updateSavedMessagesMock(...args),
 }));
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -103,6 +113,21 @@ describe("GroupChat MLS state lifecycle", () => {
     processWelcomeMock.mockReset();
     getIdentityKeysMock.mockReset();
     getIdentityKeysMock.mockResolvedValue(null);
+    getSavedMessagesMock.mockReset();
+    getSavedMessagesMock.mockResolvedValue([]);
+    updateSavedMessagesMock.mockReset();
+    consumePendingOutgoingGroupMessageMock.mockReset();
+    consumePendingOutgoingGroupMessageMock.mockReturnValue(null);
+    setPendingOutgoingGroupMessageMock.mockReset();
+    deletePendingOutgoingGroupMessageMock.mockReset();
+    updateSavedMessagesMock.mockImplementation(async (_userId, _targetId, message, setMessages) => {
+      if (setMessages) {
+        setMessages((prev) => {
+          if (prev.some((msg) => msg._id === message._id)) return prev;
+          return [...prev, message];
+        });
+      }
+    });
 
     socket = {
       emit: vi.fn((event, payload, callback) => {
@@ -151,7 +176,7 @@ describe("GroupChat MLS state lifecycle", () => {
   });
 
   it("reuses existing MLS state and decrypts fetched messages", async () => {
-    loadGroupStateMock.mockResolvedValue({
+    const localState = {
       groupId: "group-1",
       epoch: 2,
       cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
@@ -166,8 +191,19 @@ describe("GroupChat MLS state lifecycle", () => {
       tree: { nodes: [], root: null },
       secrets: { epochSecretsB64: null, initSecretB64: null },
       pendingCommits: [],
+    };
+    const replayedState = {
+      ...localState,
+      groupKeyB64: "group-key-next",
+      applicationMessageCounter: 1,
+    };
+
+    loadGroupStateMock.mockResolvedValue(localState);
+    saveGroupStateMock.mockImplementation(async (_groupId, state) => ({ ...state }));
+    decryptApplicationMessageMock.mockResolvedValue({
+      plaintextBytes: new TextEncoder().encode("decrypted hello"),
+      newState: replayedState,
     });
-    decryptApplicationMessageMock.mockResolvedValue(new TextEncoder().encode("decrypted hello"));
 
     await act(async () => {
       root.render(
@@ -185,13 +221,68 @@ describe("GroupChat MLS state lifecycle", () => {
 
     expect(loadGroupStateMock).toHaveBeenCalledWith("group-1");
     expect(createNewGroupStateMock).not.toHaveBeenCalled();
+    expect(getSavedMessagesMock).toHaveBeenCalledWith("alice", "group:group-1");
     expect(decryptApplicationMessageMock).toHaveBeenCalledWith({
       state: expect.objectContaining({ groupId: "group-1", selfLeafIndex: 0 }),
       header: "header-b64",
       ciphertext: "ciphertext-b64",
       includeNewState: true,
     });
+    expect(saveGroupStateMock).toHaveBeenCalledWith(
+      "group-1",
+      expect.objectContaining({
+        groupKeyB64: "group-key-next",
+        applicationMessageCounter: 1,
+      }),
+    );
     expect(container.querySelector('[data-testid="display-text"]').textContent).toContain("decrypted hello");
+  });
+
+  it("uses cached plaintext for previously decrypted MLS messages after relogin", async () => {
+    loadGroupStateMock.mockResolvedValue({
+      groupId: "group-1",
+      epoch: 2,
+      cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
+      selfUserId: "alice",
+      selfLeafIndex: 0,
+      groupKeyB64: "group-key-latest",
+      applicationMessageCounter: 4,
+      roster: [
+        { userId: "alice", username: "Alice", leafIndex: 0 },
+        { userId: "bob", username: "Bob", leafIndex: 1 },
+      ],
+      tree: { nodes: [], root: null },
+      secrets: { epochSecretsB64: null, initSecretB64: null },
+      pendingCommits: [],
+    });
+    getSavedMessagesMock.mockResolvedValue([
+      {
+        _id: "m1",
+        userId: "alice",
+        username: "Alice",
+        text: "cached before logout",
+        createdAt: "2026-03-21T10:00:00.000Z",
+        seenStatus: true,
+      },
+    ]);
+    decryptApplicationMessageMock.mockRejectedValue(new Error("old ciphertext cannot be replayed from latest ratchet"));
+
+    await act(async () => {
+      root.render(
+        <GroupChat
+          activeGroupId="group-1"
+          activeGroupName="Project Team"
+          userId="alice"
+          username="Alice"
+          currentWallpaper="default"
+        />
+      );
+      await flush();
+      await flush();
+    });
+
+    expect(container.querySelector('[data-testid="display-text"]').textContent).toContain("cached before logout");
+    expect(container.querySelector('[data-testid="display-text"]').textContent).not.toContain("[Unable to decrypt message]");
   });
 
   it("creates a placeholder MLS state for invited members without local keys and disables sending", async () => {
@@ -322,6 +413,13 @@ describe("GroupChat MLS state lifecycle", () => {
       "group-1",
       expect.objectContaining({ applicationMessageCounter: 6 })
     );
+    expect(setPendingOutgoingGroupMessageMock).toHaveBeenCalledWith({
+      groupId: "group-1",
+      headerB64: "header-out",
+      ciphertextB64: "ciphertext-out",
+      text: "client message",
+    });
+    expect(deletePendingOutgoingGroupMessageMock).not.toHaveBeenCalled();
   });
 
   it("processes a group welcome for an invited member and enables sending", async () => {
@@ -556,8 +654,88 @@ describe("GroupChat MLS state lifecycle", () => {
         groupKeyB64: "next-group-key",
       })
     );
+    expect(container.querySelector('[data-testid="display-text"]').textContent).toContain("Alice added Carol to the group");
     const sendButton = container.querySelector('[data-testid="group-send-text"]');
     expect(sendButton.getAttribute("data-disabled")).toBe("false");
+  });
+
+  it("decrypts live MLS group messages in the active GroupChat using current state", async () => {
+    const localState = {
+      groupId: "group-1",
+      epoch: 2,
+      cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
+      selfUserId: "alice",
+      selfLeafIndex: 0,
+      groupKeyB64: "group-key",
+      applicationMessageCounter: 1,
+      roster: [
+        { userId: "alice", username: "Alice", leafIndex: 0 },
+        { userId: "bob", username: "Bob", leafIndex: 1 },
+      ],
+      tree: { nodes: [], root: null },
+      secrets: { epochSecretsB64: null, initSecretB64: null },
+      pendingCommits: [],
+    };
+    const advancedState = {
+      ...localState,
+      senderGenerations: { 1: 1 },
+    };
+
+    loadGroupStateMock.mockResolvedValue(localState);
+    saveGroupStateMock.mockImplementation(async (_groupId, state) => ({ ...state }));
+    decryptApplicationMessageMock.mockImplementation(async ({ header }) => {
+      if (header === "header-live") {
+        return {
+          plaintextBytes: new TextEncoder().encode("live incoming"),
+          newState: advancedState,
+        };
+      }
+      return new TextEncoder().encode("existing");
+    });
+
+    await act(async () => {
+      root.render(
+        <GroupChat
+          activeGroupId="group-1"
+          activeGroupName="Project Team"
+          userId="alice"
+          username="Alice"
+          currentWallpaper="default"
+        />
+      );
+      await flush();
+      await flush();
+    });
+
+    const liveListener = socket.on.mock.calls.find(([eventName]) => eventName === "newGroupMessage")?.[1];
+    expect(typeof liveListener).toBe("function");
+
+    await act(async () => {
+      await liveListener({
+        groupId: "group-1",
+        _id: "live-1",
+        seq: 1,
+        userId: "bob",
+        username: "Bob",
+        contentType: "application",
+        headerB64: "header-live",
+        ciphertextB64: "cipher-live",
+        createdAt: "2026-03-22T15:00:00.000Z",
+      });
+      await flush();
+    });
+
+    expect(decryptApplicationMessageMock).toHaveBeenCalledWith({
+      state: expect.objectContaining({ groupId: "group-1", selfLeafIndex: 0 }),
+      header: "header-live",
+      ciphertext: "cipher-live",
+      includeNewState: true,
+    });
+    expect(saveGroupStateMock).toHaveBeenCalledWith(
+      "group-1",
+      expect.objectContaining({ senderGenerations: { 1: 1 } }),
+    );
+    expect(container.querySelector('[data-testid="display-text"]').textContent).toContain("live incoming");
   });
 
   it("disables sending after a group commit removes the current user", async () => {
@@ -638,7 +816,132 @@ describe("GroupChat MLS state lifecycle", () => {
         groupKeyB64: null,
       })
     );
+    expect(container.querySelector('[data-testid="display-text"]').textContent).toContain("Alice removed Bob from the group");
     expect(sendButton.getAttribute("data-disabled")).toBe("true");
+  });
+
+  it("does not overwrite local MLS epoch or sender generations during membership refresh", async () => {
+    const localState = {
+      groupId: "group-1",
+      epoch: 2,
+      cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
+      selfUserId: "alice",
+      selfLeafIndex: 0,
+      groupKeyB64: "group-key",
+      applicationMessageCounter: 1,
+      senderGenerations: { 0: 1 },
+      roster: [
+        { userId: "alice", username: "Alice", leafIndex: 0 },
+        { userId: "bob", username: "Bob", leafIndex: 1 },
+        { userId: "charlie", username: "Charlie", leafIndex: 2 },
+      ],
+      tree: { nodes: [], root: null },
+      secrets: { epochSecretsB64: null, initSecretB64: null },
+      pendingCommits: [],
+    };
+
+    loadGroupStateMock.mockResolvedValue(localState);
+    saveGroupStateMock.mockImplementation(async (_groupId, state) => ({ ...state }));
+    decryptApplicationMessageMock.mockResolvedValue(new TextEncoder().encode("existing"));
+
+    let openGroupCount = 0;
+    socket.emit.mockImplementation((event, payload, callback) => {
+      if (event === "openGroup") {
+        openGroupCount += 1;
+        if (openGroupCount === 1) {
+          callback?.({
+            success: true,
+            group: {
+              groupId: "group-1",
+              name: "Project Team",
+              createdBy: "alice",
+              mlsEnabled: true,
+              epoch: 2,
+              cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
+            },
+            members: [
+              { userId: "alice", username: "Alice", leafIndex: 0, status: "active" },
+              { userId: "bob", username: "Bob", leafIndex: 1, status: "active" },
+              { userId: "charlie", username: "Charlie", leafIndex: 2, status: "active" },
+            ],
+            membership: {
+              role: "admin",
+              leafIndex: 0,
+              status: "active",
+            },
+          });
+          return;
+        }
+
+        callback?.({
+          success: true,
+          group: {
+            groupId: "group-1",
+            name: "Project Team",
+            createdBy: "alice",
+            mlsEnabled: true,
+            epoch: 3,
+            cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
+          },
+          members: [
+            { userId: "alice", username: "Alice", leafIndex: 0, status: "active" },
+            { userId: "charlie", username: "Charlie", leafIndex: 2, status: "active" },
+          ],
+          membership: {
+            role: "admin",
+            leafIndex: 0,
+            status: "active",
+          },
+        });
+        return;
+      }
+
+      if (event === "fetchGroupMessages") {
+        callback?.({ success: true, messages: [] });
+      }
+    });
+
+    await act(async () => {
+      root.render(
+        <GroupChat
+          activeGroupId="group-1"
+          activeGroupName="Project Team"
+          userId="alice"
+          username="Alice"
+          currentWallpaper="default"
+        />
+      );
+      await flush();
+      await flush();
+    });
+
+    saveGroupStateMock.mockClear();
+
+    const membershipListener = socket.on.mock.calls.find(([eventName]) => eventName === "groupMemberRemoved")?.[1];
+    expect(typeof membershipListener).toBe("function");
+
+    await act(async () => {
+      membershipListener({ groupId: "group-1", memberId: "bob" });
+      await flush();
+      await flush();
+    });
+
+    expect(saveGroupStateMock).toHaveBeenCalledWith(
+      "group-1",
+      expect.objectContaining({
+        epoch: 2,
+        cipherSuite: "MLS-MVP/X25519_AES256GCM_SHA256",
+        senderGenerations: { 0: 1 },
+        roster: [
+          { userId: "alice", username: "Alice", leafIndex: 0 },
+          { userId: "charlie", username: "Charlie", leafIndex: 2 },
+        ],
+      })
+    );
+    expect(saveGroupStateMock).not.toHaveBeenCalledWith(
+      "group-1",
+      expect.objectContaining({ epoch: 3 })
+    );
   });
 
   it("replays stored welcomes and commits before decrypting MLS history", async () => {
@@ -799,6 +1102,7 @@ describe("GroupChat MLS state lifecycle", () => {
       ciphertext: "ciphertext-after-replay",
       includeNewState: true,
     });
+    expect(container.querySelector('[data-testid="display-text"]').textContent).toContain("Alice added Carol to the group");
     expect(container.querySelector('[data-testid="display-text"]').textContent).toContain("replayed history");
   });
 });
