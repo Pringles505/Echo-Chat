@@ -19,8 +19,14 @@
   border-left: 6px solid;
 }
 @keyframes toast-fadein {
-  from { opacity: 0; top: 0; }
-  to   { opacity: 1; top: 32px; }
+  from {
+    opacity: 0;
+    top: 0;
+  }
+  to {
+    opacity: 1;
+    top: 32px;
+  }
 }
 .toast-success {
   background: #e6fff1;
@@ -90,8 +96,14 @@
   border-left: 6px solid;
 }
 @keyframes user-profile-toast-fadein {
-  from { opacity: 0; top: 0; }
-  to   { opacity: 1; top: 32px; }
+  from {
+    opacity: 0;
+    top: 0;
+  }
+  to {
+    opacity: 1;
+    top: 32px;
+  }
 }
 .user-profile-toast-success {
   background: #e6fff1;
@@ -131,10 +143,18 @@
   /* Default color for fallback */
   color: #222;
 }
-.user-profile-toast-success .user-profile-toast-title { color: #1a7f37; }
-.user-profile-toast-warning .user-profile-toast-title { color: #b68400; }
-.user-profile-toast-error   .user-profile-toast-title { color: #c00; }
-.user-profile-toast-info    .user-profile-toast-title { color: #2563eb; }
+.user-profile-toast-success .user-profile-toast-title {
+  color: #1a7f37;
+}
+.user-profile-toast-warning .user-profile-toast-title {
+  color: #b68400;
+}
+.user-profile-toast-error .user-profile-toast-title {
+  color: #c00;
+}
+.user-profile-toast-info .user-profile-toast-title {
+  color: #2563eb;
+}
 
 .user-profile-toast-content span:not(.user-profile-toast-title) {
   color: #222;
@@ -163,4 +183,3 @@
     padding: 1rem 1.5rem 1rem 1rem;
   }
 }
-

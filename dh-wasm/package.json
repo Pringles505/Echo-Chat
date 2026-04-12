@@ -2,7 +2,9 @@
   "name": "dh-wasm",
   "version": "1.0.0",
   "main": "pkg/dh_wasm.js",
-  "files": ["pkg"],
+  "files": [
+    "pkg"
+  ],
   "dependencies": {
     "aes-wasm": "file:./dh-wasm"
   }
