@@ -1,0 +1,13 @@
+dist
+dist-ssr
+node_modules
+*.local
+aes-wasm/target
+dh-wasm/target
+xeddsa-wasm/target
+aes-wasm/pkg
+dh-wasm/pkg
+xeddsa-wasm/pkg
+public
+src-tauri/target
+CHANGELOG.md

@@ -11,14 +11,23 @@ lerna-debug.log*
 playwright-report/
 test-results/
 
+# Dependencies
 node_modules
+
+# Build output
 dist
 dist-ssr
 *.local
 
+# Env files — NEVER commit secrets
+.env
+.env.local
+.env.*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
 .DS_Store
 *.suo
@@ -27,10 +36,19 @@ dist-ssr
 *.sln
 *.sw?
 
-# Rust build artifacts
+# Rust / WASM build artifacts
 aes-wasm/target/
 dh-wasm/target/
 xeddsa-wasm/target/
+src/lib/aes-wasm/target/
+src/lib/dh-wasm/target/
+src/lib/xeddsa-wasm/target/
+
+# Tauri
+src-tauri/target/
+
+# OS
+Thumbs.db
 
 # AI files
 .claude

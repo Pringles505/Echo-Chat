@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from 'react-i18next'
 import { Search, Plus, Lock, MessageCircle, Menu, X, ArrowLeft } from "lucide-react";
 import Friends from "./Friends/Friends";
 import Chat from "./Chat/Chat";
@@ -32,22 +33,20 @@ import CreateGroupModal from "./Groups/CreateGroupModal";
 import GroupChat from "./Chat/GroupChat";
 
 const Dashboard = () => {
+  const { t } = useTranslation()
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const { username, userId, profileImage } = getUserData(token);
-  localStorage.setItem('userId', userId);
-  localStorage.setItem('username', username);
 
   // Estados
-  const [activeChat, setActiveChat] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [activeChat, setActiveChat] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const [activeView, setActiveView] = useState(() => {
     return localStorage.getItem('dashboardView') || 'chats';
   });
   const [conversationsSearchTerm, setConversationsSearchTerm] = useState("");
   const [isChatItemHovered, setIsChatItemHovered] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(() => {
-    // Initialize unread messages from localStorage
     const unread = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -159,7 +158,11 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Initialize socket connection and fetch user profile
+  // Persist userId once on mount
+  useEffect(() => {
+    if (userId) localStorage.setItem('userId', userId)
+  }, [userId])
+
   useEffect(() => {
     if (!token || !userId) return;
 
@@ -227,14 +230,12 @@ const Dashboard = () => {
       mlsKeyPackagePublishedRef.current = false;
       clearMlsKeyPackageRetry();
 
-      // Fetch groups for this user
       sharedSocket.emit("listMyGroups", {}, (res) => {
         if (res?.success && Array.isArray(res.groups)) {
           setAllGroupsRef.current?.(res.groups);
         }
       });
 
-      // Fetch user profile immediately after connection
       fetchUserProfileFromSocket(sharedSocket, userId)
         .then((profileData) => {
           if (profileData.profilePicture) {
@@ -246,7 +247,6 @@ const Dashboard = () => {
           console.error('Error fetching user profile:', error);
         });
 
-      // Refresh profile pictures for all recent conversations on page load (only once)
       if (!hasRefreshedProfiles.current && recentConversations.length > 0) {
         hasRefreshedProfiles.current = true;
 
@@ -255,7 +255,6 @@ const Dashboard = () => {
             if (conversationUserId) {
               sharedSocket.emit('getUserInfo', { userId: conversationUserId }, (response) => {
                 if (response.success && response.user) {
-                  // Update conversation with fresh profile data by passing updated user object
                   const formattedImage = formatProfileImage(response.user.profilePicture, response.user.username);
                 const updatedUser = {
                   id: conversationUserId,
@@ -264,10 +263,8 @@ const Dashboard = () => {
                   targetUserId: conversationUserId
                 };
 
-                // This will update existing conversation without changing lastMessage/lastMessageTime
                 updateRecentConversations(updatedUser, null);
 
-                // Update localStorage cache
                 localStorage.setItem(`profile-${conversationUserId}`, JSON.stringify({
                   username: response.user.username,
                   profilePicture: response.user.profilePicture
@@ -278,11 +275,8 @@ const Dashboard = () => {
         });
       }
 
-      // Ensure OPKs are topped up if the server-side public OPK count is low.
       requestOpkStatusAndReplenish({ socket: sharedSocket, handler: handleOpkReplenishRequested });
 
-      // Publish our X25519 public key as our MLS KeyPackage init key so other
-      // users can encrypt group keys to us during add/remove commits.
       void publishMlsKeyPackage();
     };
 
@@ -299,15 +293,12 @@ const Dashboard = () => {
 
     sharedSocket.on('disconnect', handleDisconnect);
 
-    // Listen for incoming calls
     sharedSocket.on('incomingCall', (callData) => {
       setIncomingCall(callData);
     });
 
-    // Listen for call ended (to dismiss notification if caller cancels)
     sharedSocket.on('callEnded', ({ callId }) => {
       setIncomingCall((current) => {
-        // Only clear if it's the same call
         if (current && current.callId === callId) {
           return null;
         }
@@ -318,11 +309,9 @@ const Dashboard = () => {
     // Server-requested OPK replenishment (public keys only).
     sharedSocket.on('replenishOPKs', handleOpkReplenishRequested);
 
-    // Listen for profile updates from other users
     sharedSocket.on('userProfileUpdated', (data) => {
       const { userId: updatedUserId, username, profilePicture } = data;
 
-      // Update recent conversations with new profile picture
       updateRecentConversations((prevConversations) => {
         return prevConversations.map(conv => {
           if (conv.id === updatedUserId || conv.targetUserId === updatedUserId) {
@@ -337,7 +326,6 @@ const Dashboard = () => {
         });
       });
 
-      // Update active chat if it's the same user
       setActiveChat((prevActiveChat) => {
         if (prevActiveChat && (prevActiveChat.id === updatedUserId || prevActiveChat.targetUserId === updatedUserId)) {
           const formattedImage = formatProfileImage(profilePicture, username);
@@ -350,7 +338,6 @@ const Dashboard = () => {
         return prevActiveChat;
       });
 
-      // Update cached profile in localStorage
       const cachedProfile = localStorage.getItem(`profile-${updatedUserId}`);
       if (cachedProfile) {
         try {
@@ -431,8 +418,6 @@ const Dashboard = () => {
         const isOwnMessage = String(message?.userId ?? "") === String(userIdRef.current ?? "");
         const timestamp = message.createdAt || message.timestamp || new Date().toISOString();
 
-        // The active GroupChat view owns live MLS decryption for the currently
-        // open group so it can use its in-memory state instead of stale ELD state.
         if (isActiveGroup) {
           return;
         }
@@ -484,12 +469,9 @@ const Dashboard = () => {
       });
     };
 
-    // Listen for new messages to update unread count and decrypt in background
     const handleNewMessageNotification = async (messageData) => {
-      // Handle both single message and array of messages
       const messages = Array.isArray(messageData) ? messageData : [messageData];
 
-      // Get user's private key for decryption from ELD
       const identityKeys = await getIdentityKeys();
       if (!identityKeys?.privateKeyX25519) {
         console.error('[Dashboard] No private key available in ELD');
@@ -498,39 +480,29 @@ const Dashboard = () => {
 
       const privateKeyArray = base64ToArrayBuffer(identityKeys.privateKeyX25519);
 
-      // Process each message for notifications
       for (const message of messages) {
-        // Ensure type consistency - convert IDs to strings for comparison
         const currentUserId = String(userIdRef.current);
         const messageSenderId = String(message.userId);
         const activeChatId = activeChatRef.current?.id ? String(activeChatRef.current.id) : null;
 
-        // Only process if the message is FROM another user (not sent by current user)
-        // and is not part of the currently active chat
         if (message.userId && messageSenderId !== currentUserId) {
           const senderId = messageSenderId;
 
-          // The active Chat component decrypts and stores messages for the currently open
-          // conversation. Skipping them here avoids double-processing ratchet state.
           if (senderId === activeChatId) {
             continue;
           }
 
-          // Skip messages already decrypted and saved in ELD
           const existingMessages = await getSavedMessages(userIdRef.current, senderId);
           if (existingMessages.some(msg => msg._id === message._id)) {
             continue;
           }
 
-          // DECRYPT MESSAGE IN BACKGROUND
           try {
-            // Call event messages are not end-to-end encrypted in this project; store as-is.
             if (message.messageType === 'call_event') {
               await updateSavedMessages(userIdRef.current, senderId, message, null);
               continue;
             }
 
-            // Defensive: ignore malformed encrypted messages (prevents noisy console errors).
             if (!message.payload || !message.nonce || !message.publicEphemeralKey) {
               console.warn('⚠️ [Dashboard] Skipping background decryption (missing fields)');
               continue;
@@ -544,19 +516,16 @@ const Dashboard = () => {
               senderId,
               privateKeyArray,
               sharedSocket,
-              null // No setMessages - we're in background mode
+              null
             );
           } catch (error) {
             console.error('❌ [Dashboard] Failed to decrypt message in background:', error);
-            // Continue with notification even if decryption fails
           }
 
-          // Increment unread count (sole source of truth for unread messages)
           if (senderId !== activeChatId) setUnreadMessages(prev => {
             const currentUnread = prev[senderId] || 0;
             const newCount = currentUnread + 1;
 
-            // Persist to localStorage
             localStorage.setItem(`unread-${userIdRef.current}-${senderId}`, newCount);
 
             return {
@@ -565,24 +534,20 @@ const Dashboard = () => {
             };
           });
 
-          // Check if conversation already exists
           const conversationExists = recentConversationsRef.current.some(conv => String(conv.id) === senderId);
 
           if (!conversationExists) {
-            // First message from this user - add placeholder immediately
             const placeholderUser = {
               id: senderId,
               username: message.username || `User ${senderId}`,
               profileImage: null
             };
 
-            // Add conversation with timestamp but no message text yet (will be decrypted in Chat)
             updateRecentConversationsRef.current?.(placeholderUser, {
               text: '',
               timestamp: message.timestamp || message.createdAt || new Date().toISOString()
             });
 
-            // Fetch proper user info to update with correct data
             sharedSocket.emit('getUserInfo', { userId: senderId }, (response) => {
               if (response.success && response.user) {
                 const conversationUser = {
@@ -591,14 +556,12 @@ const Dashboard = () => {
                   profileImage: response.user.profilePicture
                 };
 
-                // Update conversation with proper user data 
                 updateRecentConversationsRef.current?.(conversationUser, null);
               } else {
                 console.error('❌ Failed to fetch user info');
               }
             });
           } else {
-            // Conversation exists - just update timestamp to move it to top
             const existingConv = recentConversationsRef.current.find(conv => String(conv.id) === senderId);
             if (existingConv) {
               updateRecentConversationsRef.current?.(existingConv, {
@@ -623,7 +586,6 @@ const Dashboard = () => {
       sharedSocket.off('incomingCall');
       sharedSocket.off('callEnded');
       sharedSocket.off('replenishOPKs', handleOpkReplenishRequested);
-
       sharedSocket.off('opkReplenishRequested', handleOpkReplenishRequested);
       sharedSocket.off('userProfileUpdated');
       sharedSocket.off('newMessage', handleNewMessageNotification);
@@ -632,7 +594,6 @@ const Dashboard = () => {
       sharedSocket.off('groupRemoved', handleGroupRemoved);
       sharedSocket.off('newGroupMessage', handleNewGroupMessageNotification);
       clearMlsKeyPackageRetry();
-      // Don't disconnect the shared socket here
     };
   }, [token, userId]);
 
@@ -657,7 +618,6 @@ const Dashboard = () => {
     return () => window.removeEventListener("localStorageUpdated", handleStorageUpdate);
   }, []);
 
-  // Update document title with notification count
   useEffect(() => {
     const totalUnread =
       Object.values(unreadMessages).reduce((sum, count) => sum + count, 0) +
@@ -670,7 +630,7 @@ const Dashboard = () => {
     }
 
     return () => {
-      document.title = 'Echo'; // Reset on unmount
+      document.title = 'Echo';
     };
   }, [unreadMessages, unreadGroupMessages]);
 
@@ -678,39 +638,38 @@ const Dashboard = () => {
   useEffect(() => {
     const handleProfileUpdate = () => {
       if (userId) {
-        const cachedProfile = getCachedUserProfile(userId);
+        const cachedProfile = getCachedUserProfile(userId)
         if (cachedProfile && cachedProfile.profilePicture) {
-          const formattedImage = formatProfileImage(cachedProfile.profilePicture, username);
-          setUserProfileImage(formattedImage);
+          const formattedImage = formatProfileImage(cachedProfile.profilePicture, username)
+          setUserProfileImage(formattedImage)
         }
       }
-    };
+    }
 
-    window.addEventListener('profileUpdated', handleProfileUpdate);
-    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
-  }, [userId, username]);
+    window.addEventListener('profileUpdated', handleProfileUpdate)
+    return () => window.removeEventListener('profileUpdated', handleProfileUpdate)
+  }, [userId, username])
 
   // Precarga los recursos de los wallpapers
   useEffect(() => {
-    Object.values(WALLPAPER_PREVIEWS).forEach(wp => {
+    Object.values(WALLPAPER_PREVIEWS).forEach((wp) => {
       if (wp.type === 'image' && wp.imageUrl) {
-        new Image().src = wp.imageUrl;
+        new Image().src = wp.imageUrl
       }
       if (wp.type === 'video' && wp.posterUrl) {
-        new Image().src = wp.posterUrl;
+        new Image().src = wp.posterUrl
       }
       if (wp.type === 'video' && wp.videoUrl) {
-        // Precargar video (opcional)
-        const video = document.createElement('video');
-        video.src = wp.videoUrl;
+        const video = document.createElement('video')
+        video.src = wp.videoUrl
       }
-    });
-  }, []);
+    })
+  }, [])
 
   // Handlers
   const handleChatSelect = (conversation) => {
     setActiveChat({ ...conversation, type: "direct" });
-    setShowMobileChat(true); // Show chat on mobile when selected
+    setShowMobileChat(true);
     const conversationId = String(conversation.id);
     setUnreadMessages(prev => ({
       ...prev,
@@ -744,35 +703,33 @@ const Dashboard = () => {
 
   const handleWallpaperChange = (wallpaper) => {
     if (WALLPAPER_PREVIEWS[wallpaper]) {
-      setCurrentWallpaper(wallpaper);
-      localStorage.setItem('chatWallpaper', wallpaper);
+      setCurrentWallpaper(wallpaper)
+      localStorage.setItem('chatWallpaper', wallpaper)
     }
-  };
+  }
 
   const handleActiveChatChange = (friendData) => {
-    handleChatSelect(friendData);
-    updateRecentConversations(friendData);
-  };
+    handleChatSelect(friendData)
+    updateRecentConversations(friendData)
+  }
 
   const handleNewMessage = (message) => {
     if (message.userId === activeChat?.id) {
-      updateRecentConversations(activeChat, message);
+      updateRecentConversations(activeChat, message)
     } else {
       const friend = recentConversations.find(c => c.id === message.userId) ||
         { id: message.userId, username: message.username };
       updateRecentConversations(friend, message);
     }
-  };
+  }
 
   const handleProfileClick = () => {
-    navigate(`/profile/${userId}`, { state: { username, userId } });
-  };
+    navigate(`/profile/${userId}`, { state: { username, userId } })
+  }
 
   const handleLogout = () => {
-    // Lock the encrypted database (clears DEK from memory)
     eld.lock();
 
-    // Clear session data but NOT the encrypted IndexedDB
     sessionStorage.removeItem(`eld-pass-${userId}`);
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
@@ -787,29 +744,29 @@ const Dashboard = () => {
   const handleSearch = () => {};
 
   const handleViewChange = (view) => {
-    setActiveView(view);
-    localStorage.setItem('dashboardView', view);
-  };
+    setActiveView(view)
+    localStorage.setItem('dashboardView', view)
+  }
 
   // Filtrado de conversaciones
   const filteredConversations = recentConversations
-    .filter(conv =>
-      conv.username.toLowerCase().includes(conversationsSearchTerm.toLowerCase()) ||
-      (conv.lastMessage && conv.lastMessage.toLowerCase().includes(conversationsSearchTerm.toLowerCase()))
+    .filter(
+      (conv) =>
+        conv.username.toLowerCase().includes(conversationsSearchTerm.toLowerCase()) ||
+        (conv.lastMessage &&
+          conv.lastMessage.toLowerCase().includes(conversationsSearchTerm.toLowerCase()))
     )
     .map(conv => ({
       ...conv,
       unreadCount: unreadMessages[String(conv.id)] || 0
     }))
     .sort((a, b) => {
-      // First, prioritize conversations with unread messages
       const aHasUnread = a.unreadCount > 0;
       const bHasUnread = b.unreadCount > 0;
 
       if (aHasUnread && !bHasUnread) return -1;
       if (!aHasUnread && bHasUnread) return 1;
 
-      // Then sort by last message time
       return new Date(b.lastMessageTime) - new Date(a.lastMessageTime);
     });
 
@@ -836,15 +793,17 @@ const Dashboard = () => {
       return tb - ta;
     });
 
-  // Componente EmptyState
-  const EmptyState = ({ activeView }) => (
-    <div className="flex justify-center items-center h-full p-8">
-      <div className="text-center max-w-[300px]">
-        <div className="animate-bounce mb-6">
-          <MessageCircle size={64} strokeWidth={1.5} className="text-gray-400 mx-auto" />
+  // ─── Extracted to avoid re-creation on every Dashboard render ─────────────────
+  const EmptyState = ({ activeView, t }) => (
+    <div className='flex justify-center items-center h-full p-8'>
+      <div className='text-center max-w-[300px]'>
+        <div className='animate-bounce mb-6'>
+          <MessageCircle size={64} strokeWidth={1.5} className='text-gray-400 mx-auto' />
         </div>
-        <h3 className="text-xl font-semibold text-white mt-4 mb-2">
-          {activeView === 'chats' ? 'Select a conversation' : 'No chat selected'}
+        <h3 className='text-xl font-semibold text-white mt-4 mb-2'>
+          {activeView === 'chats'
+            ? t('dashboard.emptyState.selectChat')
+            : t('dashboard.emptyState.noChatSelected')}
         </h3>
         <p className="text-gray-300 max-w-md text-center">
           {activeView === 'chats'
@@ -863,7 +822,7 @@ const Dashboard = () => {
         </div>
       </div>
     </div>
-  );
+  )
 
   return (
     <div className="flex h-screen bg-black text-white">
@@ -929,8 +888,8 @@ const Dashboard = () => {
             />
           </div>
 
-          <div className="flex gap-2 mb-4">
-            <div className="relative w-full">
+          <div className='flex gap-2 mb-4'>
+            <div className='relative w-full'>
               <input
                 data-testid="dashboard-search"
                 type="text"
@@ -939,20 +898,20 @@ const Dashboard = () => {
                     ? "Search for friends..."
                     : "Search chats & groups..."
                 }
-                className="w-full px-6 py-3 bg-white/10 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8e79f2] focus:border-[#8e79f2] text-white placeholder-gray-400 backdrop-blur-sm transition-all duration-300"
+                className='w-full px-6 py-3 bg-white/10 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8e79f2] focus:border-[#8e79f2] text-white placeholder-gray-400 backdrop-blur-sm transition-all duration-300'
                 value={activeView === 'friends' ? searchTerm : conversationsSearchTerm}
                 onChange={(e) =>
                   activeView === 'friends'
                     ? setSearchTerm(e.target.value)
                     : setConversationsSearchTerm(e.target.value)
                 }
-                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
               <button
                 className="absolute right-4 top-3 text-gray-400 hover:text-white"
                 onClick={handleSearch}
               >
-                <Search className="h-6 w-6" />
+                <Search className='h-6 w-6' />
               </button>
             </div>
             {activeView !== "friends" && (
@@ -967,7 +926,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-black">
+        <div className='flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-black'>
           {activeView === 'friends' ? (
             <Friends
               token={token}
@@ -1067,7 +1026,7 @@ const Dashboard = () => {
             </div>
           </div>
         ) : (
-          <EmptyState activeView={activeView} />
+          <EmptyState activeView={activeView} t={t} />
         )}
       </div>
 
@@ -1081,7 +1040,7 @@ const Dashboard = () => {
         }}
       />
     </div>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard

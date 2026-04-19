@@ -1,7 +1,6 @@
 {
-    "rewrites": [
-      { "source": "/register", "destination": "/" },
-      { "source": "/:path*", "destination": "/" }
-    ]
-  }
-  
+  "rewrites": [
+    { "source": "/register", "destination": "/" },
+    { "source": "/:path*", "destination": "/" }
+  ]
+}

@@ -9,15 +9,12 @@ import {
   getWallpaperComponent,
   getWallpaperClasses,
 } from "../DashboardComponents/utils/wallpaper";
-// Utility functions for encoding and decoding
 import {
   base64ToArrayBuffer,
 } from "./utils/helpers";
 
-// API functions for fetching messages and checking the first message
 import { fetchLatestMessageNumber } from "./utils/api";
 
-// Key management functions for session keys
 import {
   updateSavedMessages,
   getIdentityKeys,
@@ -30,16 +27,11 @@ import {
 import { encryptOutgoingMessage } from "./utils/chat/messageEncryption";
 import { decryptIncomingMessage } from "./utils/chat/messageDecryption";
 
-// Main chat component
 function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
-  // Use shared socket connection
   const socket = getSocket();
 
-  // Allow Chat to be rendered from different routes/layouts.
-  // If a parent does not pass a token prop, fall back to localStorage.
   const token = tokenProp ?? localStorage.getItem("token") ?? "";
 
-  // Extract userId and targetUserId from the token and activeChat
   const userId = token ? jwtDecode(token).id : "";
   const targetUserId = activeChat;
   const username = token ? jwtDecode(token).username : "";
@@ -58,7 +50,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   useEffect(() => {
-    // Reset on chat switch.
     setSendBlocked(false);
     setSendBlockedReason("");
     setIdentityChangeDetail(null);
@@ -93,7 +84,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
     };
   }, [targetUserId]);
 
-  // Load private key and own public IK from ELD on mount
   useEffect(() => {
     const loadPrivateKey = async () => {
       const keys = await getIdentityKeys();
@@ -109,18 +99,14 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
     loadPrivateKey();
   }, []);
 
-  // Reset scroll refs when switching chats so the new chat starts at the bottom instantly
   useEffect(() => {
     isInitialLoadRef.current = true;
     previousMessageCountRef.current = 0;
   }, [targetUserId]);
 
-  // useEffect to handle the socket connection and message fetching
   useEffect(() => {
-    // Check if userId and targetUserId are valid 
     if (!userId || !targetUserId) return;
 
-    // Load previously decrypted messages from ELD
     const loadSavedMessages = async () => {
       try {
         const savedMessages = await getSavedMessages(userId, targetUserId);
@@ -136,7 +122,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
     };
     loadSavedMessages();
 
-    // Handle incoming chat messages in real-time
     const handleChatMessage = async (payload) => {
       const ensurePrivateKey = async () => {
         if (privateKeyArray instanceof Uint8Array) return privateKeyArray;
@@ -149,13 +134,10 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
         throw new Error("No private key available in ELD");
       };
 
-      // Check if the payload is an array or a single message
       const messages = Array.isArray(payload) ? payload : [payload];
 
-      // Process each message one by one from the payload
       for (const message of messages) {
         const nonce = base64ToArrayBuffer(message.nonce);
-        // Handle call event messages with special logic (check if user is involved)
         if (message.messageType === 'call_event') {
           const isInvolvedInCall =
             message.callData?.callerId === userId ||
@@ -166,16 +148,13 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
             (message.callData?.receiverId === activeChat && message.callData?.callerId === userId);
 
           if (isInvolvedInCall && isRelevantToActiveChat) {
-            // Save call event to localStorage
             updateSavedMessages(userId, activeChat, message, setMessages);
           }
           continue;
         }
 
-        // If message is from user or to the user process
         if (message.userId == activeChat || message.userId == userId) {
           try {
-            // Check if the message is for the active chat
             const sender = String(message.userId);
             if (activeChat === sender) {
               socket.emit("messageSeen", { targetUserId });
@@ -204,7 +183,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
       }
     };
 
-    // Listen for read receipt updates, filtered to this chat
     const handleSeenUpdate = async ({ userId: seenByUserId, targetUserId: seenForUserId }) => {
       if (seenForUserId === userId && seenByUserId === targetUserId) {
         setMessages((prevMessages) =>
@@ -213,7 +191,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
           )
         );
 
-        // Also update ELD so messages have correct seenStatus
         try {
           await updateMessageSeenStatus(userId, targetUserId);
         } catch (e) {
@@ -222,7 +199,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
       }
     };
 
-    // Listen for Dashboard completing decryption + ELD save
     const handleEldUpdate = async (event) => {
       const { userId: updatedUserId, targetUserId: updatedTargetUserId } = event.detail;
       if (
@@ -236,18 +212,15 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
 
     window.addEventListener('localStorageUpdated', handleEldUpdate);
 
-    // Register listeners at effect scope
     socket.on("newMessage", handleChatMessage);
     socket.on("messageSeenUpdate", handleSeenUpdate);
 
-    // Async init (fetch message number, emit ready)
     const initChat = async () => {
       await fetchLatestMessageNumber(socket, targetUserId);
       socket.emit("ready", { targetUserId });
     };
     initChat();
 
-    // Cleanup removes the exact handlers registered above
     return () => {
       socket.off("newMessage", handleChatMessage);
       socket.off("messageSeenUpdate", handleSeenUpdate);
@@ -255,7 +228,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
     };
   }, [userId, targetUserId]);
 
-  // Send message function
   const sendMessage = async (text, imageData = null) => {
     if (sendBlocked) {
       throw new Error(sendBlockedReason || "Sending is blocked");
@@ -297,14 +269,10 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
       throw err;
     }
 
-    // Conversation-wide message sequence number (server enforces monotonicity).
-    // We fetch the last accepted number and send `last + 1`.
     const lastAccepted = await fetchLatestMessageNumber(socket, targetUserId);
     const lastInt = Number.isSafeInteger(lastAccepted) ? lastAccepted : -1;
     outgoing.messageNumber = lastInt + 1;
 
-    // Save the peer IK on the sender side the first time we fetch it (TOFU),
-    // but only after we successfully send a message that used that identity.
     const sendOnce = (payload) =>
       new Promise((resolve) => {
         socket.emit("newMessage", payload, (ack) => resolve(ack));
@@ -314,7 +282,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
     if (!ack?.success && (ack?.error === "out_of_sync" || ack?.error === "replay_detected")) {
       const last = Number.isSafeInteger(ack?.lastAccepted) ? ack.lastAccepted : null;
       if (last != null) {
-        // Retry once with the next server-expected number (ciphertext stays the same).
         outgoing.messageNumber = last + 1;
         ack = await sendOnce(outgoing);
       }
@@ -327,7 +294,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
     if (ack?.success && outgoing?.peerIdentityToPin) {
       storePeerIdentityKeys(targetUserId, { ...outgoing.peerIdentityToPin, firstSeenAt: Date.now() });
     }
-
 
     await updateSavedMessages(userId, targetUserId, {
       _id: crypto.randomUUID(),
@@ -351,33 +317,29 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
       isInitialLoadRef.current = false;
     }
 
-    // Update the previous message count
     previousMessageCountRef.current = messages.length;
   }, [messages, autoScroll]);
 
   const handleScroll = () => {
     if (messagesContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-      const isNearBottom = scrollHeight - scrollTop <= clientHeight + 100;
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
+      const isNearBottom = scrollHeight - scrollTop <= clientHeight + 100
 
-      setAutoScroll(isNearBottom);
+      setAutoScroll(isNearBottom)
     }
-  };
+  }
 
   return (
-    <div className="app-container h-full flex flex-col">
-
-      <div className="chat-container flex-1 flex flex-col relative overflow-y-auto">
+    <div className='app-container h-full flex flex-col'>
+      <div className='chat-container flex-1 flex flex-col relative overflow-y-auto'>
         <div
           ref={messagesContainerRef}
-          className={`messages-container flex-1 relative ${getWallpaperClasses(
-            currentWallpaper
-          )}`}
+          className={`messages-container flex-1 relative ${getWallpaperClasses(currentWallpaper)}`}
           onScroll={handleScroll}
         >
           {getWallpaperComponent(currentWallpaper)}
 
-          <div className="relative z-10 h-full flex flex-col">
+          <div className='relative z-10 h-full flex flex-col'>
             <DisplayText
               messages={messages}
               currentUserId={userId}
@@ -413,17 +375,16 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
         }}
         onReject={() => {
           setShowVerifyModal(false);
-          // Block remains — user chose not to trust the new key
         }}
       />
       <SendText sendMessage={sendMessage} disabled={sendBlocked} disabledReason={sendBlockedReason} />
     </div>
-  );
-};
+  )
+}
 
 Chat.propTypes = {
   token: PropTypes.string,
   activeChat: PropTypes.string.isRequired,
-};
+}
 
-export default Chat;
+export default Chat

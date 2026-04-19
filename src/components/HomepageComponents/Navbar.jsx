@@ -1,107 +1,194 @@
-import { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { Menu, X } from 'lucide-react'
+import gsap from 'gsap'
+import Logo from './Logo'
 
 const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  const { t, i18n } = useTranslation()
+  const location = useLocation()
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const handleNavigation = (e, sectionId) => {
-    e.preventDefault();
-    setIsMobileMenuOpen(false);
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
+      setScrolled(window.scrollY > 20)
     }
-  };
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    if (isOpen) {
+      gsap.to('.mobile-menu', {
+        duration: 0.3,
+        height: 'auto',
+        opacity: 1,
+        display: 'block',
+        ease: 'power2.out',
+      })
+    } else {
+      gsap.to('.mobile-menu', {
+        duration: 0.3,
+        height: 0,
+        opacity: 0,
+        display: 'none',
+        ease: 'power2.in',
+      })
+    }
+  }, [isOpen])
+
+  const navLinks = [
+    { label: t('nav.product'), href: '/#features' },
+    { label: t('nav.docs'), href: '/documentation' },
+    { label: t('nav.community'), href: '/community' },
+    { label: t('nav.blog'), href: '/blog' },
+    { label: t('nav.pricing'), href: '/pricing' },
+    { label: t('nav.demo'), href: '/demo' },
+  ]
+
+  const languages = [
+    { code: 'es', label: 'Español', flag: '🇪🇸' },
+    { code: 'en', label: 'English', flag: '🇬🇧' },
+  ]
+
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng)
+  }
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-[var(--color-background)]/90 backdrop-blur-sm shadow-md' : 'bg-transparent'
-      }`}
-    >
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-20 md:h-24">
-          <div className="flex-shrink-0">
-            <a href="/" className="flex items-center space-x-2 text-white font-bold text-xl">
-              <img src="/echo-logo.svg" alt="Echo Logo" className="h-16 w-16 md:h-15 md:w-15" />
-              <span>ECHO</span>
-            </a>
+    <div className='fixed top-0 left-0 right-0 z-50 flex justify-center pt-4 px-4'>
+      <nav
+        className={`w-full max-w-6xl rounded-2xl transition-all duration-300 ${
+          scrolled || isOpen
+            ? 'bg-neutral-900/80 backdrop-blur-xl border border-white/10 shadow-2xl'
+            : 'bg-neutral-900/40 backdrop-blur-md border border-white/5'
+        }`}
+      >
+        <div className='px-6 h-16 flex items-center justify-between'>
+          {/* Logo */}
+          <Link
+            to='/'
+            className='flex items-center space-x-2 group hover:opacity-80 transition-opacity duration-250'
+          >
+            <Logo size='md' variant='gradient' />
+            <span className='text-lg font-bold text-white tracking-wide'>ECHO</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className='hidden lg:flex items-center space-x-1'>
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className='px-4 py-2 text-neutral-300 hover:text-white hover:bg-white/5 rounded-full transition-all duration-250 text-sm font-medium'
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
 
-          <nav className="hidden md:flex items-center space-x-8">
-            <a href="/blog" className="text-white hover:text-purple-500 transition-colors">Blog</a>
-            <a href="#pricing" onClick={(e) => handleNavigation(e, 'pricing')} className="text-white hover:text-purple-500 transition-colors">Pricing</a>
-            <a href="/about-us" className="text-white hover:text-purple-500 transition-colors">About Us</a>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 text-white hover:text-purple-500 transition-colors"
-              onClick={() => window.location.href = '/login'}
-            >
-              Login
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-purple-500 transition-colors"
-              onClick={() => window.location.href = '/register'}
-            >
-              Register
-            </motion.button>
-          </nav>
+          {/* Right Actions */}
+          <div className='flex items-center space-x-3'>
+            {/* Language Selector */}
+            <div className='hidden sm:flex items-center gap-0 bg-white/5 rounded-full p-0.5 border border-white/10'>
+              {languages.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => changeLanguage(lang.code)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold tracking-widest transition-all duration-200 ${
+                    i18n.language === lang.code
+                      ? 'bg-white text-black shadow'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {lang.code.toUpperCase()}
+                </button>
+              ))}
+            </div>
 
-          <div className="md:hidden">
+            {/* Auth Buttons */}
+            <div className='hidden md:flex items-center space-x-3'>
+              <Link
+                to='/auth/login'
+                className='text-neutral-300 hover:text-white text-sm font-medium transition-colors duration-250 px-3 py-2'
+              >
+                {t('nav.login')}
+              </Link>
+              <Link
+                to='/auth/register'
+                className='px-5 py-2 bg-white text-black hover:bg-neutral-200 text-sm font-semibold rounded-full transition-colors duration-250'
+              >
+                {t('nav.register')}
+              </Link>
+            </div>
+
+            {/* Mobile Menu Button */}
             <button
-              type="button"
-              className="text-white hover:text-purple-500 transition-colors"
-              onClick={toggleMobileMenu}
+              onClick={() => setIsOpen(!isOpen)}
+              className='lg:hidden p-2 rounded-full text-neutral-300 hover:bg-white/10 transition-colors duration-250'
             >
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {isOpen ? <X className='w-5 h-5' /> : <Menu className='w-5 h-5' />}
             </button>
           </div>
         </div>
-      </div>
 
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-[var(--color-background)] border-t border-[var(--color-primary)]/30">
-          <div className="container mx-auto px-4 py-4">
-            <nav className="flex flex-col space-y-4">
-              <a href="#features" onClick={(e) => handleNavigation(e, 'features')} className="text-white hover:text-purple-500 py-2 transition-colors">Features</a>
-              <a href="#security" onClick={(e) => handleNavigation(e, 'security')} className="text-white hover:text-purple-500 py-2 transition-colors">Security</a>
-              <a href="#pricing" onClick={(e) => handleNavigation(e, 'pricing')} className="text-white hover:text-purple-500 py-2 transition-colors">Pricing</a>
-              <button
-                className="w-full py-2 text-white hover:text-purple-500 transition-colors text-left"
-                onClick={() => window.location.href = '/login'}
+        {/* Mobile Menu */}
+        <div className='mobile-menu hidden overflow-hidden border-t border-white/5'>
+          <div className='p-4 space-y-2'>
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className='block px-4 py-3 text-neutral-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors duration-250 text-sm font-medium'
               >
-                Login
-              </button>
-              <button
-                className="w-full py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-purple-500 transition-colors"
-                onClick={() => window.location.href = '/register'}
+                {link.label}
+              </a>
+            ))}
+
+            {/* Mobile Language Selector */}
+            <div className='flex items-center justify-center gap-2 py-3 border-t border-b border-white/5 my-2'>
+              {languages.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => changeLanguage(lang.code)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-250 ${
+                    i18n.language === lang.code
+                      ? 'bg-primary-600 text-white'
+                      : 'text-neutral-300 hover:bg-white/5 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <span className='text-lg'>{lang.flag}</span>
+                  <span>{lang.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className='pt-4 mt-4 grid grid-cols-2 gap-4'>
+              <Link
+                to='/auth/login'
+                onClick={() => setIsOpen(false)}
+                className='flex justify-center px-4 py-3 text-neutral-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors duration-250 text-sm font-medium border border-white/10'
               >
-                Register
-              </button>
-            </nav>
+                {t('nav.login')}
+              </Link>
+              <Link
+                to='/auth/register'
+                onClick={() => setIsOpen(false)}
+                className='flex justify-center px-4 py-3 bg-white text-black hover:bg-neutral-200 rounded-xl transition-colors duration-250 text-sm font-semibold'
+              >
+                {t('nav.register')}
+              </Link>
+            </div>
           </div>
         </div>
-      )}
-    </header>
-  );
-};
+      </nav>
+    </div>
+  )
+}
 
-export default Navbar;
+export default Navbar

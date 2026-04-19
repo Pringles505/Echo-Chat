@@ -1,4 +1,4 @@
-import ConversationItem from "./ConversationItem";
+import ConversationItem from './ConversationItem'
 
 const ConversationList = ({
   conversations,
@@ -6,16 +6,13 @@ const ConversationList = ({
   handleChatSelect,
   setIsHovered,
   ref,
-  userId
+  userId,
 }) => {
   return (
-    <div 
-      ref={ref}
-      className="h-full overflow-y-auto"
-    >
-      <ul className="divide-y divide-gray-700">
+    <div ref={ref} className='h-full overflow-y-auto'>
+      <ul className='divide-y divide-gray-700'>
         {conversations.length > 0 ? (
-          conversations.map(conversation => (
+          conversations.map((conversation) => (
             <ConversationItem
               key={conversation.id}
               conversation={conversation}
@@ -28,14 +25,14 @@ const ConversationList = ({
             />
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-            <MessageCircle className="w-12 h-12 text-gray-500 mb-4" />
-            <p className="text-gray-400">No conversations found</p>
+          <div className='flex flex-col items-center justify-center h-full p-8 text-center'>
+            <MessageCircle className='w-12 h-12 text-gray-500 mb-4' />
+            <p className='text-gray-400'>No conversations found</p>
           </div>
         )}
       </ul>
     </div>
-  );
-};
+  )
+}
 
-export default ConversationList;
+export default ConversationList

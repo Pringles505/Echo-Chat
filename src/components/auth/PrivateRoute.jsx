@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import EldUnlockGate from './EldUnlockGate';
 
-//Checks if the user is authenticated by checking if the token is present in the local storage
+// Redirects to /login if no auth token is found in localStorage
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (!token) return <Navigate to="/login" replace />;

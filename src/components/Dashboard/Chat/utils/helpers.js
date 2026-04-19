@@ -8,12 +8,12 @@ const base64ToArrayBuffer = (base64String) => {
 };
 
 const hexToUint8Array = (hex) => {
-  const bytes = [];
+  const bytes = []
   for (let i = 0; i < hex.length; i += 2) {
-    bytes.push(parseInt(hex.substr(i, 2), 16));
+    bytes.push(parseInt(hex.substr(i, 2), 16))
   }
-  return new Uint8Array(bytes);
-};
+  return new Uint8Array(bytes)
+}
 
 const arrayBufferToBase64 = (buffer) => {
   let binary = '';
@@ -40,6 +40,5 @@ export function base64ToBytes(b64) {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
-
 
 export { base64ToArrayBuffer, arrayBufferToBase64, hexToUint8Array };

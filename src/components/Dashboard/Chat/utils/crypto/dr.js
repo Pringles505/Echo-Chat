@@ -31,7 +31,6 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
         const ed = savedPeer.publicIdentityKeyEd25519 ?? null;
         const fetchedEd = bundle.publicIdentityKeyEd25519 ?? null;
 
-        // Treat any identity key change as suspicious (possible MITM/server key substitution).
         if (
             x !== bundle.publicIdentityKeyX25519 ||
             (ed && fetchedEd && ed !== fetchedEd)
@@ -62,10 +61,13 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
         targetSignedPreKey,
         targetPublicIdentityKeyEd25519);
 
-    // If the SPK signature has been tampered with throw ERROR 
     if (!isValidSignature) {
         throw new Error('Invalid SPK signature detected');
     }
+
+    console.log('DH2:', )
+    console.log('Target Public Identity Key:', targetPublicIdentityKeyX25519)
+    console.log('Private Ephemeral Key:', ephemeralKey_private)
 
     const dh1 = await diffie_hellman(privateKeyArray, targetSignedPreKey);
     const dh2 = await diffie_hellman(ephemeralKey_private, targetPublicIdentityKeyX25519);
@@ -87,14 +89,12 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
         IKM.set(p, offset);
         offset += p.length;
     }
-    //HKDF the IKM to produce the root key
     const root_key = hkdf_derive(IKM, HKDF_SALT, INFO_RK, 32)
 
     return { root_key, spkId, opkId, peerIdentityToPin };
 }
 
 const continueDoubleRatchetChain = async (socket, targetUserId, previousTargetPublicEphemeralKeyBase64, privateEphemeralKey, root_key) => {
-    // Only convert if not already a Uint8Array
     let previousTargetPublicEphemeralKey;
     if (previousTargetPublicEphemeralKeyBase64 instanceof Uint8Array) {
         previousTargetPublicEphemeralKey = previousTargetPublicEphemeralKeyBase64;
@@ -114,7 +114,6 @@ const continueDoubleRatchetChain = async (socket, targetUserId, previousTargetPu
 
 const initializeDoubleRatchetResponse = async (socket, message, targetUserId, privateKeyArray) => {
     await init();
-    // Retrieve the privatePreKey from ELD
     const identityKeysResponse = await getIdentityKeys();
     const storedPrivatePreKey = identityKeysResponse?.privatePreKey;
     if (!storedPrivatePreKey) {
@@ -123,7 +122,6 @@ const initializeDoubleRatchetResponse = async (socket, message, targetUserId, pr
     const privatePreKey = base64ToArrayBuffer(storedPrivatePreKey);
 
     const encTargetPublicIdentityKeyX25519 = await fetchPublicIdentityKeyX25519(socket, targetUserId);
-    // Optional: used for identity pinning checks only.
     const encTargetPublicIdentityKeyEd25519 =
         await fetchPublicIdentityKeyEd25519(socket, targetUserId).catch(() => null);
 
@@ -139,7 +137,6 @@ const initializeDoubleRatchetResponse = async (socket, message, targetUserId, pr
         const x = savedPeer.publicIdentityKeyX25519;
         const ed = savedPeer.publicIdentityKeyEd25519 ?? null;
 
-        // Treat any identity key change as suspicious (possible MITM/server key substitution).
         if (
             x !== encTargetPublicIdentityKeyX25519 ||
             (ed && encTargetPublicIdentityKeyEd25519 && ed !== encTargetPublicIdentityKeyEd25519)
@@ -153,8 +150,12 @@ const initializeDoubleRatchetResponse = async (socket, message, targetUserId, pr
 
     const targetPublicIdentityKey = base64ToArrayBuffer(encTargetPublicIdentityKeyX25519);
 
-    const encTargetPublicEphemeralKey = message.publicEphemeralKey;
-    const targetPublicEphemeralKey = base64ToArrayBuffer(encTargetPublicEphemeralKey);
+    const targetPublicEphemeralKey = base64ToArrayBuffer(message.publicEphemeralKey);
+
+    console.log('🎈🎈 Init DR Response with: ')
+    console.log('🎈', 'target Public IK: ', targetPublicIdentityKey)
+    console.log('🎈', 'private PreKey: ', privatePreKey)
+    console.log('🎈', 'target Public EK: ', targetPublicEphemeralKey)
 
     const dh1 = await diffie_hellman(privatePreKey, targetPublicIdentityKey);
     const dh2 = await diffie_hellman(privateKeyArray, targetPublicEphemeralKey);

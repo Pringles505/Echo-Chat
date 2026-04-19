@@ -33,14 +33,12 @@ export const useConversations = (userId) => {
       let updated = [...prev];
 
       if (existingIndex >= 0) {
-        // Merge new data with existing, updating username and profileImage if provided
         updated[existingIndex] = {
           ...updated[existingIndex],
-          ...friendData, // Merge in any new data (username, profileImage, etc.)
+          ...friendData,
           lastMessage: message?.text || updated[existingIndex].lastMessage,
           lastMessageTime: message?.timestamp || updated[existingIndex].lastMessageTime,
         };
-        // Only move to top if there's a new message
         if (message) {
           const [moved] = updated.splice(existingIndex, 1);
           updated.unshift(moved);
@@ -55,9 +53,6 @@ export const useConversations = (userId) => {
 
       return updated.slice(0, 20); // Keep recent 20
     });
-
-    // Note: Unread message management is now handled solely in Dashboard.jsx
-    // to avoid duplicate state management and race conditions
   };
 
   return { recentConversations, updateRecentConversations };

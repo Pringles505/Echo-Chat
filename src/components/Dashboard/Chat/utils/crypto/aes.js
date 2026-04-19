@@ -18,20 +18,18 @@ const encrypt = async (text, derivedKey, nonceArray) => {
     if (key.length !== 32) {
       throw new Error(`Invalid key length: ${key.length} (expected 32)`);
     }
-    // Call the WebAssembly encrypt function
     const encryptedText = await wasmEncrypt(text, key, nonceArray);
     return encryptedText;
   } catch (error) {
-    console.error('Encryption error:', error);
-    throw error;
+    console.error('Encryption error:', error)
+    throw error
   }
-};
+}
 
 const decrypt = async (text, derivedKey, nonceArray) => {
   await init();
-  // Ensure the derived key is computed before decryption
   if (!derivedKey) {
-    console.error('Derived key is missing');
+    console.error('Derived key is missing')
   }
   try {
     const key = normalizeAesKey(derivedKey);
@@ -40,11 +38,10 @@ const decrypt = async (text, derivedKey, nonceArray) => {
     }
     return wasmDecrypt(text, key, nonceArray);
   } catch (error) {
-    console.error('Decryption error:', error);
-    throw error;
+    console.error('Decryption error:', error)
+    throw error
   }
-};
-
+}
 
 export const buildAadBytes = (message) => {
   const userId = String(message.userId ?? "");
@@ -56,8 +53,6 @@ export const buildAadBytes = (message) => {
   const spkId = message.spkId;
   const opkId = message.opkId;
 
-  // Back-compat: older messages authenticated only the base header fields.
-  // Once OPKs are used, we include spkId/opkId and bump AD version.
   const useV2 = spkId != null || opkId != null;
   const aadStr = useV2
     ? `Echo/v2|${userId}|${targetUserId}|${dh}|${n}|${pn}|${String(spkId ?? "")}|${String(opkId ?? "")}`
@@ -73,11 +68,8 @@ export const encryptWithAad = async (text, in_key, nonce, aadBytes) => {
     if (key.length !== 32) {
       throw new Error(`Invalid key length: ${key.length} (expected 32)`);
     }
-    
-    // Convert the plaintext to bytes
-    const textBytes = new TextEncoder().encode(text);
 
-    // Call the WebAssembly encrypt function
+    const textBytes = new TextEncoder().encode(text);
     const encryptedText_bytes = await encrypt_aad_bytes(textBytes, key, nonce, aadBytes);
     const encryptedText = bytesToBase64(encryptedText_bytes);
 
@@ -90,7 +82,6 @@ export const encryptWithAad = async (text, in_key, nonce, aadBytes) => {
 
 export const decryptWithAad = async (ciphertext, in_key, nonce, aadBytes) => {
   await init();
-  // Ensure the derived key is computed before decryption
   if (!in_key) {
     console.error('Derived key is missing');
   }

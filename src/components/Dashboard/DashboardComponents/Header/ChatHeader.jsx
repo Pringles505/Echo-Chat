@@ -4,37 +4,36 @@ import { useNavigate } from "react-router-dom";
 import { getSocket } from "../../../../socket";
 
 const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [isFriend, setIsFriend] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const menuRef = useRef(null);
-  const [socket, setSocket] = useState(null);
+  const navigate = useNavigate()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [isFriend, setIsFriend] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [onlineUsers, setOnlineUsers] = useState([])
+  const menuRef = useRef(null)
+  const [socket, setSocket] = useState(null)
 
   // Cerrar menú al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuOpen && menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
+        setMenuOpen(false)
       }
-    };
+    }
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside)
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [menuOpen]);
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [menuOpen])
 
   useEffect(() => {
-    setMenuOpen(false);
-  }, [activeChat]);
+    setMenuOpen(false)
+  }, [activeChat])
 
   // Initialize socket connection and track online status
   useEffect(() => {
     const sharedSocket = getSocket();
 
-    // Request current online users when component mounts
     sharedSocket.emit('getOnlineUsers', ({ onlineUsers }) => {
       setOnlineUsers(onlineUsers);
     });
@@ -59,50 +58,55 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
   }, [token]);
 
   const getConsistentColor = (username) => {
-    const colors = ['FF5733', '33FF57', '3357FF', 'F033FF', 'FF33F0'];
-    return colors[username.length % colors.length];
-  };
+    const colors = ['FF5733', '33FF57', '3357FF', 'F033FF', 'FF33F0']
+    return colors[username.length % colors.length]
+  }
 
   const handleAddFriend = () => {
     if (!socket || !socket.connected) {
-      alert("Not connected to server. Please refresh the page.");
-      return;
+      alert('Not connected to server. Please refresh the page.')
+      return
     }
 
     if (!userId) {
-      alert("You need to be logged in to add friends");
-      return;
+      alert('You need to be logged in to add friends')
+      return
     }
 
     if (!activeChat?.id) {
-      alert("No user selected to add as friend");
-      return;
+      alert('No user selected to add as friend')
+      return
     }
 
-    setIsLoading(true);
-    setMenuOpen(false);
+    setIsLoading(true)
+    setMenuOpen(false)
 
-    socket.emit('addFriend', {
-      userId: userId,
-      targetUserId: activeChat.id
-    }, (response) => {
-      setIsLoading(false);
-      if (response?.success) {
-        setIsFriend(true);
-        alert(`You are now friends with ${activeChat.username}!`);
-      } else {
-        alert(response?.error || "Failed to add friend");
+    socket.emit(
+      'addFriend',
+      {
+        userId: userId,
+        targetUserId: activeChat.id,
+      },
+      (response) => {
+        setIsLoading(false)
+        if (response?.success) {
+          setIsFriend(true)
+          alert(`You are now friends with ${activeChat.username}!`)
+        } else {
+          alert(response?.error || 'Failed to add friend')
+        }
       }
-    });
-  };
+    )
+  }
 
-  if (!activeChat) return null;
+  if (!activeChat) return null
 
-  const isOnline = onlineUsers.includes(activeChat.id);
-  const statusText = isOnline ? "Online" : "Offline";
+  const isOnline = onlineUsers.includes(activeChat.id)
+  const statusText = isOnline ? 'Online' : 'Offline'
 
   return (
-    <div className={`p-4 flex justify-between items-center transition-all border-b
+    <div
+      className={`p-4 flex justify-between items-center transition-all border-b
       ${isHovered ? 'bg-gray-800' : 'bg-black'}
       ${activeChat ? 'border-black' : 'border-black'}
     `}>
@@ -115,24 +119,26 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
                 `https://ui-avatars.com/api/?name=${activeChat.username}&background=${getConsistentColor(activeChat.username)}&color=fff`
               }
               alt={activeChat.username}
-              className="w-full h-full object-cover"
+              className='w-full h-full object-cover'
               onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${activeChat.username}&background=${getConsistentColor(activeChat.username)}&color=fff`;
+                e.target.src = `https://ui-avatars.com/api/?name=${activeChat.username}&background=${getConsistentColor(activeChat.username)}&color=fff`
               }}
             />
           </div>
-          <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black
+          <span
+            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black
             ${isOnline ? 'bg-green-500' : 'bg-gray-500'}
-          `}></span>
+          `}
+          ></span>
         </div>
 
         <div>
-          <h3 className="font-semibold text-white">{activeChat.username}</h3>
-          <p className="text-sm text-gray-400">
+          <h3 className='font-semibold text-white'>{activeChat.username}</h3>
+          <p className='text-sm text-gray-400'>
             {statusText}
-            {activeChat.lastSeen && !isOnline && (
-              ` · Last seen ${new Date(activeChat.lastSeen).toLocaleTimeString()}`
-            )}
+            {activeChat.lastSeen &&
+              !isOnline &&
+              ` · Last seen ${new Date(activeChat.lastSeen).toLocaleTimeString()}`}
           </p>
         </div>
 
@@ -154,22 +160,22 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
         </div>
       </div>
 
-      <div className="flex gap-4 relative" ref={menuRef}>
+      <div className='flex gap-4 relative' ref={menuRef}>
         <button
-          className="p-2 rounded-full hover:bg-gray-700 transition-colors"
-          aria-label="More options"
+          className='p-2 rounded-full hover:bg-gray-700 transition-colors'
+          aria-label='More options'
           onClick={() => setMenuOpen((open) => !open)}
         >
-          <MoreHorizontal className="w-5 h-5 text-gray-400" />
+          <MoreHorizontal className='w-5 h-5 text-gray-400' />
         </button>
 
         {menuOpen && (
-          <div className="absolute right-0 mt-12 w-40 bg-black border border-gray-700 rounded-lg shadow-lg z-50">
+          <div className='absolute right-0 mt-12 w-40 bg-black border border-gray-700 rounded-lg shadow-lg z-50'>
             <button
-              className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white"
+              className='w-full text-left px-4 py-2 hover:bg-gray-700 text-white'
               onClick={() => {
-                setMenuOpen(false);
-                navigate(`/profile/${activeChat.id}`);
+                setMenuOpen(false)
+                navigate(`/profile/${activeChat.id}`)
               }}
             >
               Profile
@@ -189,7 +195,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
 
             {isFriend && (
               <button
-                className="w-full text-left px-4 py-2 hover:bg-gray-700 text-green-400"
+                className='w-full text-left px-4 py-2 hover:bg-gray-700 text-green-400'
                 disabled
               >
                 Your Friend
@@ -213,8 +219,8 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
             <button
               className="w-full text-left px-4 py-2 hover:bg-gray-700 text-red-400"
               onClick={() => {
-                setMenuOpen(false);
-                alert("Block clicked!");
+                setMenuOpen(false)
+                alert('Block clicked!')
               }}
             >
               Block
@@ -223,7 +229,7 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ChatHeader;
+export default ChatHeader

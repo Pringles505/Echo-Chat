@@ -1,137 +1,140 @@
-import React, { useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { useInView } from 'react-intersection-observer';
-import { Instagram, Mail, ArrowUpRight } from 'lucide-react';
-import { FaXTwitter } from 'react-icons/fa6';
+import React from 'react'
+import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { Mail, Linkedin, Github, Twitter } from 'lucide-react'
 
 const Footer = () => {
-  const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  });
+  const { t } = useTranslation()
+  const currentYear = new Date().getFullYear()
 
-  const currentYear = useMemo(() => new Date().getFullYear(), []);
+  const footerSections = [
+    {
+      title: t('footer.product.title'),
+      links: [
+        { label: t('footer.product.features'), href: '/#features' },
+        { label: t('footer.product.security'), href: '/documentation/protocols' },
+        { label: t('footer.product.download'), href: '/download' },
+        { label: t('footer.product.roadmap'), href: '/roadmap' },
+      ],
+    },
+    {
+      title: t('footer.resources.title'),
+      links: [
+        { label: t('footer.resources.docs'), href: '/documentation' },
+        { label: t('footer.resources.community'), href: '/community' },
+        { label: t('footer.resources.help'), href: '/help' },
+        { label: t('footer.resources.status'), href: '/status' },
+      ],
+    },
+    {
+      title: t('footer.company.title'),
+      links: [
+        { label: t('footer.company.about'), href: '/about-us' },
+        { label: t('footer.company.careers'), href: '/careers' },
+        { label: t('footer.company.blog'), href: '/blog' },
+        { label: t('footer.company.contact'), href: '/contact-us' },
+      ],
+    },
+  ]
 
-  const footerLinks = {
-    explore: [
-      { label: 'Features', href: '#features', icon: <ArrowUpRight size={14} /> },
-      { label: 'Pricing', href: '/#pricing', icon: <ArrowUpRight size={14} /> },
-    ],
-    support: [
-      { label: 'Documentation', href: '/documentation' },
-      { label: 'Community', href: '/community'},
-      { label: 'Contact Us', href: '/contact-us', icon: <Mail size={14} /> },
-    ],
-    legal: [
-      { label: 'Privacy Policy', href: '/legal/privacy-policy' },
-      { label: 'Terms of Service', href: '/legal/terms-of-service' },
-    ],
-  };
+  const legalLinks = [
+    { label: t('footer.legal.privacy'), href: '/legal/privacy-policy' },
+    { label: t('footer.legal.terms'), href: '/legal/terms-of-service' },
+    { label: t('footer.legal.cookies'), href: '/legal/cookie-policy' },
+    { label: t('footer.legal.gdpr'), href: '/legal/gdpr' },
+    { label: t('footer.legal.licenses'), href: '/legal/licenses' },
+  ]
 
-  const socialIcons = [
-    { Icon: FaXTwitter, href: 'https://twitter.com/echo-app', label: 'X' },
-    { Icon: Instagram, href: 'https://instagram.com/echo-app', label: 'Instagram' },
-  ];
-
-  const renderLinks = (links) => (
-    <ul className="space-y-3">
-      {links.map((link, index) => (
-        <li key={index}>
-          <a
-            href={link.href}
-            className="flex items-center gap-1 text-sm text-white hover:text-white/80 transition-colors group"
-            target={link.target || '_self'}
-            rel={link.rel || ''}
-          >
-            {link.label}
-            {link.icon && (
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white">
-                {link.icon}
-              </span>
-            )}
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
+  const socialLinks = [
+    { icon: Github, href: '#', label: 'GitHub' },
+    { icon: Linkedin, href: '#', label: 'LinkedIn' },
+    { icon: Twitter, href: '#', label: 'Twitter' },
+    { icon: Mail, href: 'mailto:support@echo.dev', label: 'Email' },
+  ]
 
   return (
-    <footer className="bg-transparent w-full" ref={ref}>
-      <div className="w-full">
-        <div className="mx-auto max-w-7xl px-8">
-          <div className="w-full h-px bg-white/20"></div>
+    <footer className='bg-transparent border-t border-white/10 pt-20 pb-10 relative z-10'>
+      {/* Background Glow */}
+      <div className='absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-violet-600/5 blur-[100px] rounded-full pointer-events-none' />
+
+      <div className='max-w-7xl mx-auto px-6 relative z-10'>
+        {/* Main Footer Content */}
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16'>
+          {/* Brand Section */}
+          <div className='lg:col-span-2'>
+            <div className='flex items-center gap-3 mb-6'>
+              <img src='/echo-logo.svg' alt='Echo Logo' className='h-8 w-8' />
+              <span className='text-xl font-bold text-white tracking-wide'>ECHO</span>
+            </div>
+            <p className='text-zinc-400 text-sm leading-relaxed mb-6 max-w-md'>
+              {t('footer.tagline')}
+            </p>
+            {/* Social Links */}
+            <div className='flex items-center gap-4'>
+              {socialLinks.map((social) => {
+                const Icon = social.icon
+                return (
+                  <a
+                    key={social.label}
+                    href={social.href}
+                    aria-label={social.label}
+                    className='text-zinc-400 hover:text-violet-400 transition-colors duration-300'
+                  >
+                    <Icon className='w-5 h-5' />
+                  </a>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Footer Links Sections */}
+          {footerSections.map((section) => (
+            <div key={section.title}>
+              <h3 className='text-sm font-bold text-white mb-6 uppercase tracking-wider'>
+                {section.title}
+              </h3>
+              <ul className='space-y-4'>
+                {section.links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      to={link.href}
+                      className='text-zinc-400 hover:text-violet-400 text-sm transition-colors duration-300'
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className='h-px bg-white/10 mb-8'></div>
+
+        {/* Bottom Section */}
+        <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-6'>
+          {/* Copyright */}
+          <p className='text-zinc-500 text-sm'>
+            &copy; {currentYear} Echo. {t('footer.rights')}
+          </p>
+
+          {/* Legal Links */}
+          <div className='flex flex-wrap gap-6'>
+            {legalLinks.map((link) => (
+              <Link
+                key={link.label}
+                to={link.href}
+                className='text-zinc-500 hover:text-violet-400 text-sm transition-colors duration-300'
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
-      
-      <div className="w-full py-16 px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="mx-auto max-w-7xl"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-4 mb-6">
-                <img 
-                  src="/echo-logo.svg"
-                  alt="ECHO Logo"
-                  className="h-12 w-12 object-contain"
-                />
-                <h3 className="text-3xl font-bold text-white">ECHO</h3>
-              </div>
-              <p className="text-white/80 mb-8 max-w-md text-lg">
-                Messaging made private by design.
-              </p>
-              <div className="flex space-x-5">
-                {socialIcons.map(({ Icon, href, label }, index) => (
-                  <a
-                    key={index}
-                    href={href}
-                    aria-label={label}
-                    className="p-3 bg-white/10 rounded-full text-white hover:text-white hover:bg-white/20 transition-all"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Icon className="w-6 h-6" />
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-6 text-white text-lg">Explore</h4>
-              {renderLinks(footerLinks.explore)}
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-6 text-white text-lg">Support</h4>
-              {renderLinks(footerLinks.support)}
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-6 text-white text-lg">Legal</h4>
-              {renderLinks(footerLinks.legal)}
-            </div>
-          </div>
-
-          <div className="mt-20 pt-8 border-t border-white/20 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-base text-white/60">
-              &copy; {currentYear} ECHO. All rights reserved.
-            </p>
-            <div className="mt-4 md:mt-0 flex space-x-8">
-              <a href="/legal/cookie-policy" className="text-base text-white/60 hover:text-white">
-                Cookie Policy
-              </a>
-              <a href="/legal/gdpr" className="text-base text-white/60 hover:text-white">
-                GDPR
-              </a>
-            </div>
-          </div>
-        </motion.div>
-      </div>
     </footer>
-  );
-};
+  )
+}
 
-export default React.memo(Footer);
+export default Footer

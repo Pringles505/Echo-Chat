@@ -10,76 +10,77 @@ const ConversationItem = ({
   activeChat,
   unreadCount = 0
 }) => {
-  const [latestMessage, setLatestMessage] = useState('');
+  const [latestMessage, setLatestMessage] = useState('')
 
   const getConsistentColor = (str) => {
-    let hash = 0;
+    let hash = 0
     for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      hash = str.charCodeAt(i) + ((hash << 5) - hash)
     }
-    const h = hash % 360;
-    return `hsl(${h}, 70%, 50%)`.replace(/[^\d,]/g, '').split(',').slice(0, 2).join(',');
-  };
+    const h = hash % 360
+    return `hsl(${h}, 70%, 50%)`
+      .replace(/[^\d,]/g, '')
+      .split(',')
+      .slice(0, 2)
+      .join(',')
+  }
 
-  const avatarBgColor = getConsistentColor(conversation.username);
+  const avatarBgColor = getConsistentColor(conversation.username)
 
   useEffect(() => {
-  const fetchLatest = async () => {
-    const targetUserId = conversation.targetUserId || conversation.id;
+    const fetchLatest = async () => {
+      const targetUserId = conversation.targetUserId || conversation.id;
 
-    try {
-      const messages = await getSavedMessages(userId, targetUserId);
+      try {
+        const messages = await getSavedMessages(userId, targetUserId);
 
-      if (!messages || messages.length === 0) {
-        if (unreadCount > 0) {
-          setLatestMessage('New message');
-        } else {
-          setLatestMessage('No messages yet');
+        if (!messages || messages.length === 0) {
+          if (unreadCount > 0) {
+            setLatestMessage('New message');
+          } else {
+            setLatestMessage('No messages yet');
+          }
+          return;
         }
-        return;
-      }
 
-      const lastMsg = messages[messages.length - 1];
+        const lastMsg = messages[messages.length - 1];
 
-      if (lastMsg?.messageType === 'call_event') {
-        const dur = lastMsg.callData?.duration || 0;
-        const status = lastMsg.callData?.status;
-        if (status === 'missed') {
-          setLatestMessage('Missed call');
-        } else if (status === 'declined') {
-          setLatestMessage('Call declined');
-        } else if (dur > 0) {
-          const m = Math.floor(dur / 60);
-          const s = dur % 60;
-          setLatestMessage(`Video call ${m > 0 ? m + ':' + String(s).padStart(2, '0') : s + 's'}`);
+        if (lastMsg?.messageType === 'call_event') {
+          const dur = lastMsg.callData?.duration || 0;
+          const status = lastMsg.callData?.status;
+          if (status === 'missed') {
+            setLatestMessage('Missed call');
+          } else if (status === 'declined') {
+            setLatestMessage('Call declined');
+          } else if (dur > 0) {
+            const m = Math.floor(dur / 60);
+            const s = dur % 60;
+            setLatestMessage(`Video call ${m > 0 ? m + ':' + String(s).padStart(2, '0') : s + 's'}`);
+          } else {
+            setLatestMessage('Video call');
+          }
         } else {
-          setLatestMessage('Video call');
+          setLatestMessage(lastMsg?.text || (unreadCount > 0 ? 'New message' : 'No messages yet'));
         }
-      } else {
-        setLatestMessage(lastMsg?.text || (unreadCount > 0 ? 'New message' : 'No messages yet'));
+      } catch (err) {
+        console.error("Error fetching messages from ELD:", err);
+        setLatestMessage(unreadCount > 0 ? 'New message' : 'No messages yet');
       }
-    } catch (err) {
-      console.error("Error fetching messages from ELD:", err);
-      setLatestMessage(unreadCount > 0 ? 'New message' : 'No messages yet');
     }
-  };
 
-  // Initial fetch
-  fetchLatest();
+    // Initial fetch
+    fetchLatest()
 
-  // Listener for storage updates (still works via custom event)
-  const handleStorageUpdate = () => {
-    fetchLatest();
-  };
+    const handleStorageUpdate = () => {
+      fetchLatest();
+    };
 
-  window.addEventListener('localStorageUpdated', handleStorageUpdate);
+    window.addEventListener('localStorageUpdated', handleStorageUpdate);
 
-  // Cleanup
-  return () => {
-    window.removeEventListener('localStorageUpdated', handleStorageUpdate);
-  };
-}, [conversation, userId, unreadCount]);
-
+    return () => {
+      window.removeEventListener('localStorageUpdated', handleStorageUpdate);
+    };
+  }, [conversation, userId, unreadCount]);
 
   return (
     <li
@@ -90,16 +91,16 @@ const ConversationItem = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex items-center space-x-3">
-        <div className="relative">
+      <div className='flex items-center space-x-3'>
+        <div className='relative'>
           <img
             src={conversation.profileImage ||
                  `https://ui-avatars.com/api/?name=${conversation.username}&background=${avatarBgColor}&color=fff`}
             alt={conversation.username}
-            className="w-10 h-10 rounded-full object-cover border-2 border-black"
+            className='w-10 h-10 rounded-full object-cover border-2 border-black'
             onError={(e) => {
-              e.target.src = `https://ui-avatars.com/api/?name=${conversation.username}&background=${avatarBgColor}&color=fff`;
-              e.target.onerror = null;
+              e.target.src = `https://ui-avatars.com/api/?name=${conversation.username}&background=${avatarBgColor}&color=fff`
+              e.target.onerror = null
             }}
           />
           {unreadCount > 0 && (
@@ -131,7 +132,7 @@ const ConversationItem = ({
         </div>
       </div>
     </li>
-  );
-};
+  )
+}
 
-export default ConversationItem;
+export default ConversationItem

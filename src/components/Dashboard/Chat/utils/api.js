@@ -62,17 +62,17 @@ const checkFirstMessage = async (socket, targetUserId) => {
     return new Promise((resolve) => {
       socket.emit('checkIfMessagesExist', { targetUserId }, (response) => {
         if (response.success) {
-          resolve(true); 
+          resolve(true);
         } else {
-          resolve(false); 
+          resolve(false);
         }
       });
     });
   };
 
-export { fetchPublicIdentityKeyX25519, 
-         fetchSignedPreKey, 
+export { fetchPublicIdentityKeyX25519,
+         fetchSignedPreKey,
          fetchPreKeyBundle,
-         fetchPublicIdentityKeyEd25519, 
-         fetchLatestMessageNumber, 
+         fetchPublicIdentityKeyEd25519,
+         fetchLatestMessageNumber,
          checkFirstMessage };
