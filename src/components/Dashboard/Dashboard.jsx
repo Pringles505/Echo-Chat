@@ -163,7 +163,6 @@ const Dashboard = () => {
   useEffect(() => {
     if (!token || !userId) return;
 
-    console.log('Initializing socket connection for profile fetching...');
     const sharedSocket = getSocket();
     setSocket(sharedSocket);
 
@@ -225,7 +224,6 @@ const Dashboard = () => {
     };
 
     const onConnect = () => {
-      console.log('Socket connected for profile fetching');
       mlsKeyPackagePublishedRef.current = false;
       clearMlsKeyPackageRetry();
 
@@ -239,7 +237,6 @@ const Dashboard = () => {
       // Fetch user profile immediately after connection
       fetchUserProfileFromSocket(sharedSocket, userId)
         .then((profileData) => {
-          console.log('Profile data fetched:', profileData);
           if (profileData.profilePicture) {
             const formattedImage = formatProfileImage(profileData.profilePicture, username);
             setUserProfileImage(formattedImage);
@@ -251,18 +248,15 @@ const Dashboard = () => {
 
       // Refresh profile pictures for all recent conversations on page load (only once)
       if (!hasRefreshedProfiles.current && recentConversations.length > 0) {
-        console.log('🔄 Refreshing profile pictures for all conversations...');
         hasRefreshedProfiles.current = true;
 
         recentConversations.forEach((conversation) => {
-          const conversationUserId = conversation.id || conversation.targetUserId;
-          if (conversationUserId) {
-            sharedSocket.emit('getUserInfo', { userId: conversationUserId }, (response) => {
-              if (response.success && response.user) {
-                console.log('✅ Refreshed profile for user:', conversationUserId);
-
-                // Update conversation with fresh profile data by passing updated user object
-                const formattedImage = formatProfileImage(response.user.profilePicture, response.user.username);
+            const conversationUserId = conversation.id || conversation.targetUserId;
+            if (conversationUserId) {
+              sharedSocket.emit('getUserInfo', { userId: conversationUserId }, (response) => {
+                if (response.success && response.user) {
+                  // Update conversation with fresh profile data by passing updated user object
+                  const formattedImage = formatProfileImage(response.user.profilePicture, response.user.username);
                 const updatedUser = {
                   id: conversationUserId,
                   username: response.user.username,
@@ -299,7 +293,6 @@ const Dashboard = () => {
     }
 
     const handleDisconnect = () => {
-      console.log('Socket disconnected');
       mlsKeyPackagePublishedRef.current = false;
       clearMlsKeyPackageRetry();
     };
@@ -308,13 +301,11 @@ const Dashboard = () => {
 
     // Listen for incoming calls
     sharedSocket.on('incomingCall', (callData) => {
-      console.log('Incoming call:', callData);
       setIncomingCall(callData);
     });
 
     // Listen for call ended (to dismiss notification if caller cancels)
     sharedSocket.on('callEnded', ({ callId }) => {
-      console.log('Call ended by caller:', callId);
       setIncomingCall((current) => {
         // Only clear if it's the same call
         if (current && current.callId === callId) {
@@ -329,7 +320,6 @@ const Dashboard = () => {
 
     // Listen for profile updates from other users
     sharedSocket.on('userProfileUpdated', (data) => {
-      console.log('👤 User profile updated:', data);
       const { userId: updatedUserId, username, profilePicture } = data;
 
       // Update recent conversations with new profile picture
@@ -337,7 +327,6 @@ const Dashboard = () => {
         return prevConversations.map(conv => {
           if (conv.id === updatedUserId || conv.targetUserId === updatedUserId) {
             const formattedImage = formatProfileImage(profilePicture, username);
-            console.log('🔄 Updating conversation profile for user:', updatedUserId);
             return {
               ...conv,
               username: username || conv.username,
@@ -352,7 +341,6 @@ const Dashboard = () => {
       setActiveChat((prevActiveChat) => {
         if (prevActiveChat && (prevActiveChat.id === updatedUserId || prevActiveChat.targetUserId === updatedUserId)) {
           const formattedImage = formatProfileImage(profilePicture, username);
-          console.log('🔄 Updating active chat profile for user:', updatedUserId);
           return {
             ...prevActiveChat,
             username: username || prevActiveChat.username,
@@ -463,15 +451,8 @@ const Dashboard = () => {
             username,
           });
           msgText = result?.formattedMessage?.text ?? msgText;
-        } catch (err) {
-          console.warn("[Dashboard] Failed to decrypt incoming group message:", {
-            groupId: gid,
-            messageId: message?._id ?? null,
-            seq: Number.isInteger(message?.seq) ? message.seq : null,
-            epoch: Number.isInteger(message?.epoch) ? message.epoch : null,
-            senderLeafIndex: Number.isInteger(message?.senderLeafIndex) ? message.senderLeafIndex : null,
-            error: err?.message ?? String(err),
-          });
+        } catch {
+          console.warn("[Dashboard] Failed to decrypt incoming group message");
           msgText = "[Unable to decrypt message]";
           await updateSavedMessages(
             userIdRef.current,
@@ -505,8 +486,6 @@ const Dashboard = () => {
 
     // Listen for new messages to update unread count and decrypt in background
     const handleNewMessageNotification = async (messageData) => {
-      console.log('📬 New message received in Dashboard:', messageData);
-
       // Handle both single message and array of messages
       const messages = Array.isArray(messageData) ? messageData : [messageData];
 
@@ -521,12 +500,6 @@ const Dashboard = () => {
 
       // Process each message for notifications
       for (const message of messages) {
-        console.log('📬 Processing message:', message);
-        console.log('📬 Current userId:', userIdRef.current);
-        console.log('📬 Message from userId:', message.userId);
-        console.log('📬 Active chat:', activeChatRef.current?.id);
-        console.log('📬 Is initial message?:', message.is_initial);
-
         // Ensure type consistency - convert IDs to strings for comparison
         const currentUserId = String(userIdRef.current);
         const messageSenderId = String(message.userId);
@@ -536,19 +509,16 @@ const Dashboard = () => {
         // and is not part of the currently active chat
         if (message.userId && messageSenderId !== currentUserId) {
           const senderId = messageSenderId;
-          console.log('✅ Processing notification for sender:', senderId);
 
           // The active Chat component decrypts and stores messages for the currently open
           // conversation. Skipping them here avoids double-processing ratchet state.
           if (senderId === activeChatId) {
-            console.log('⏭️ Active chat message will be handled by Chat:', senderId);
             continue;
           }
 
           // Skip messages already decrypted and saved in ELD
           const existingMessages = await getSavedMessages(userIdRef.current, senderId);
           if (existingMessages.some(msg => msg._id === message._id)) {
-            console.log(`⏭️ Skipping already-decrypted message: ${message._id}`);
             continue;
           }
 
@@ -557,22 +527,15 @@ const Dashboard = () => {
             // Call event messages are not end-to-end encrypted in this project; store as-is.
             if (message.messageType === 'call_event') {
               await updateSavedMessages(userIdRef.current, senderId, message, null);
-              console.log('✅ [Dashboard] Call event stored (no decryption)');
               continue;
             }
 
             // Defensive: ignore malformed encrypted messages (prevents noisy console errors).
             if (!message.payload || !message.nonce || !message.publicEphemeralKey) {
-              console.warn('⚠️ [Dashboard] Skipping background decryption (missing fields)', {
-                hasPayload: Boolean(message.payload),
-                hasNonce: Boolean(message.nonce),
-                hasPublicEphemeralKey: Boolean(message.publicEphemeralKey),
-                messageType: message.messageType,
-              });
+              console.warn('⚠️ [Dashboard] Skipping background decryption (missing fields)');
               continue;
             }
 
-            console.log('🔐 [Dashboard] Attempting background decryption...');
             const nonce = base64ToArrayBuffer(message.nonce || '');
             await decryptIncomingMessage(
               message,
@@ -583,7 +546,6 @@ const Dashboard = () => {
               sharedSocket,
               null // No setMessages - we're in background mode
             );
-            console.log('✅ [Dashboard] Message decrypted in background');
           } catch (error) {
             console.error('❌ [Dashboard] Failed to decrypt message in background:', error);
             // Continue with notification even if decryption fails
@@ -596,7 +558,6 @@ const Dashboard = () => {
 
             // Persist to localStorage
             localStorage.setItem(`unread-${userIdRef.current}-${senderId}`, newCount);
-            console.log(`📊 Unread count for ${senderId}: ${newCount}`);
 
             return {
               ...prev,
@@ -609,8 +570,6 @@ const Dashboard = () => {
 
           if (!conversationExists) {
             // First message from this user - add placeholder immediately
-            console.log('🔍 First message from this user, fetching user info for:', senderId);
-
             const placeholderUser = {
               id: senderId,
               username: message.username || `User ${senderId}`,
@@ -622,12 +581,10 @@ const Dashboard = () => {
               text: '',
               timestamp: message.timestamp || message.createdAt || new Date().toISOString()
             });
-            console.log('✅ Conversation added to recent list (placeholder)');
 
             // Fetch proper user info to update with correct data
             sharedSocket.emit('getUserInfo', { userId: senderId }, (response) => {
               if (response.success && response.user) {
-                console.log('✅ User info fetched:', response.user);
                 const conversationUser = {
                   id: senderId,
                   username: response.user.username,
@@ -636,14 +593,12 @@ const Dashboard = () => {
 
                 // Update conversation with proper user data 
                 updateRecentConversationsRef.current?.(conversationUser, null);
-                console.log('✅ Conversation updated with proper user info');
               } else {
-                console.error('❌ Failed to fetch user info:', response);
+                console.error('❌ Failed to fetch user info');
               }
             });
           } else {
             // Conversation exists - just update timestamp to move it to top
-            console.log('✅ Conversation already exists, updating timestamp');
             const existingConv = recentConversationsRef.current.find(conv => String(conv.id) === senderId);
             if (existingConv) {
               updateRecentConversationsRef.current?.(existingConv, {
@@ -652,8 +607,6 @@ const Dashboard = () => {
               });
             }
           }
-        } else {
-          console.log('⏭️ Skipping notification (own message or active chat)');
         }
       }
     };
@@ -663,8 +616,6 @@ const Dashboard = () => {
     sharedSocket.on("groupUpdated", handleGroupUpdated);
     sharedSocket.on("groupRemoved", handleGroupRemoved);
     sharedSocket.on("newGroupMessage", handleNewGroupMessageNotification);
-
-    console.log('Dashboard socket ID:', sharedSocket.id);
 
     return () => {
       sharedSocket.off('connect', onConnect);
@@ -820,7 +771,6 @@ const Dashboard = () => {
   const handleLogout = () => {
     // Lock the encrypted database (clears DEK from memory)
     eld.lock();
-    console.log("[ELD] Database locked");
 
     // Clear session data but NOT the encrypted IndexedDB
     sessionStorage.removeItem(`eld-pass-${userId}`);
@@ -834,9 +784,7 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const handleSearch = () => {
-    console.log("Searching for:", searchTerm);
-  };
+  const handleSearch = () => {};
 
   const handleViewChange = (view) => {
     setActiveView(view);

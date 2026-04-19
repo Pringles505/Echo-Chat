@@ -11,7 +11,6 @@ import eld from '../utils/storage/EncryptedLocalDatabase';
 
 import init, {
   generate_ed25519_private_key,
-  generate_ed25519_public_key,
   generate_public_prekey,
   generate_private_prekey,
   derive_x25519_from_ed25519_private,
@@ -23,7 +22,6 @@ import init, {
   compute_signature_scaler,
   compute_signature,
   verify_signature,
-  test_sign_and_verify,
 } from '@mascaro101/echo-protocol';
 import { generateOneTimePreKeys } from './Dashboard/Chat/utils/crypto/opk';
 import { connectWithoutAuth } from '../socket';
@@ -77,34 +75,21 @@ const Register = () => {
         return;
       }
 
-      console.log("Starting registration process...");
-
       // Initialize the WASM module
       await init();
       await init();
-
-      console.log("WASM modules initialized");
 
       // Generate the identity pair
       const randomBytes_IK = crypto.getRandomValues(new Uint8Array(32));
       const randomBytes_SPK = crypto.getRandomValues(new Uint8Array(32));
 
       const privateKey = generate_ed25519_private_key(randomBytes_IK);
-      const publicKey = generate_ed25519_public_key(privateKey);
 
       const privatePreKey = generate_private_prekey(randomBytes_SPK);
       const publicPreKey = generate_public_prekey(privatePreKey);
 
-      console.log("Private Key: Ed25519", new Uint8Array(privateKey));
-      console.log("Public Key Ed25519:", new Uint8Array(publicKey));
-      console.log("Private Pre Key:", new Uint8Array(privatePreKey));
-      console.log("Public Pre Key:", new Uint8Array(publicPreKey));
-
       const x25519_key_pair = derive_x25519_from_ed25519_private(privateKey);
       const { x25519_private_key, x25519_public_key } = x25519_key_pair;
-
-      console.log("X25519 Private Key:", new Uint8Array(x25519_private_key));
-      console.log("X25519 Public Key:", new Uint8Array(x25519_public_key));
 
       // XEdDSA expects an X25519 private key (not the Ed25519 seed).
       const xeddsaKey = convert_x25519_to_xeddsa(x25519_private_key);
@@ -128,46 +113,10 @@ const Register = () => {
       );
       const signature = compute_signature(noncePoint, signature_scaler);
 
-      console.log("Signing with:");
-      console.log("edPrivScaler", Array.from(edPrivScaler));
-      console.log("publicEdKey", Array.from(publicEdKey));
-      console.log("publicPreKey (message)", Array.from(publicPreKey));
-
-      console.log("Xeddsa Public Key:", convert_x25519_to_xeddsa(x25519_private_key));
-      console.log("Deterministic nonce:", deterministicNonce);
-      console.log("Nonce Point:", noncePoint);
-      console.log("publicEdKey:", publicEdKey);
-      console.log("Challenge Hash:", challenge_hash);
-      console.log("Signature Scaler:", signature_scaler);
-      console.log("Signature:", signature);
-      // RIGHT AFTER generating it, call:
-      console.log("Verifying with:", {
-        signature: Array.from(signature),
-        message: Array.from(publicPreKey),
-        publicEdKey: Array.from(publicEdKey),
-      });
-
       const valid = verify_signature(signature, publicPreKey, publicEdKey);
-      console.log("Valid?", valid);
-      console.log(signature.length, publicEdKey.length);
-
-      console.log("Verifying with:");
-      console.log("signature", Array.from(signature));
-      console.log("message", Array.from(publicPreKey));
-      console.log("publicEdKey", Array.from(publicEdKey));
-      console.log(
-        "Signature Verification:",
-        verify_signature(signature, publicPreKey, publicEdKey)
-      );
-      console.log(
-        "Rust sign+verify self-test:",
-        test_sign_and_verify(publicPreKey, privateKey)
-      );
-      console.log("R (noncePoint)", Array.from(noncePoint));
-      console.log("S (signature_scalar)", Array.from(signature_scaler));
-      console.log("PublicEdKey used in signature", Array.from(publicEdKey));
-      console.log("PreKey used as message", Array.from(publicPreKey));
-      console.log("Challenge hash (k)", Array.from(challenge_hash));
+      if (!valid) {
+        throw new Error("Failed to verify the generated signed pre-key");
+      }
 
       // Generate one-time prekey batch
       const { privateKeys: opkPrivateKeys, publicBundle: opkPublicBundle } =
@@ -197,11 +146,8 @@ const Register = () => {
         oneTimePreKeys: opkPublicBundle,
       };
 
-      console.log("Key bundle:", keyBundle);
-
       const socket = connectWithoutAuth();
       socket.emit("register", { username, password, keyBundle, aboutme, profilePicture }, async (response) => {
-        console.log("register response:", response)
         if (response.success) {
           try {
             // Create encrypted database for this user
@@ -217,8 +163,6 @@ const Register = () => {
             });
 
             await eld.storeOPKs(opkPrivateKeys);
-
-            console.log("[ELD] Identity keys and OPKs stored securely");
 
             // Lock database (user will unlock on login)
             eld.lock();

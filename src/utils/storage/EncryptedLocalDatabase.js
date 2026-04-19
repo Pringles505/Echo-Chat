@@ -1,12 +1,13 @@
 // Imports - use your existing WASM modules
-import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt, hkdf_derive } from '@mascaro101/echo-protocol';
+import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt } from '@mascaro101/echo-protocol';
+import { argon2id } from '@noble/hashes/argon2.js';
 
 // Constants
 const DB_NAME = 'EchoEncryptedDB';
 const DB_VERSION = 9;
 
 const STORES = {
-    META: 'meta',              //SALTS
+    META: 'meta',             
     IDENTITY_KEYS: 'identity_keys',
     PEER_IDENTITY_KEYS: 'peer_identity_keys',
     SESSION_KEYS: 'session_keys',
@@ -29,7 +30,6 @@ class EncryptedLocalDatabase {
         this.dek = null;           // Database Encryption Key 
         this.currentUserId = null; // Who is logged in
         this._instanceId = Math.random().toString(36).substr(2, 9);
-        console.log('[ELD] New instance created, id:', this._instanceId);
     }
 
     async initializeDB() {
@@ -231,7 +231,6 @@ class EncryptedLocalDatabase {
 
     // Throw error if database is locked
     _ensureUnlocked() {
-        console.log('[ELD] _ensureUnlocked on instance:', this._instanceId, '- dek:', this.dek ? 'set' : 'null', ', userId:', this.currentUserId);
         if (this.dek == null || this.currentUserId == null) {
             console.error('[ELD] Lock check failed on instance:', this._instanceId);
             throw new Error('Database is locked. Call unlock() first.');
@@ -244,33 +243,19 @@ class EncryptedLocalDatabase {
     }
 
     async _deriveKey(password, salt) {
-        console.log('[ELD] _deriveKey called');
-        try {
-            await init();
-            console.log('[ELD] dh-wasm initialized');
+        const encoder = new TextEncoder();
+        const passwordBytes = encoder.encode(password);
 
-            const encoder = new TextEncoder();
-            const passwordBytes = encoder.encode(password);
+        // Argon2id: memory-hard password KDF (OWASP interactive profile)
+        // m=65536 KiB (64 MB), t=3 iterations, p=1 lane
+        const derived = argon2id(passwordBytes, salt, {
+            t: 3,
+            m: 65536,
+            p: 1,
+            dkLen: 32,
+        });
 
-            let ikm = new Uint8Array([...passwordBytes, ...salt]);
-            const info = encoder.encode('EchoELD-v1');
-
-            // Key stretching - 100 rounds
-            for (let i = 0; i < 100; i++) {
-                const roundInfo = new Uint8Array([...info, i & 0xff]);
-                const derived = hkdf_derive(ikm, salt, roundInfo, 32);
-                if (!derived || derived.length !== 32) {
-                    throw new Error(`HKDF round ${i} returned invalid data: ${derived?.length || 'null'}`);
-                }
-                ikm = new Uint8Array(derived);
-            }
-
-            console.log('[ELD] _deriveKey returning, length:', ikm.length);
-            return ikm;
-        } catch (err) {
-            console.error('[ELD] _deriveKey FAILED:', err);
-            throw err;
-        }
+        return new Uint8Array(derived);
     }
 
     async _encrypt(data) {
@@ -309,8 +294,6 @@ class EncryptedLocalDatabase {
 
     // First-time setup for a new user
     async createUser(userId, password) {
-        console.log('[ELD] createUser called for:', userId, 'on instance:', this._instanceId);
-
         if (userId == null || userId === '') {
             throw new Error('Missing userId. Registration/login must return a userId.');
         }
@@ -319,7 +302,6 @@ class EncryptedLocalDatabase {
         }
 
         await this.initializeDB();
-        console.log('[ELD] DB initialized');
 
         if (await this.userExists(userId)) {
             throw new Error('User already exists. Use unlock() instead.');
@@ -327,42 +309,31 @@ class EncryptedLocalDatabase {
 
         // Generate and store salt (unencrypted - needed for key derivation)
         const salt = this._generateSalt();
-        console.log('[ELD] Generated salt, length:', salt.length);
 
         await this._put(STORES.META, {
             id: `user-${userId}`,
             salt: this._uint8ToBase64(salt),
+            kdfVersion: 'argon2id-v1',
             createdAt: Date.now()
         });
-        console.log('[ELD] Salt stored in DB');
 
         // Derive DEK and set state
-        console.log('[ELD] About to derive key...');
         const derivedKey = await this._deriveKey(password, salt);
-        console.log('[ELD] derivedKey result:', derivedKey ? `${derivedKey.length} bytes` : 'null/undefined');
 
         this.dek = derivedKey;
         this.currentUserId = userId;
-
-        console.log('[ELD] After assignment - this.dek:', this.dek ? `${this.dek.length} bytes` : 'null/undefined');
-        console.log('[ELD] After assignment - this.currentUserId:', this.currentUserId);
-        console.log('[ELD] isUnlocked():', this.isUnlocked());
 
         if (!this.dek || this.dek.length !== 32) {
             throw new Error('Failed to derive encryption key');
         }
 
         // Store verification record (to check password on future logins)
-        console.log('[ELD] About to encrypt verification...');
         const verification = await this._encrypt('echo-verify-ok');
-        console.log('[ELD] Verification encrypted');
 
         await this._put(STORES.META, {
             id: `verify-${userId}`,
             ...verification
         });
-
-        console.log(`[ELD] Created database for ${userId}`);
     }
 
     // Unlock existing user's database
@@ -397,12 +368,11 @@ class EncryptedLocalDatabase {
                     throw new Error('Mismatch');
                 }
             }
-        } catch (err) {
+        } catch {
             this.lock();  // Clear DEK on failure
             throw new Error('Invalid password');
         }
 
-        console.log(`[ELD] Unlocked database for ${userId}`);
         return true;
     }
 
@@ -413,7 +383,6 @@ class EncryptedLocalDatabase {
         }
         this.dek = null;
         this.currentUserId = null;
-        console.log('[ELD] Database locked');
     }
 
     async storePeerIdentityKey(peerId, keys) {
@@ -504,7 +473,7 @@ class EncryptedLocalDatabase {
             ? this._base64ToUint8(data.receivingChainKey)
             : data.receivingChainKey;
         if (!(key instanceof Uint8Array) || key.length !== 32) {
-            console.warn('[ELD] Invalid receiving chain key stored; deleting:', { receivingKeyChainId, length: key?.length });
+            console.warn('[ELD] Invalid receiving chain key stored; deleting invalid entry');
             await this.deleteReceivingChainKey(peerId);
             return null;
         }
@@ -552,7 +521,7 @@ class EncryptedLocalDatabase {
             ? this._base64ToUint8(data.sendingChainKey)
             : data.sendingChainKey;
         if (!(key instanceof Uint8Array) || key.length !== 32) {
-            console.warn('[ELD] Invalid sending chain key stored; deleting:', { sendingKeyChainId, length: key?.length });
+            console.warn('[ELD] Invalid sending chain key stored; deleting invalid entry');
             await this.deleteSendingChainKey(peerId);
             return null;
         }
@@ -608,7 +577,7 @@ class EncryptedLocalDatabase {
             ? this._base64ToUint8(data.rootKey)
             : data.rootKey;
         if (!(key instanceof Uint8Array) || key.length !== 32) {
-            console.warn('[ELD] Invalid ROOT key stored; deleting:', { rootKeyId, length: key?.length });
+            console.warn('[ELD] Invalid ROOT key stored; deleting invalid entry');
             await this.deleteRootKey(peerId);
             return null;
         }
@@ -649,8 +618,8 @@ class EncryptedLocalDatabase {
             try {
                 const decrypted = await this._decrypt(record.ciphertext, record.nonce);
                 messages.push(JSON.parse(decrypted));
-            } catch (err) {
-                console.warn('[ELD] Failed to decrypt message:', record.id);
+            } catch {
+                console.warn('[ELD] Failed to decrypt message');
             }
         }
 
@@ -815,7 +784,6 @@ class EncryptedLocalDatabase {
                 ...encrypted,
             });
         }
-        console.log(`[ELD] Stored ${opks.length} OPK private keys`);
     }
 
     // Retrieve the private key for a single opkId (returns Uint8Array or null)
@@ -832,7 +800,6 @@ class EncryptedLocalDatabase {
     async deleteOPK(opkId) {
         this._ensureUnlocked();
         await this._delete(STORES.OPK_PRIVATE_KEYS, `opk-${opkId}`);
-        console.log(`[ELD] Deleted consumed OPK: ${opkId}`);
     }
 
     // Return the count of remaining stored OPKs

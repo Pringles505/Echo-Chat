@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import SafetyNumberModal from "./SafetyNumberModal";
 import { jwtDecode } from "jwt-decode";
 import { getSocket } from "../../../socket";
 import PropTypes from "prop-types";
@@ -23,6 +24,7 @@ import {
   getSavedMessages,
   updateMessageSeenStatus,
   storePeerIdentityKeys,
+  getPeerIdentityKeys,
 } from "./utils/chat/keyManagement";
 
 import { encryptOutgoingMessage } from "./utils/chat/messageEncryption";
@@ -51,10 +53,16 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
   const previousMessageCountRef = useRef(0);
   const isInitialLoadRef = useRef(true);
 
+  const [identityChangeDetail, setIdentityChangeDetail] = useState(null);
+  const [ourPublicKeyB64, setOurPublicKeyB64] = useState(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+
   useEffect(() => {
     // Reset on chat switch.
     setSendBlocked(false);
     setSendBlockedReason("");
+    setIdentityChangeDetail(null);
+    setShowVerifyModal(false);
 
     const onPeerIdentityChanged = (event) => {
       const peerId = String(event?.detail?.peerId ?? "");
@@ -63,21 +71,39 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
 
       setSendBlocked(true);
       setSendBlockedReason("Peer identity key changed. Verify this contact before sending.");
+      setIdentityChangeDetail({
+        savedPeer: event.detail.savedPeer ?? null,
+        fetchedPeer: event.detail.fetchedPeer ?? null,
+      });
+    };
+
+    const onVerifySafetyNumber = async (event) => {
+      const peerId = String(event?.detail?.peerId ?? "");
+      if (!peerId || peerId !== String(targetUserId ?? "")) return;
+      const peerKeys = await getPeerIdentityKeys(peerId);
+      setIdentityChangeDetail({ savedPeer: peerKeys ?? null, fetchedPeer: null });
+      setShowVerifyModal(true);
     };
 
     window.addEventListener("peerIdentityChanged", onPeerIdentityChanged);
-    return () => window.removeEventListener("peerIdentityChanged", onPeerIdentityChanged);
+    window.addEventListener("verifySafetyNumber", onVerifySafetyNumber);
+    return () => {
+      window.removeEventListener("peerIdentityChanged", onPeerIdentityChanged);
+      window.removeEventListener("verifySafetyNumber", onVerifySafetyNumber);
+    };
   }, [targetUserId]);
 
-  // Load private key from ELD on mount
+  // Load private key and own public IK from ELD on mount
   useEffect(() => {
     const loadPrivateKey = async () => {
       const keys = await getIdentityKeys();
       if (keys?.privateKeyX25519) {
         setPrivateKeyArray(base64ToArrayBuffer(keys.privateKeyX25519));
-        console.log("[Chat] Loaded private key from ELD");
       } else {
         console.error("[Chat] No private key available in ELD");
+      }
+      if (keys?.publicKeyX25519) {
+        setOurPublicKeyB64(keys.publicKeyX25519);
       }
     };
     loadPrivateKey();
@@ -93,19 +119,14 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
   useEffect(() => {
     // Check if userId and targetUserId are valid 
     if (!userId || !targetUserId) return;
-    console.log(
-      `🔄 Fetching messages for chat: User ${userId} ↔ Target ${targetUserId}`
-    );
 
     // Load previously decrypted messages from ELD
     const loadSavedMessages = async () => {
       try {
         const savedMessages = await getSavedMessages(userId, targetUserId);
         if (savedMessages.length > 0) {
-          console.log(`📂 Loaded ${savedMessages.length} messages from ELD`);
           setMessages(savedMessages);
         } else {
-          console.log('📂 No saved messages found, starting fresh');
           setMessages([]);
         }
       } catch (error) {
@@ -145,14 +166,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
             (message.callData?.receiverId === activeChat && message.callData?.callerId === userId);
 
           if (isInvolvedInCall && isRelevantToActiveChat) {
-            console.log("📞 Received call event message:", {
-              callId: message.callData?.callId,
-              caller: message.callData?.callerId,
-              receiver: message.callData?.receiverId,
-              currentUser: userId,
-              activeChat: activeChat
-            });
-
             // Save call event to localStorage
             updateSavedMessages(userId, activeChat, message, setMessages);
           }
@@ -162,12 +175,9 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
         // If message is from user or to the user process
         if (message.userId == activeChat || message.userId == userId) {
           try {
-
-            console.log("📩 Received real-time message:", message);
-
-             // Check if the message is for the active chat
-             const sender = String(message.userId);
-             if (activeChat === sender) {
+            // Check if the message is for the active chat
+            const sender = String(message.userId);
+            if (activeChat === sender) {
               socket.emit("messageSeen", { targetUserId });
             }
             if (message.userId == userId) {
@@ -187,16 +197,9 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
               );
             }
           } catch (err) {
-            console.error("❌ Error handling message:", err, message);
+            console.error("❌ Error handling message:", err);
             continue;
           }
-        } else {
-          console.log(
-            "Message targetUserId: ",
-            message.userId,
-            "does not match activeChat: ",
-            activeChat
-          );
         }
       }
     };
@@ -204,7 +207,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
     // Listen for read receipt updates, filtered to this chat
     const handleSeenUpdate = async ({ userId: seenByUserId, targetUserId: seenForUserId }) => {
       if (seenForUserId === userId && seenByUserId === targetUserId) {
-        console.log("👀", seenForUserId, "Message seen by:", seenByUserId);
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg.userId === userId ? { ...msg, seenStatus: true } : msg
@@ -240,24 +242,16 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
 
     // Async init (fetch message number, emit ready)
     const initChat = async () => {
-      const latestMessageNumber = await fetchLatestMessageNumber(
-        socket,
-        targetUserId
-      );
-      console.log("📩 Latest message number:", latestMessageNumber);
+      await fetchLatestMessageNumber(socket, targetUserId);
       socket.emit("ready", { targetUserId });
     };
     initChat();
 
     // Cleanup removes the exact handlers registered above
     return () => {
-      console.log(
-        `🧹 Cleaning up listeners for chat: User ${userId} ↔ Target ${targetUserId}`
-      );
       socket.off("newMessage", handleChatMessage);
       socket.off("messageSeenUpdate", handleSeenUpdate);
       window.removeEventListener('localStorageUpdated', handleEldUpdate);
-      console.log("✅ Chat cleanup complete (session keys preserved for ratchet continuity)");
     };
   }, [userId, targetUserId]);
 
@@ -273,7 +267,6 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
       if (keys?.privateKeyX25519) {
         const loaded = base64ToArrayBuffer(keys.privateKeyX25519);
         setPrivateKeyArray(loaded);
-        console.log("[Chat] Lazy-loaded private key from ELD");
         return loaded;
       }
       throw new Error("No private key available in ELD");
@@ -296,6 +289,10 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
       if (err?.code === "PEER_IDENTITY_CHANGED") {
         setSendBlocked(true);
         setSendBlockedReason("Peer identity key changed. Verify this contact before sending.");
+        setIdentityChangeDetail({
+          savedPeer: err.savedPeer ?? null,
+          fetchedPeer: err.fetchedPeer ?? null,
+        });
       }
       throw err;
     }
@@ -367,7 +364,7 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
     }
   };
 
-    return (
+  return (
     <div className="app-container h-full flex flex-col">
 
       <div className="chat-container flex-1 flex flex-col relative overflow-y-auto">
@@ -391,10 +388,34 @@ function Chat({ token: tokenProp, activeChat, currentWallpaper = "default" }) {
         </div>
       </div>
       {sendBlocked && (
-        <div className="px-4 py-2 text-sm bg-red-950/70 text-red-100 border-t border-red-900">
-          {sendBlockedReason || "Sending is blocked due to a safety warning."}
+        <div className="px-4 py-2 text-sm bg-red-950/70 text-red-100 border-t border-red-900 flex items-center justify-between">
+          <span>{sendBlockedReason || "Sending is blocked due to a safety warning."}</span>
+          <button
+            onClick={() => setShowVerifyModal(true)}
+            className="ml-4 px-3 py-1 text-xs bg-red-800 hover:bg-red-700 rounded shrink-0"
+          >
+            Verify
+          </button>
         </div>
       )}
+      <SafetyNumberModal
+        open={showVerifyModal || (sendBlocked && !!identityChangeDetail)}
+        onClose={() => setShowVerifyModal(false)}
+        savedPeer={identityChangeDetail?.savedPeer ?? null}
+        fetchedPeer={identityChangeDetail?.fetchedPeer ?? null}
+        ourPublicKeyB64={ourPublicKeyB64}
+        onAccept={async (newPeer) => {
+          await storePeerIdentityKeys(targetUserId, { ...newPeer, firstSeenAt: Date.now() });
+          setSendBlocked(false);
+          setSendBlockedReason("");
+          setIdentityChangeDetail(null);
+          setShowVerifyModal(false);
+        }}
+        onReject={() => {
+          setShowVerifyModal(false);
+          // Block remains — user chose not to trust the new key
+        }}
+      />
       <SendText sendMessage={sendMessage} disabled={sendBlocked} disabledReason={sendBlockedReason} />
     </div>
   );

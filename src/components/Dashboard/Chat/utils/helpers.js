@@ -22,7 +22,6 @@ const arrayBufferToBase64 = (buffer) => {
   for (let i = 0; i < len; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  console.log('CONVERTED ARRAY BUFFER TO BASE64:', btoa(binary));
   return btoa(binary);
 };
 

@@ -49,9 +49,8 @@ const Login = () => {
             const userExists = await eld.userExists(resolvedUserId);
 
             if (userExists) {
-              await eld.unlock(resolvedUserId, password);
-              console.log("[ELD] Database unlocked");
-            } else {
+                await eld.unlock(resolvedUserId, password);
+              } else {
               // First login on this device - no local keys
               // Option 1: Show warning and continue
               console.warn("[ELD] No local database - keys not available locally");

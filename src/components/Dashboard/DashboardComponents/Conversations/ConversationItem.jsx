@@ -26,13 +26,11 @@ const ConversationItem = ({
   useEffect(() => {
   const fetchLatest = async () => {
     const targetUserId = conversation.targetUserId || conversation.id;
-    console.log('🔍 ConversationItem fetching latest for:', targetUserId);
 
     try {
       const messages = await getSavedMessages(userId, targetUserId);
 
       if (!messages || messages.length === 0) {
-        console.log('📭 No messages found in ELD');
         if (unreadCount > 0) {
           setLatestMessage('New message');
         } else {
@@ -42,7 +40,6 @@ const ConversationItem = ({
       }
 
       const lastMsg = messages[messages.length - 1];
-      console.log('✅ Latest message found:', lastMsg?.text);
 
       if (lastMsg?.messageType === 'call_event') {
         const dur = lastMsg.callData?.duration || 0;
@@ -71,9 +68,7 @@ const ConversationItem = ({
   fetchLatest();
 
   // Listener for storage updates (still works via custom event)
-  const handleStorageUpdate = (event) => {
-    console.log('🔔 localStorageUpdated event received in ConversationItem:', event.detail);
-    console.log('🔔 Current conversation:', conversation.id);
+  const handleStorageUpdate = () => {
     fetchLatest();
   };
 

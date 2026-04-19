@@ -159,15 +159,6 @@ const UserProfile = () => {
       profileImage !== originalProfileImage &&
       profileImage !== defaultAvatar;
 
-    console.log('💾 Save button clicked - Image check:', {
-      hasProfileImage: !!profileImage,
-      profileImageLength: profileImage?.length,
-      originalProfileImageLength: originalProfileImage?.length,
-      isImageChanged,
-      isDifferent: profileImage !== originalProfileImage,
-      isNotDefault: profileImage !== defaultAvatar
-    });
-
     if (isImageChanged) {
       dataToSend.profilePicture = profileImage;
     }
@@ -179,9 +170,6 @@ const UserProfile = () => {
       setTimeout(() => setPopupMsg(""), 2000);
       return;
     }
-
-    console.log('💾 Sending update with data keys:', Object.keys(dataToSend));
-    console.log('💾 Data size:', JSON.stringify(dataToSend).length, 'bytes');
 
     // Show loading state
     setLoading(true);
@@ -197,8 +185,6 @@ const UserProfile = () => {
     socket.emit("updateUserInfo", dataToSend, (response) => {
       clearTimeout(timeoutId);
       setLoading(false);
-
-      console.log('✅ updateUserInfo response:', response);
 
       if (response && response.success) {
         // Reset all editing states
@@ -237,7 +223,6 @@ const UserProfile = () => {
             username: response.user.username,
             profilePicture: response.user.profilePicture
           });
-          console.log('📢 Broadcasting profile update to all users');
         }
 
         // Dispatch custom event for local components

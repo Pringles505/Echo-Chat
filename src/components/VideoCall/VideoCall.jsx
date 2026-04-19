@@ -90,11 +90,6 @@ const VideoCall = () => {
             username: profile.username || username,
             profileImage: profile.profilePicture || profile.profileImage || null
           });
-          console.log('👤 Local user profile loaded from localStorage:', {
-            username: profile.username,
-            rawProfilePicture: profile.profilePicture,
-            hasProfileImage: !!(profile.profilePicture || profile.profileImage)
-          });
         } catch (e) {
           console.error('Error parsing stored profile:', e);
         }
@@ -104,25 +99,21 @@ const VideoCall = () => {
           username: username || 'You',
           profileImage: null
         });
-        console.log('👤 Local user profile from username (no cached profile):', username);
       }
 
       // Fetch remote user profile via socket - ALWAYS prefer fresh data from server
       socket.emit('fetchUsername', odebukiUserId, (response) => {
-        console.log('📡 fetchUsername response:', response);
         if (response) {
           // Backend might send profilePicture or profileImage
           let profilePic = response.profilePicture || response.profileImage || null;
 
           // If socket doesn't return profile picture, check localStorage as fallback
           if (!profilePic) {
-            console.log('⚠️ No profile picture in socket response, checking localStorage...');
             const cachedProfile = localStorage.getItem(`profile-${odebukiUserId}`);
             if (cachedProfile) {
               try {
                 const parsed = JSON.parse(cachedProfile);
                 profilePic = parsed.profilePicture || parsed.profileImage || null;
-                console.log('📦 Found profile picture in localStorage cache:', !!profilePic);
               } catch (e) {
                 console.error('Error parsing cached profile:', e);
               }
@@ -139,15 +130,6 @@ const VideoCall = () => {
             username: response.username,
             profilePicture: profilePic
           }));
-
-          console.log('👤 Remote user profile set:', {
-            username: response.username,
-            rawProfilePicture: response.profilePicture,
-            rawProfileImage: response.profileImage,
-            finalProfileImage: profilePic,
-            hasProfileImage: !!profilePic,
-            profileImagePreview: profilePic?.substring(0, 50) + '...'
-          });
         } else {
           console.error('❌ fetchUsername returned no response');
         }
@@ -174,11 +156,6 @@ const VideoCall = () => {
             username: profile.username || username,
             profileImage: profile.profilePicture || profile.profileImage || null
           });
-          console.log('🔄 Local profile updated in video call:', {
-            username: profile.username,
-            rawProfilePicture: profile.profilePicture,
-            hasProfileImage: !!(profile.profilePicture || profile.profileImage)
-          });
         } catch (e) {
           console.error('Error updating local profile:', e);
         }
@@ -187,12 +164,10 @@ const VideoCall = () => {
 
     // Handle remote user profile updates via socket
     const handleRemoteProfileUpdate = (data) => {
-      console.log('👤 Remote user profile update received in VideoCall:', data);
       const { userId: updatedUserId, username, profilePicture } = data;
 
       // Check if this is the remote user we're calling
       if (updatedUserId === odebukiUserId) {
-        console.log('🔄 Updating remote user profile in video call');
         setRemoteUserProfile({
           username: username || 'User',
           profileImage: profilePicture || null
@@ -223,22 +198,6 @@ const VideoCall = () => {
       socket.off('userProfileUpdated', handleRemoteProfileUpdate);
     };
   }, [odebukiUserId]);
-
-  // Debug logging for state changes
-  useEffect(() => {
-    console.log('🔍 VideoCall State changed:', {
-      isCameraOff,
-      hasVideoPermission,
-      hasLocalProfile: !!localUserProfile,
-      localUsername: localUserProfile?.username,
-      hasRemoteProfile: !!remoteUserProfile,
-      remoteUsername: remoteUserProfile?.username,
-      remoteProfileImage: remoteUserProfile?.profileImage,
-      shouldShowProfilePic: isCameraOff || !hasVideoPermission,
-      callStatus,
-      remoteVideoEnabled
-    });
-  }, [isCameraOff, hasVideoPermission, localUserProfile, remoteUserProfile, callStatus, remoteVideoEnabled]);
 
   useEffect(() => {
     callIdRef.current = callId;
@@ -348,10 +307,6 @@ const VideoCall = () => {
 
     recognition.onerror = (e) => {
       const err = e?.error || e;
-      console.log('[Captions] SpeechRecognition error:', err);
-      if (isUserGesture) {
-        console.log('[Captions] If you see not-allowed/service-not-allowed, check mic permission and HTTPS/localhost.');
-      }
 
       // Prevent tight restart loops on certain errors (notably "aborted").
       if (err === 'aborted') {
@@ -390,9 +345,6 @@ const VideoCall = () => {
     } catch (e) {
       // Some browsers require this to be triggered by a user gesture.
       recognitionRef.current = null;
-      if (!isUserGesture) {
-        console.log('[Captions] SpeechRecognition start failed (try clicking CC):', e?.name || e);
-      }
     }
   };
 
@@ -465,10 +417,7 @@ const VideoCall = () => {
     remoteStreamRef.current = new MediaStream();
 
     const startCamera = async () => {
-      if (hasStartedCallRef.current) {
-        console.log('[VideoCall] startCamera already ran, skipping');
-        return;
-      }
+      if (hasStartedCallRef.current) return;
       hasStartedCallRef.current = true;
 
       try {
@@ -482,15 +431,12 @@ const VideoCall = () => {
           setHasAudioPermission(true);
           setHasVideoPermission(true);
         } catch (error) {
-          console.log('Could not get both video and audio, trying individually...', error);
-
           // Try video only
           let videoStream = null;
           try {
             videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
             setHasVideoPermission(true);
           } catch (videoError) {
-            console.log('Video permission denied', videoError);
             setHasVideoPermission(false);
             setIsCameraOff(true);
           }
@@ -501,7 +447,6 @@ const VideoCall = () => {
             audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             setHasAudioPermission(true);
           } catch (audioError) {
-            console.log('Audio permission denied', audioError);
             setHasAudioPermission(false);
             setIsMuted(true);
           }
@@ -525,12 +470,6 @@ const VideoCall = () => {
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = mediaStream;
-          console.log('📹 Local video stream set:', {
-            hasVideo: mediaStream.getVideoTracks().length > 0,
-            hasAudio: mediaStream.getAudioTracks().length > 0,
-            videoEnabled: mediaStream.getVideoTracks()[0]?.enabled,
-            audioEnabled: mediaStream.getAudioTracks()[0]?.enabled
-          });
         }
 
         // Push tracks from local stream to peer connection
@@ -544,9 +483,7 @@ const VideoCall = () => {
             remoteStreamRef.current.addTrack(track);
 
             // Listen for track enabled/disabled events
-            track.onended = () => {
-              console.log('Remote track ended:', track.kind);
-            };
+            track.onended = () => {};
 
             // Monitor remote video track state
             if (track.kind === 'video') {
@@ -590,7 +527,6 @@ const VideoCall = () => {
 
     // Wait for socket to connect then start camera
     const initCall = () => {
-      console.log('Socket connected, initializing call...');
       startCamera();
     };
 
@@ -606,7 +542,6 @@ const VideoCall = () => {
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => {
           track.stop();
-          console.log(`Cleanup stopped track: ${track.kind}`);
         });
         localStreamRef.current = null;
       }
@@ -636,20 +571,17 @@ const VideoCall = () => {
 
     // Listen for call ended by other user
     socket.on('callEnded', () => {
-      console.log('Other user ended the call');
       stopMedia();
       navigate(-1);
     });
 
     // Listen for remote video state changes
     socket.on('videoStateChanged', ({ isEnabled }) => {
-      console.log('Remote video state changed:', isEnabled);
       setRemoteVideoEnabled(isEnabled);
     });
 
     // Listen for remote audio state changes (optional, for future UI indicators)
     socket.on('audioStateChanged', ({ isEnabled }) => {
-      console.log('Remote audio state changed:', isEnabled);
       // Could add a state variable to show muted indicator on remote user
     });
 
@@ -692,11 +624,6 @@ const VideoCall = () => {
     await callDoc.set({ offer });
 
     // Send call notification to target user via socket
-    console.log('Emitting initiateCall:', {
-      targetUserId: odebukiUserId,
-      callId: callDoc.id,
-    });
-
     socket.emit('initiateCall', {
       targetUserId: odebukiUserId,
       callId: callDoc.id,
@@ -781,7 +708,6 @@ const VideoCall = () => {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => {
         track.stop();
-        console.log(`Stopped track: ${track.kind}`);
       });
       localStreamRef.current = null;
       
@@ -822,11 +748,6 @@ const VideoCall = () => {
         });
         setIsMuted(newMutedState);
 
-        console.log('🔊 Audio toggled:', {
-          muted: newMutedState,
-          trackEnabled: audioTracks[0].enabled
-        });
-
         // Notify remote user about audio state change
         const socket = getSocket();
         socket.emit('audioStateChanged', {
@@ -847,21 +768,12 @@ const VideoCall = () => {
         });
         setIsCameraOff(newCameraOffState);
 
-        console.log('📹 Camera toggled:', {
-          cameraOff: newCameraOffState,
-          trackEnabled: videoTracks[0].enabled,
-          hasVideoPermission,
-          localUserProfile: localUserProfile?.username
-        });
-
         // Notify remote user about video state change
         const socket = getSocket();
         socket.emit('videoStateChanged', {
           targetUserId: odebukiUserId,
           isEnabled: !newCameraOffState
         });
-      } else {
-        console.log('⚠️ No video tracks available to toggle');
       }
     }
   };
@@ -874,10 +786,7 @@ const VideoCall = () => {
 
   // Get profile image with fallback
   const getProfileImage = (profile) => {
-    if (!profile) {
-      console.log('⚠️ getProfileImage: No profile provided');
-      return null;
-    }
+    if (!profile) return null;
 
     // Check if profile has a custom image (not empty string, null, or undefined)
     const hasCustomImage = profile.profileImage && profile.profileImage.trim().length > 0;
@@ -893,15 +802,6 @@ const VideoCall = () => {
       imageUrl = `https://ui-avatars.com/api/?name=${profile.username}&background=${getConsistentColor(profile.username)}&color=fff`;
     }
 
-    console.log('🖼️ getProfileImage called:', {
-      username: profile.username,
-      rawProfileImage: profile.profileImage,
-      profileImageType: typeof profile.profileImage,
-      profileImageLength: profile.profileImage?.length,
-      hasCustomImage,
-      willUseBackendUrl: profile.profileImage?.startsWith('/'),
-      finalImageUrl: imageUrl?.substring(0, 80) + (imageUrl?.length > 80 ? '...' : '')
-    });
     return imageUrl;
   };
 
@@ -979,12 +879,6 @@ const VideoCall = () => {
               className={`w-full h-full object-cover ${isCameraOff || !hasVideoPermission ? 'hidden' : ''}`}
             />
             {(isCameraOff || !hasVideoPermission) && (() => {
-              console.log('🎨 Rendering profile picture overlay for local user:', {
-                hasProfile: !!localUserProfile,
-                username: localUserProfile?.username,
-                isCameraOff,
-                hasVideoPermission
-              });
               return (
                 <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gray-800">
                   {localUserProfile ? (
@@ -994,11 +888,7 @@ const VideoCall = () => {
                         alt={localUserProfile.username}
                         className="w-24 h-24 rounded-full object-cover mb-2"
                         onError={(e) => {
-                          console.error('❌ Image failed to load, using fallback');
                           e.target.src = `https://ui-avatars.com/api/?name=${localUserProfile.username}&background=${getConsistentColor(localUserProfile.username)}&color=fff`;
-                        }}
-                        onLoad={() => {
-                          console.log('✅ Profile image loaded successfully');
                         }}
                       />
                       <p className="text-white text-sm">{localUserProfile.username}</p>

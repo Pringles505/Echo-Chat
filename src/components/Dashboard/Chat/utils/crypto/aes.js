@@ -1,4 +1,4 @@
-import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt, encrypt_aad, decrypt_aad, encrypt_aad_bytes, decrypt_aad_bytes } from '@mascaro101/echo-protocol';
+import init, { encrypt as wasmEncrypt, decrypt as wasmDecrypt, encrypt_aad_bytes, decrypt_aad_bytes } from '@mascaro101/echo-protocol';
 import { base64ToBytes, bytesToBase64 } from '../helpers';
 const normalizeAesKey = (key) => {
   if (key instanceof Uint8Array) return key;
@@ -11,9 +11,7 @@ const normalizeAesKey = (key) => {
 };
 
 const encrypt = async (text, derivedKey, nonceArray) => {
-  console.log("🎈🎈Encrypting with", derivedKey)
   await init();
-  console.log('derivedKey:', derivedKey);
 
   try {
     const key = normalizeAesKey(derivedKey);
@@ -30,7 +28,6 @@ const encrypt = async (text, derivedKey, nonceArray) => {
 };
 
 const decrypt = async (text, derivedKey, nonceArray) => {
-  console.log("🎈🎈Decrypting with", derivedKey)
   await init();
   // Ensure the derived key is computed before decryption
   if (!derivedKey) {
@@ -69,7 +66,6 @@ export const buildAadBytes = (message) => {
 }
 
 export const encryptWithAad = async (text, in_key, nonce, aadBytes) => {
-  console.log("🎈🎈Encrypting with", in_key)
   await init();
 
   try {
@@ -85,10 +81,6 @@ export const encryptWithAad = async (text, in_key, nonce, aadBytes) => {
     const encryptedText_bytes = await encrypt_aad_bytes(textBytes, key, nonce, aadBytes);
     const encryptedText = bytesToBase64(encryptedText_bytes);
 
-    console.log("typeof encryptedText_bytes:", typeof encryptedText_bytes)
-    console.log(" encryptedText_bytes instanceof Uint8Array", encryptedText_bytes instanceof Uint8Array);
-    console.log("encryptedText_bytes?.length", encryptedText_bytes?.length);
-    
     return encryptedText;
   } catch (error) {
     console.error('Encryption error:', error);
@@ -97,7 +89,6 @@ export const encryptWithAad = async (text, in_key, nonce, aadBytes) => {
 };
 
 export const decryptWithAad = async (ciphertext, in_key, nonce, aadBytes) => {
-  console.log("🎈🎈Decrypting with", in_key)
   await init();
   // Ensure the derived key is computed before decryption
   if (!in_key) {

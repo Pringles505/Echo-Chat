@@ -49,6 +49,14 @@ vi.mock('@mascaro101/echo-protocol', () => {
     generate_private_ephemeral_key: vi.fn((rand) => new Uint8Array(rand).slice(0, 32)),
     generate_public_ephemeral_key: vi.fn((priv) => new Uint8Array(priv).slice(0, 32)),
     hkdf_derive: vi.fn((ikm, _salt, info, len) => deriveBytes(len, new Uint8Array(ikm), new Uint8Array(info))),
+    derive_ed25519_keypair_from_x25519: vi.fn((priv) => new Uint8Array(priv).slice(0, 32)),
+    convert_x25519_to_xeddsa: vi.fn((priv) => { const b = new Uint8Array(64); b.set(new Uint8Array(priv).slice(0, 32), 0); b.set(new Uint8Array(priv).slice(0, 32), 32); return b; }),
+    compute_determenistic_nonce: vi.fn((prefix, msg) => deriveBytes(32, new Uint8Array(prefix), new Uint8Array(msg))),
+    compute_nonce_point: vi.fn((nonce) => new Uint8Array(nonce).slice(0, 32)),
+    compute_challenge_hash: vi.fn((R, A, M) => deriveBytes(32, new Uint8Array(R), new Uint8Array(A), new Uint8Array(M))),
+    compute_signature_scaler: vi.fn((nonce, challenge, scalar) => deriveBytes(32, new Uint8Array(nonce), new Uint8Array(challenge), new Uint8Array(scalar))),
+    compute_signature: vi.fn((R, s) => { const sig = new Uint8Array(64); sig.set(new Uint8Array(R).slice(0, 32), 0); sig.set(new Uint8Array(s).slice(0, 32), 32); return sig; }),
+    verify_signature: vi.fn(() => true),
   };
 });
 

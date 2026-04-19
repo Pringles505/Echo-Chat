@@ -5,7 +5,6 @@ import EldUnlockGate from './EldUnlockGate';
 //Checks if the user is authenticated by checking if the token is present in the local storage
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  console.log('CHECKING TOKEN', token);
   if (!token) return <Navigate to="/login" replace />;
   return <EldUnlockGate token={token}>{children}</EldUnlockGate>;
 };

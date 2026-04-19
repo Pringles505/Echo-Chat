@@ -266,7 +266,9 @@ describe("protocol adversarial: fail-closed without state desync", () => {
       await expect(decryptIncomingMessage(tampered, nonce, bob, alice, new Uint8Array(32), {}, null)).rejects.toThrow();
     });
     const after = snapshot(bob);
-
+    
+    console.log("Before:", before);
+    console.log("After:", after);
     expect(after).toEqual(before);
   });
 

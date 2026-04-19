@@ -2,11 +2,8 @@ const fetchPublicIdentityKeyX25519 = async (socket, targetUserId) => {
     return new Promise((resolve, reject) => {
         socket.emit('getPublicIdentityKeyX25519', { targetUserId }, (response) => {
             if (response.success) {
-                console.log(response)
-                console.log('✅ Fetched publicIdentityKey:', response.publicIdentityKeyX25519);
                 resolve(response.publicIdentityKeyX25519);
             } else {
-                console.log(targetUserId)
                 console.error('❌ Failed to fetch publicIdentityKey:', response.error);
                 reject(new Error(response.error));
             }
@@ -15,13 +12,9 @@ const fetchPublicIdentityKeyX25519 = async (socket, targetUserId) => {
 };
 
 const fetchSignedPreKey = async (socket, targetUserId) => {
-    console.log('socket', socket);
-    console.log('targetUserId', targetUserId);
     return new Promise((resolve, reject) => {
         socket.emit('getSignedPreKey', { targetUserId }, (response) => {
             if (response.success) {
-                console.log('✅ Fetched getSignedPreKey:', response.signedPreKey, response.signature);
-
                 resolve({ signedPreKey: response.signedPreKey, signature: response.signature, spkId: response.spkId ?? null });
             } else {
                 console.error('❌ Failed to fetch getSignedPreKey:', response.error);
@@ -47,8 +40,6 @@ const fetchPublicIdentityKeyEd25519 = async (socket, targetUserId) => {
     return new Promise((resolve, reject) => {
         socket.emit('getPublicIdentityKeyEd25519', { targetUserId }, (response) => {
             if (response.success) {
-                console.log(response)
-                console.log('✅ Fetched PublicIdentityKeyEd25519:', response.publicIdentityKeyEd25519);
                 resolve(response.publicIdentityKeyEd25519);
             } else {
                 console.error('❌ Failed to fetch publicIdentityKey:', response.error);
@@ -68,13 +59,11 @@ const fetchLatestMessageNumber = async (socket, targetUserId) => {
 };
 
 const checkFirstMessage = async (socket, targetUserId) => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       socket.emit('checkIfMessagesExist', { targetUserId }, (response) => {
         if (response.success) {
-          console.log('✅ Messages exist for this user pair');
           resolve(true); 
         } else {
-          console.log('❌ No messages found for this user pair');
           resolve(false); 
         }
       });

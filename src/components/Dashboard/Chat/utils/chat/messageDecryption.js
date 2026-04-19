@@ -1,4 +1,4 @@
-import { base64ToArrayBuffer, arrayBufferToBase64, hexToUint8Array } from "../helpers";
+import { base64ToArrayBuffer, arrayBufferToBase64 } from "../helpers";
 import { setSessionKey, updateSavedMessages, getEphemeralData, setEphemeralData, setOwnEphemeralKeys, deleteOPKPrivateKey, storePeerIdentityKeys } from "./keyManagement";
 import { initializeDoubleRatchetResponse, continueDoubleRatchetChain } from "../crypto/dr";
 import { buildAadBytes, decryptWithAad } from "../crypto/aes";
@@ -13,6 +13,44 @@ import {
 
 const INFO_RK = new TextEncoder().encode("EchoProtocol/v1/KDF_RK");
 
+const MAX_SKIPPED_KEYS_TOTAL = 10_000;
+const SKIPPED_KEY_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Evict stale and excess entries from the skipped-key store.
+// Pass 1: TTL — remove individual entries older than SKIPPED_KEY_TTL_MS.
+// Pass 2: Total cap — drop oldest DH buckets until total ≤ MAX_SKIPPED_KEYS_TOTAL.
+function evictSkipped(skipped) {
+  const now = Date.now();
+  for (const dh of Object.keys(skipped)) {
+    const bucket = skipped[dh];
+    for (const n of Object.keys(bucket)) {
+      const entry = bucket[n];
+      const ts = typeof entry === "object" && entry !== null ? entry.ts : null;
+      if (ts !== null && now - ts > SKIPPED_KEY_TTL_MS) delete bucket[n];
+    }
+    if (Object.keys(bucket).length === 0) delete skipped[dh];
+  }
+  const countTotal = () =>
+    Object.values(skipped).reduce((s, b) => s + Object.keys(b).length, 0);
+  if (countTotal() > MAX_SKIPPED_KEYS_TOTAL) {
+    const bucketsByAge = Object.keys(skipped)
+      .map((dh) => {
+        const oldest = Math.min(
+          ...Object.values(skipped[dh]).map((e) =>
+            typeof e === "object" && e !== null ? e.ts : Infinity
+          )
+        );
+        return { dh, oldest };
+      })
+      .sort((a, b) => a.oldest - b.oldest);
+    for (const { dh } of bucketsByAge) {
+      if (countTotal() <= MAX_SKIPPED_KEYS_TOTAL) break;
+      delete skipped[dh];
+    }
+  }
+  return skipped;
+}
+
 export const decryptIncomingMessage = async (
   message,
   nonce,
@@ -23,9 +61,8 @@ export const decryptIncomingMessage = async (
   setMessages = null
 ) => {
   try {
-    console.log(`🔐 [Decryption Service] Processing message from ${targetUserId}`);
-
     const ephData = await getEphemeralData(userId, targetUserId);
+    console.log("Current ephemeral data for targetUserId", targetUserId, ephData);
 
     const currentTargetPublicEphemeralKey =
       ephData?.currentTargetPublicEphemeralKey ?? ephData?.previousTargetPublicEphemeralKey ?? null;
@@ -37,12 +74,9 @@ export const decryptIncomingMessage = async (
       knownTargetPublicEphemeralKeys[currentTargetPublicEphemeralKey] = true;
     }
 
-    console.log("🔑 [Decryption Service] Current receiving DH key:", currentTargetPublicEphemeralKey);
-    console.log("🔑 [Decryption Service] Current message ephemeral key:", message.publicEphemeralKey);
 
     let root_key = await getRootKey(userId, targetUserId);
     let messageKey = null;
-    console.log("🔑 TARGET USER ID ", targetUserId);
 
     const MAX_SKIP = 2000;
 
@@ -51,6 +85,7 @@ export const decryptIncomingMessage = async (
     const pn = Number(message.previousSendingNumber ?? 0);
 
     let skipped = (await getSkippedMessages(targetUserId)) ?? {};
+    console.log("BEFORE: ", skipped);
     if (typeof skipped !== "object" || skipped == null || Array.isArray(skipped)) skipped = {};
 
     let usedSkippedKey = false;
@@ -59,12 +94,12 @@ export const decryptIncomingMessage = async (
 
     // Always try skipped message keys first (covers late/out-of-order across DH ratchet steps).
     if (dh && Number.isFinite(n)) {
-      const mkB64 = skipped?.[dh]?.[n];
+      const mkEntry = skipped?.[dh]?.[n];
+      // Support both new { k, ts } format and legacy plain-string format.
+      const mkB64 = typeof mkEntry === "object" && mkEntry !== null ? mkEntry.k : mkEntry;
       if (mkB64) {
         usedSkippedKey = true;
         messageKey = base64ToArrayBuffer(mkB64);
-
-        console.log(`🔐 [Decryption Service] Using cached skipped key for dh=${dh} n=${n}`);
 
         // Only consume skipped keys after successful decrypt.
         postDecryptActions.push(async () => {
@@ -85,8 +120,6 @@ export const decryptIncomingMessage = async (
     }
 
     if (!root_key) {
-      console.log("🔐 [Decryption Service] No existing root key found, storing derived root key");
-
       const randomBytes = crypto.getRandomValues(new Uint8Array(32));
 
       await init_dh();
@@ -126,7 +159,7 @@ export const decryptIncomingMessage = async (
         const material = chain_key_KDF(ckr);
         const mk_i = material.slice(0, 32);
         ckr = material.slice(32);
-        if (dh) skipped[dh][i] = arrayBufferToBase64(mk_i);
+        if (dh) skipped[dh][i] = { k: arrayBufferToBase64(mk_i), ts: Date.now() };
       }
 
       const materialN = chain_key_KDF(ckr);
@@ -135,15 +168,12 @@ export const decryptIncomingMessage = async (
 
       postDecryptActions.push(() => setReceivingChainKey(userId, targetUserId, nextReceivingChainKey));
       postDecryptActions.push(() => setCurrentReceivingNumber(targetUserId, n + 1));
-      postDecryptActions.push(() => setSkippedMessages(targetUserId, skipped));
-
-      console.log("✅ Receiving chain initialized and message key derived for first message");
+      postDecryptActions.push(() => setSkippedMessages(targetUserId, evictSkipped(skipped)));
 
       const publicEphemeralKeyBase64 = arrayBufferToBase64(publicEphemeralKey);
       postDecryptActions.push(() =>
         setOwnEphemeralKeys(userId, targetUserId, publicEphemeralKeyBase64, arrayBufferToBase64(privateEphemeralKey))
       );
-      console.log("✅ Own ephemeral keys stored");
 
       if (dh) {
         const DH4 = await diffie_hellman(privateEphemeralKey, base64ToArrayBuffer(dh));
@@ -162,6 +192,7 @@ export const decryptIncomingMessage = async (
         postDecryptActions.push(() => setPreviousSendingNumber(targetUserId, currentSendingNumber));
         postDecryptActions.push(() => setCurrentSendingNumber(targetUserId, 0));
       }
+      
     }
     // If the RECEIVED message has continued the RATCHET, advance the RECEIVING chain.
     else if (!messageKey && dh && dh != currentTargetPublicEphemeralKey) {
@@ -169,8 +200,6 @@ export const decryptIncomingMessage = async (
         console.warn(`⚠️ [Decryption Service] Message for old DH without skipped key dh=${dh} n=${n}; ignoring`);
         return null;
       }
-
-      console.log("⛓️ [Decryption Service] Ratchet advanced - continuing chain");
 
       let Nr = await getCurrentReceivingNumber(targetUserId);
       if (Nr == null) Nr = 0;
@@ -204,7 +233,7 @@ export const decryptIncomingMessage = async (
           const mk_i = material.slice(0, 32);
           oldCkr = material.slice(32);
 
-          skipped[oldDh][i] = arrayBufferToBase64(mk_i);
+          skipped[oldDh][i] = { k: arrayBufferToBase64(mk_i), ts: Date.now() };
         }
       } else if (pn !== 0) {
         // We don't know the previous DH/chain, so we can't derive skipped keys for pn>0 safely.
@@ -241,7 +270,7 @@ export const decryptIncomingMessage = async (
         const mk_i = material.slice(0, 32);
         newCkr = material.slice(32);
 
-        skipped[newDh][i] = arrayBufferToBase64(mk_i);
+        skipped[newDh][i] = { k: arrayBufferToBase64(mk_i), ts: Date.now() };
       }
 
       const materialN = chain_key_KDF(newCkr);
@@ -250,7 +279,7 @@ export const decryptIncomingMessage = async (
 
       postDecryptActions.push(() => setReceivingChainKey(userId, targetUserId, nextReceivingChainKey));
       postDecryptActions.push(() => setCurrentReceivingNumber(targetUserId, n + 1));
-      postDecryptActions.push(() => setSkippedMessages(targetUserId, skipped));
+      postDecryptActions.push(() => setSkippedMessages(targetUserId, evictSkipped(skipped)));
 
       const randomBytes = crypto.getRandomValues(new Uint8Array(32));
       await init_dh();
@@ -284,13 +313,12 @@ export const decryptIncomingMessage = async (
       }
       postDecryptActions.push(() => setPreviousSendingNumber(targetUserId, currentSendingNumber));
       postDecryptActions.push(() => setCurrentSendingNumber(targetUserId, 0));
+      
     }
     else {
-      console.log("🔐 [Decryption Service] No ratchet advance - deriving message key from existing chain")
-
       // If we already found a cached skipped key for this (dh, n), don't touch ratchet state.
       if (usedSkippedKey) {
-        console.log("🔐 [Decryption Service] Using cached skipped key; not advancing chain/Nr");
+        // The skipped key path already has the correct message key and state updates queued.
       } else {
         let Nr = await getCurrentReceivingNumber(targetUserId);
         if (Nr == null) Nr = 0;
@@ -320,7 +348,7 @@ export const decryptIncomingMessage = async (
         let skippedBucket = null;
         if (dh) {
           const existing = skipped[dh];
-          if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+          if (existing && typeof existing === "object" && !Array.isArray(existing) || skipped[dh] == null) {
             skippedBucket = existing;
           } else {
             skippedBucket = {};
@@ -334,7 +362,7 @@ export const decryptIncomingMessage = async (
           const mk_i = material.slice(0, 32);
           receivingChainKey = material.slice(32); // advance chain
 
-          if (skippedBucket) skippedBucket[i] = arrayBufferToBase64(mk_i); // JSON-safe
+          if (skippedBucket) skippedBucket[i] = { k: arrayBufferToBase64(mk_i), ts: Date.now() };
         }
 
         // 3) Derive key for n
@@ -344,10 +372,10 @@ export const decryptIncomingMessage = async (
 
         postDecryptActions.push(() => setReceivingChainKey(userId, targetUserId, nextChainKey));
         postDecryptActions.push(() => setCurrentReceivingNumber(targetUserId, n + 1));
-        postDecryptActions.push(() => setSkippedMessages(targetUserId, skipped));
+        postDecryptActions.push(() => setSkippedMessages(targetUserId, evictSkipped(skipped)));
       }
     }
-
+    
     // Verify we got a key
     if (!root_key && !usedSkippedKey) {
       console.error("❌ [Decryption Service] Failed to derive key for incoming message");
@@ -357,8 +385,6 @@ export const decryptIncomingMessage = async (
       console.warn("⚠️ [Decryption Service] No message key derived; ignoring message");
       return null;
     }
-
-    console.log("✅ [Decryption Service] Derived key obtained, decrypting...");
 
     // IMMEDIATELY decrypt the message using the derived key
     const aadBytes = buildAadBytes({
@@ -378,8 +404,6 @@ export const decryptIncomingMessage = async (
       text: decryptedPayload.text,
       image: decryptedPayload.image,
     };
-
-    console.log("✅ [Decryption Service] Message decrypted:", decryptedMessage.text);
 
     // Commit ratchet state only after successful decrypt (prevents desync on tampered ciphertext).
     for (const action of postDecryptActions) {
@@ -423,9 +447,6 @@ export const decryptIncomingMessage = async (
 
     // Save the derived key temporarily for potential next message in same session
     setSessionKey(userId, targetUserId, root_key);
-
-    console.log("✅ [Decryption Service] Message saved and key stored in session");
-
     return decryptedMessage;
   } catch (error) {
     console.error("❌ [Decryption Service] Error decrypting message:", error);
@@ -440,8 +461,10 @@ export const decryptIncomingMessage = async (
             fetchedPeer: error.fetchedPeer ?? null,
           }
         }));
-      } catch { }
-    }
+        } catch {
+          // Ignore event dispatch failures; the decrypt error itself is rethrown below.
+        }
+      }
     throw error;
   }
 };

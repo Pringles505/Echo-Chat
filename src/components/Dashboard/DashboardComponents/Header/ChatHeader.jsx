@@ -197,6 +197,20 @@ const ChatHeader = ({ userId, activeChat, isHovered, token }) => {
             )}
 
             <button
+              className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-300"
+              onClick={() => {
+                setMenuOpen(false);
+                window.dispatchEvent(
+                  new CustomEvent("verifySafetyNumber", {
+                    detail: { peerId: String(activeChat.id) },
+                  })
+                );
+              }}
+            >
+              Verify Safety Number
+            </button>
+
+            <button
               className="w-full text-left px-4 py-2 hover:bg-gray-700 text-red-400"
               onClick={() => {
                 setMenuOpen(false);

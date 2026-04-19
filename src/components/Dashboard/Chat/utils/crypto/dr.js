@@ -7,7 +7,6 @@ import init, { verify_signature, diffie_hellman, hkdf_derive } from '@mascaro101
 import { getIdentityKeys, getOPKPrivateKey, getPeerIdentityKeys } from '../chat/keyManagement';
 
 const HKDF_SALT = new Uint8Array();
-const CHAIN_INFO = new TextEncoder().encode('EchoProtocol/v1/KDF_CK');
 const INFO_RK = new TextEncoder().encode('EchoProtocol/v1/KDF_RK');
 
 const peerIdentityChangedError = (peerId, savedPeer, fetchedPeer) => {
@@ -57,36 +56,16 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
     const targetSignature = base64ToArrayBuffer(bundle.signature);
     const spkId = bundle.spkId ?? null;
 
-    console.log('🗝️⚠️⚠️Init XEdDSA with', targetSignedPreKey, targetSignature, targetPublicIdentityKeyX25519);
-
     await init();
     const isValidSignature = await verify_signature(
         targetSignature,
         targetSignedPreKey,
         targetPublicIdentityKeyEd25519);
-        
-    console.log("Signature", targetSignature)
-    console.log("targetSignedPreKey", targetSignedPreKey)
-    console.log("publicIdentityKeyEd25519", targetPublicIdentityKeyEd25519)
-
-    console.log('Signature valid:', isValidSignature);
 
     // If the SPK signature has been tampered with throw ERROR 
     if (!isValidSignature) {
         throw new Error('Invalid SPK signature detected');
     }
-
-    const identityKeys = await getIdentityKeys();
-    const publicIdentityKeyX25519 = identityKeys?.publicKeyX25519;
-    console.log("🗝️🎈 publicIdentityKeyX25519: ", publicIdentityKeyX25519)
-    console.log("🗝️🎈 publicEphemeralKey: ", publicEphemeralKey)
-
-    console.log("🎈🎈 Init DR with: ")
-    console.log("🎈", "target Public IK: ", targetPublicIdentityKeyX25519)
-    console.log("🎈", "target Public PK: ", targetSignedPreKey)
-    console.log("🎈", "private EK: ", ephemeralKey_private)
-    console.log("🎈", "private IK", privateKeyArray)
-
 
     const dh1 = await diffie_hellman(privateKeyArray, targetSignedPreKey);
     const dh2 = await diffie_hellman(ephemeralKey_private, targetPublicIdentityKeyX25519);
@@ -100,17 +79,6 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
         dh4 = await diffie_hellman(ephemeralKey_private, opkPub);
     }
 
-    console.log('DH1:', dh1);
-    console.log('Private Key:', privateKeyArray);
-    console.log('Target Signed PreKey:', targetSignedPreKey);
-
-    console.log('DH2:', dh2);
-    console.log('Target Public Identity Key:', targetPublicIdentityKeyX25519);
-    console.log('Private Ephemeral Key:', ephemeralKey_private);
-
-    console.log('DH3:', dh3);
-
-
     const parts = dh4 ? [dh1, dh2, dh3, dh4] : [dh1, dh2, dh3];
     const totalLen = parts.reduce((sum, p) => sum + p.length, 0);
     const IKM = new Uint8Array(totalLen);
@@ -119,29 +87,20 @@ const initializeDoubleRatchet = async (socket, targetUserId, ephemeralKey_privat
         IKM.set(p, offset);
         offset += p.length;
     }
-    console.log('IKM:', IKM);
-
     //HKDF the IKM to produce the root key
     const root_key = hkdf_derive(IKM, HKDF_SALT, INFO_RK, 32)
-    console.log('Root Key:', root_key);
 
     return { root_key, spkId, opkId, peerIdentityToPin };
 }
 
 const continueDoubleRatchetChain = async (socket, targetUserId, previousTargetPublicEphemeralKeyBase64, privateEphemeralKey, root_key) => {
-    console.log("🚧🚧Continue DR Chain🚧🚧")
-    console.log("🚧🚧Previous Target Public Ephemeral Key Base64: ", previousTargetPublicEphemeralKeyBase64)
-    console.log("🚧🚧Private Ephemeral Key: ", privateEphemeralKey)
-
     // Only convert if not already a Uint8Array
     let previousTargetPublicEphemeralKey;
     if (previousTargetPublicEphemeralKeyBase64 instanceof Uint8Array) {
         previousTargetPublicEphemeralKey = previousTargetPublicEphemeralKeyBase64;
     } else {
         previousTargetPublicEphemeralKey = base64ToArrayBuffer(previousTargetPublicEphemeralKeyBase64);
-        console.log("🚧🚧Converted Previous Target Public Ephemeral Key to ArrayBuffer: ", previousTargetPublicEphemeralKey)
     }
-    console.log("🚧🚧Previous Target Public Ephemeral Key: ", previousTargetPublicEphemeralKey)
 
     await init();
     const DH4 = await diffie_hellman(privateEphemeralKey, previousTargetPublicEphemeralKey);
@@ -154,9 +113,6 @@ const continueDoubleRatchetChain = async (socket, targetUserId, previousTargetPu
 }
 
 const initializeDoubleRatchetResponse = async (socket, message, targetUserId, privateKeyArray) => {
-    console.log("🚧🚧DR Response🚧🚧")
-
-
     await init();
     // Retrieve the privatePreKey from ELD
     const identityKeysResponse = await getIdentityKeys();
@@ -200,12 +156,6 @@ const initializeDoubleRatchetResponse = async (socket, message, targetUserId, pr
     const encTargetPublicEphemeralKey = message.publicEphemeralKey;
     const targetPublicEphemeralKey = base64ToArrayBuffer(encTargetPublicEphemeralKey);
 
-
-    console.log("🎈🎈 Init DR Response with: ");
-    console.log("🎈", "target Public IK: ", targetPublicIdentityKey)
-    console.log("🎈", "private PreKey: ", privatePreKey)
-    console.log("🎈", "target Public EK: ", targetPublicEphemeralKey)
-
     const dh1 = await diffie_hellman(privatePreKey, targetPublicIdentityKey);
     const dh2 = await diffie_hellman(privateKeyArray, targetPublicEphemeralKey);
     const dh3 = await diffie_hellman(privatePreKey, targetPublicEphemeralKey);
@@ -220,16 +170,6 @@ const initializeDoubleRatchetResponse = async (socket, message, targetUserId, pr
         dh4 = await diffie_hellman(opkPriv, targetPublicEphemeralKey);
     }
 
-    console.log('DH1:', dh1);
-    console.log('Private PreKey:', privatePreKey);
-    console.log('Target Public Identity Key:', targetPublicIdentityKey);
-
-    console.log('DH2:', dh2);
-    console.log('Target Public Ephemeral Key:', targetPublicEphemeralKey);
-
-    console.log('DH3:', dh3);
-    console.log('Private Key:', privateKeyArray);
-
     const parts = dh4 ? [dh1, dh2, dh3, dh4] : [dh1, dh2, dh3];
     const totalLen = parts.reduce((sum, p) => sum + p.length, 0);
     const IKM = new Uint8Array(totalLen);
@@ -238,10 +178,7 @@ const initializeDoubleRatchetResponse = async (socket, message, targetUserId, pr
         IKM.set(p, offset);
         offset += p.length;
     }
-    console.log('IKM:', IKM);
-
     const root_key = hkdf_derive(IKM, HKDF_SALT, INFO_RK, 32)
-    console.log('Root Key:', root_key);
     return { root_key, peerIdentityToPin };
 }
 

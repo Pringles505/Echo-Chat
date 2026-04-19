@@ -22,5 +22,11 @@ export default defineConfig({
     // Keep unit/crypto tests under src; avoid accidentally running Playwright specs via Vitest.
     include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
     exclude: ['e2e/**', '**/node_modules/**', '**/dist/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.{js,jsx}'],
+      exclude: ['src/**/*.test.*', 'src/**/__tests__/**', 'src/**/*.spec.*'],
+    },
   },
 });
